@@ -124,7 +124,7 @@
           <!-- colored left bar -->
           <div
             class="entry-bar"
-            style="background: {entry.direction === 'I' ? 'var(--positive)' : (c?.color ?? 'var(--muted-foreground)')};"
+            style="background: {entry.direction === 'I' ? 'var(--positive)' : 'var(--destructive)'};"
           ></div>
 
           <!-- main content -->
@@ -135,6 +135,7 @@
                 value={entry.direction === 'I' ? entry.amount : -entry.amount}
                 size={15}
                 weight={500}
+                negColor={false}
                 dim={dim}
               />
             </div>
