@@ -26,4 +26,5 @@ jobs:
         run: echo "$CLASP_CREDENTIALS" > ~/.clasprc.json
         env:
           CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+      - run: npm run build
       - run: npx @google/clasp push -f
