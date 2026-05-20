@@ -289,11 +289,8 @@
     gap: 6px;
   }
   @media (min-width: 768px) {
-    .entry-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 8px;
-    }
+    .entry-body { padding: 8px 0; }
+    .entry-list { gap: 4px; }
   }
   .empty {
     padding: 32px;
