@@ -1,14 +1,22 @@
+function toIsoDate(raw: unknown): string {
+  if (raw instanceof Date) {
+    return Utilities.formatDate(raw, "Asia/Manila", "yyyy-MM-dd");
+  }
+  if (raw === "" || raw == null) return "";
+  const d = new Date(raw as string | number);
+  if (!isNaN(d.getTime())) {
+    return Utilities.formatDate(d, "Asia/Manila", "yyyy-MM-dd");
+  }
+  return "";
+}
+
 function getEntries(): Entry[] {
   const rows = getIODataRows();
   const entries: Entry[] = [];
   for (const row of rows) {
     const id = row[6]; // H column (index 6 in B-based slice)
     if (id === "" || id === null || id === undefined) continue;
-    const rawDate = row[0];
-    const dateStr =
-      rawDate instanceof Date
-        ? Utilities.formatDate(rawDate, "Asia/Manila", "yyyy-MM-dd")
-        : String(rawDate);
+    const dateStr = toIsoDate(row[0]);
     entries.push({
       id: Number(id),
       date: dateStr,
