@@ -6,6 +6,7 @@ import type {
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
+import * as mock from "./mock";
 
 const GAS_URL = import.meta.env.VITE_GAS_URL as string;
 const API_SECRET = import.meta.env.VITE_API_SECRET as string;
@@ -35,21 +36,25 @@ async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export async function getEntries(): Promise<Entry[]> {
+  if (mock.isMockMode) return mock.mockGetEntries();
   const data = await gasGet<{ entries: Entry[] }>("getEntries");
   return data.entries;
 }
 
 export async function getMaster(): Promise<MasterRow> {
+  if (mock.isMockMode) return mock.mockGetMaster();
   const data = await gasGet<{ master: MasterRow }>("getMaster");
   return data.master;
 }
 
 export async function getCategories(): Promise<CategoryMap> {
+  if (mock.isMockMode) return mock.mockGetCategories();
   const data = await gasGet<{ categories: CategoryMap }>("getCategories");
   return data.categories;
 }
 
 export async function getSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
+  if (mock.isMockMode) return mock.mockGetSubcategoryBreakdown();
   const data = await gasGet<{ breakdown: SubcategoryBreakdown }>(
     "getSubcategoryBreakdown"
   );
@@ -57,6 +62,7 @@ export async function getSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
 }
 
 export async function addEntry(payload: AddEntryPayload): Promise<Entry> {
+  if (mock.isMockMode) return mock.mockAddEntry(payload);
   const data = await gasPost<{ ok: boolean; entry: Entry }>({
     action: "addEntry",
     ...payload,
@@ -68,9 +74,11 @@ export async function updateEntry(
   id: number,
   patch: UpdateEntryPatch
 ): Promise<void> {
+  if (mock.isMockMode) return mock.mockUpdateEntry(id, patch);
   await gasPost({ action: "updateEntry", id, ...patch });
 }
 
 export async function deleteEntry(id: number): Promise<void> {
+  if (mock.isMockMode) return mock.mockDeleteEntry(id);
   await gasPost({ action: "deleteEntry", id });
 }
