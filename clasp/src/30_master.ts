@@ -1,11 +1,11 @@
 function getMaster(): MasterRow {
   const sh = getMasterSheet();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 1) return { onHand: 0, budgets: {} };
+  if (sh.getLastRow() < 3) return { onHand: 0, budgets: {} };
 
-  // Read header row to find column positions by name
+  // MASTER sheet: row 2 = headers, row 3 = single formula row (never use getLastRow()
+  // for data — extra formula rows below would push it past the real data row)
   const headerRow = sh.getRange(2, 1, 1, sh.getLastColumn()).getValues()[0];
-  const dataRow = sh.getRange(lastRow, 1, 1, sh.getLastColumn()).getValues()[0];
+  const dataRow = sh.getRange(3, 1, 1, sh.getLastColumn()).getValues()[0];
 
   let onHand = 0;
   const budgets: Record<string, number> = {};
