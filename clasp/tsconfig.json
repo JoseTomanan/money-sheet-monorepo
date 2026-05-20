@@ -4,6 +4,7 @@
     "lib": ["ES2019"],
     "types": ["google-apps-script"],
     "strict": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "skipLibCheck": true
   },
