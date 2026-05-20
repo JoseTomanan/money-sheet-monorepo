@@ -85,3 +85,17 @@ npm run build    # outputs to dist/
 - `docs/adr/0001` — Unified INCOMING/OUTGOING sheet (vs per-month sheets)
 - `docs/adr/0002` — GAS HTTP API + shared-secret write auth
 - `docs/adr/0003` — Plain Svelte 5 + Vite, no SvelteKit
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the five default triage label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: one `CONTEXT.md` + `docs/adr/` at the root. See `docs/agents/domain.md`.
