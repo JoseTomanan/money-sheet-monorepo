@@ -164,8 +164,8 @@
     margin: 14px 16px 0;
     padding: 20px 22px 22px;
     border-radius: var(--radius-xl);
-    background: linear-gradient(155deg, #f0faf4 0%, #d6f0e0 100%);
-    border: 1px solid rgba(52, 168, 83, 0.2);
+    background: linear-gradient(155deg, #fffaf0 0%, #f5ead0 100%);
+    border: 1px solid rgba(201, 137, 47, 0.2);
     position: relative;
     overflow: hidden;
   }
@@ -176,7 +176,7 @@
     width: 160px;
     height: 160px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(52,168,83,0.18), transparent 60%);
+    background: radial-gradient(circle, rgba(201,137,47,0.18), transparent 60%);
     pointer-events: none;
   }
   .hero-onhand-label {
