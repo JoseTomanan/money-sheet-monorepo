@@ -1,0 +1,29 @@
+name: Deploy GAS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "clasp/**"
+      - ".github/workflows/gas-deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clasp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: clasp/package-lock.json
+      - run: npm ci
+      - name: Write clasp credentials
+        run: echo "$CLASP_CREDENTIALS" > ~/.clasprc.json
+        env:
+          CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+      - run: npx @google/clasp push -f
