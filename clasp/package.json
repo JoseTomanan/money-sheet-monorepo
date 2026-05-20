@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "push": "clasp push"
+    "build": "tsc && node -e \"require('fs').copyFileSync('src/appsscript.json','dist/appsscript.json')\"",
+    "push": "npm run build && npx @google/clasp push"
   },
   "devDependencies": {
     "@types/google-apps-script": "^1.0.83",

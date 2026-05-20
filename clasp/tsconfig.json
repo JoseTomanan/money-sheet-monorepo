@@ -4,8 +4,8 @@
     "lib": ["ES2019"],
     "types": ["google-apps-script"],
     "strict": true,
-    "noEmit": true,
+    "outDir": "./dist",
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "appsscript.json"]
+  "include": ["src/**/*.ts"]
 }
