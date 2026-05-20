@@ -57,12 +57,16 @@
     right: 0;
     z-index: 90;
     pointer-events: none;
+    display: flex;
+    justify-content: center;
   }
 
   .tab-bar-pill {
     display: flex;
     align-items: center;
     justify-content: space-around;
+    width: 100%;
+    max-width: var(--app-max-width);
     height: 60px;
     padding: 0 8px env(safe-area-inset-bottom, 0px);
     border-radius: 20px 20px 0 0;

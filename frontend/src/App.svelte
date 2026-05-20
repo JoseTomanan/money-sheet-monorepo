@@ -83,7 +83,7 @@
   .app-shell {
     position: relative;
     min-height: 100dvh;
-    max-width: 480px;
+    max-width: var(--app-max-width);
     margin: 0 auto;
     background: var(--background);
   }

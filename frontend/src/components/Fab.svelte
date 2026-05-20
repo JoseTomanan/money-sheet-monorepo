@@ -16,7 +16,7 @@
 <style>
   .fab {
     position: fixed;
-    right: 20px;
+    right: calc(max(0px, (100vw - var(--app-max-width)) / 2) + 20px);
     bottom: 76px;
     width: 60px;
     height: 60px;
