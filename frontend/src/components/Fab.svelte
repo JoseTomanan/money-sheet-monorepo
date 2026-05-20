@@ -17,7 +17,7 @@
   .fab {
     position: fixed;
     right: 20px;
-    bottom: 104px;
+    bottom: 76px;
     width: 60px;
     height: 60px;
     border-radius: 30px;

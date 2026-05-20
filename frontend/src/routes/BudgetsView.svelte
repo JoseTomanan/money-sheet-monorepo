@@ -43,7 +43,7 @@
   });
 </script>
 
-<div class="summary-view" style="padding-bottom: 100px;">
+<div class="summary-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
     <div class="month-label">{monthLabel.toUpperCase()}</div>

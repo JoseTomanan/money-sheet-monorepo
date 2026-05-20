@@ -46,7 +46,7 @@
   );
 </script>
 
-<div class="home" style="padding-bottom: 100px;">
+<div class="home" style="padding-bottom: 72px;">
   <!-- Month header -->
   <div class="page-header">
     <div class="month-label">{monthLabel.toUpperCase()}</div>

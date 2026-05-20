@@ -51,7 +51,7 @@
   }
 </script>
 
-<div class="entries-view" style="padding-bottom: 100px;">
+<div class="entries-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
     <div class="month-label">All Time</div>

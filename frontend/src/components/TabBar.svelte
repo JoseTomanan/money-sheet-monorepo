@@ -55,8 +55,6 @@
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0 16px 28px;
-    background: linear-gradient(to top, var(--background) 65%, transparent);
     z-index: 90;
     pointer-events: none;
   }
@@ -65,14 +63,14 @@
     display: flex;
     align-items: center;
     justify-content: space-around;
-    height: 56px;
-    padding: 0 8px;
-    border-radius: 22px;
-    background: rgba(251, 248, 241, 0.88);
+    height: 60px;
+    padding: 0 8px env(safe-area-inset-bottom, 0px);
+    border-radius: 20px 20px 0 0;
+    background: rgba(251, 248, 241, 0.92);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 24px rgba(26, 24, 20, 0.1);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 16px rgba(26, 24, 20, 0.06);
     pointer-events: all;
   }
 
