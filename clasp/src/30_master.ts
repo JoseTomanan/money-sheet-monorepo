@@ -4,7 +4,7 @@ function getMaster(): MasterRow {
   if (lastRow < 1) return { onHand: 0, budgets: {} };
 
   // Read header row to find column positions by name
-  const headerRow = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const headerRow = sh.getRange(2, 1, 1, sh.getLastColumn()).getValues()[0];
   const dataRow = sh.getRange(lastRow, 1, 1, sh.getLastColumn()).getValues()[0];
 
   let onHand = 0;
