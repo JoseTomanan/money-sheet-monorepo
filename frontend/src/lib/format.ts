@@ -1,4 +1,5 @@
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function peso(n: number): string {
   const abs = Math.abs(n);
@@ -8,12 +9,14 @@ export function peso(n: number): string {
 
 /** ISO "YYYY-MM-DD" → "M/D/YY" */
 export function fmtDate(iso: string): string {
+  if (!ISO_RE.test(iso)) return '—';
   const [y, m, d] = iso.split('-').map(Number);
   return `${m}/${d}/${String(y).slice(2)}`;
 }
 
 /** ISO "YYYY-MM-DD" → "Mon" */
 export function dayOfWeek(iso: string): string {
+  if (!ISO_RE.test(iso)) return '';
   return DAYS[new Date(iso + 'T00:00:00').getDay()];
 }
 
