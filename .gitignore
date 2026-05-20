@@ -8,4 +8,4 @@
 *.swo
 
 # Claude Code local settings (project settings CLAUDE.md is committed)
-.claude/settings.local.json
+.claude/
