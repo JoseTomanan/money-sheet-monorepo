@@ -2,6 +2,7 @@
   import { store } from "../lib/store.svelte";
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from "../lib/types";
   import EntryForm from "../components/EntryForm.svelte";
+  import TagPill from "../components/TagPill.svelte";
 
   let formOpen = $state(false);
   let editTarget = $state<Entry | null>(null);
@@ -107,7 +108,7 @@
                 {entry.direction === "I" ? "IN" : "OUT"}
               </span>
             </td>
-            <td class="px-3 py-2 text-gray-800">{entry.tag}</td>
+            <td class="px-3 py-2"><TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} /></td>
             <td class="px-3 py-2 text-gray-500 hidden sm:table-cell">{entry.mainCategory}</td>
             <td class="px-3 py-2 text-gray-500 hidden md:table-cell max-w-xs truncate">{entry.description}</td>
             <td
