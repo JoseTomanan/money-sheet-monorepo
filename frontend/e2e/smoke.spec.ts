@@ -57,8 +57,7 @@ test("app loads and displays entries from mock data", async ({ page }) => {
 test("Summary tab shows On Hand and category budget rows", async ({ page }) => {
   await switchTab(page, "Summary");
   await expect(page.locator(".onhand-card")).toBeVisible();
-  const catRows = page.locator(".cat-row");
-  expect(await catRows.count()).toBeGreaterThan(0);
+  await expect(page.locator(".cat-row").first()).toBeVisible();
 });
 
 // AC #3 — adding an entry via UI writes it and it appears in the list
