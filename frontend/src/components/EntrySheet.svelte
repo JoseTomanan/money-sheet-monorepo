@@ -197,19 +197,20 @@
   .sheet {
     position: absolute;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%;
+    max-width: var(--app-max-width);
     background: var(--background);
     border-top-left-radius: 28px;
     border-top-right-radius: 28px;
     box-shadow: 0 -8px 32px rgba(26, 24, 20, 0.12);
     padding-bottom: 32px;
-    transform: translateY(100%);
     transition: transform 320ms cubic-bezier(.2,.7,.2,1);
     max-height: 90dvh;
     overflow-y: auto;
   }
-  .sheet.open { transform: translateY(0); }
+  .sheet.open { transform: translateX(-50%) translateY(0); }
 
   .handle-row {
     display: flex;
@@ -390,6 +391,12 @@
     padding: 4px 16px 4px;
     overflow-x: auto;
     scrollbar-width: none;
+  }
+  @media (min-width: 768px) {
+    .tag-scroller {
+      flex-wrap: wrap;
+      overflow-x: unset;
+    }
   }
   .tag-pill {
     flex-shrink: 0;

@@ -242,6 +242,13 @@
     padding: 0 16px 4px;
     scrollbar-width: none;
   }
+  @media (min-width: 768px) {
+    .category-scroll {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      overflow-x: unset;
+    }
+  }
   .cat-chip {
     flex-shrink: 0;
     padding: 10px 14px;

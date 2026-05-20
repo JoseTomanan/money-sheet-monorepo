@@ -220,6 +220,12 @@
     scrollbar-width: none;
   }
   .cat-chips { padding-top: 8px; }
+  @media (min-width: 768px) {
+    .chip-row {
+      flex-wrap: wrap;
+      overflow-x: unset;
+    }
+  }
 
   .dir-chip {
     flex-shrink: 0;
@@ -281,6 +287,13 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  @media (min-width: 768px) {
+    .entry-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 8px;
+    }
   }
   .empty {
     padding: 32px;
