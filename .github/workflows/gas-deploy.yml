@@ -28,3 +28,4 @@ jobs:
           CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
       - run: npm run build
       - run: npx @google/clasp push -f
+      - run: npx @google/clasp deploy --deploymentId AKfycbwICKGfeP_7H-RMlwaiCE7h1kssjXpto2Xq_hfGUyKydXXRMo0_QwrXbdkCdNzgZy5MRA --description "Frontend API"
