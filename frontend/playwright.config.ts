@@ -1,8 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config as loadEnv } from "dotenv";
+
+loadEnv(); // makes VITE_GAS_URL from frontend/.env available to the test runner process
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  workers: 1,
   retries: 0,
   reporter: "list",
   use: {

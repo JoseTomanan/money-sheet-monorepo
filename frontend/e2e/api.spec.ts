@@ -4,7 +4,7 @@ const GAS_URL = process.env.VITE_GAS_URL;
 
 // AC #1 — GAS API returns valid JSON for getEntries
 test("GAS getEntries returns valid JSON with correct entry shape", async ({ request }) => {
-  test.skip(!GAS_URL, "VITE_GAS_URL not set — skipping live API test");
+  test.skip(!GAS_URL, "VITE_GAS_URL not set — add it to frontend/.env to run this test");
 
   const res = await request.get(`${GAS_URL}?action=getEntries`);
   expect(res.ok()).toBeTruthy();

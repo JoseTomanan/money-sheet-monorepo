@@ -50,9 +50,7 @@ test.beforeEach(async ({ page }) => {
 // AC #2 — app loads and displays entries
 test("app loads and displays entries from mock data", async ({ page }) => {
   await switchTab(page, "Entries");
-  const cards = page.locator(".entry-card");
-  await expect(cards.first()).toBeVisible();
-  expect(await cards.count()).toBeGreaterThan(0);
+  await expect(page.locator(".entry-card").first()).toBeVisible();
 });
 
 // AC #6 — BudgetsView shows On Hand and per-Category budget rows
@@ -93,8 +91,7 @@ test("editing an entry updates its amount in the entries list", async ({ page })
   await page.locator(".sheet.open").waitFor({ state: "detached" });
   await waitForAppReady(page);
 
-  // Row should now show ₱777
-  await expect(page.locator(".entry-card", { hasText: desc })).toContainText("777");
+  await expect(page.locator(".entry-card", { hasText: desc })).toContainText("₱777.00");
 });
 
 // AC #5 — deleting an entry removes it from the list
