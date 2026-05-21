@@ -6,13 +6,15 @@
     size?: number;
     weight?: number;
     negColor?: boolean;
+    positive?: boolean;
     dim?: boolean;
   }
 
-  let { value, size = 17, weight = 500, negColor = true, dim = false }: Props = $props();
+  let { value, size = 17, weight = 500, negColor = true, positive = false, dim = false }: Props = $props();
 
   const color = $derived(
     dim ? 'var(--muted-foreground)'
+    : positive ? 'var(--positive)'
     : negColor && value < 0 ? 'var(--destructive)'
     : negColor && value > 0 ? 'inherit'
     : 'inherit'

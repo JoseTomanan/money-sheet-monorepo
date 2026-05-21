@@ -26,7 +26,6 @@
 
   const allTotal = $derived(outgoingEntries.reduce((s, e) => s + e.amount, 0));
 
-  // Latest day with outgoing entries
   const latestDate = $derived(
     outgoingEntries.length > 0
       ? outgoingEntries.reduce((max, e) => e.date > max ? e.date : max, outgoingEntries[0].date)
@@ -57,23 +56,19 @@
   <div class="hero-card">
     <div class="hero-glow"></div>
     <div class="hero-onhand-label">ON HAND</div>
-    <div class="hero-amount" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
+    <div class="hero-amount">
       {peso(store.master.onHand)}
     </div>
     <div class="hero-divider"></div>
     <div class="hero-stats">
       <div class="hero-stat">
         <div class="stat-label">This Month</div>
-        <div class="stat-value" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
-          {peso(thisMonthTotal)}
-        </div>
+        <div class="stat-value">{peso(thisMonthTotal)}</div>
       </div>
       <div class="hero-stat-divider"></div>
       <div class="hero-stat">
         <div class="stat-label">All Total</div>
-        <div class="stat-value" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
-          {peso(allTotal)}
-        </div>
+        <div class="stat-value">{peso(allTotal)}</div>
       </div>
     </div>
   </div>
@@ -90,12 +85,12 @@
     {#each CATEGORY_ORDER as key}
       {@const c = CATEGORIES[key]}
       {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip" style="border: 1px solid var(--border);">
+      <div class="cat-chip">
         <div class="cat-chip-header">
-          <span class="cat-dot" style="background: {c.color}; box-shadow: 0 0 6px {c.color}55;"></span>
-          <span class="cat-name" style="color: var(--muted-foreground);">{c.label}</span>
+          <span class="cat-dot" style="background: {c.color};"></span>
+          <span class="cat-name">{c.label}</span>
         </div>
-        <div class="cat-amount" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
+        <div class="cat-amount" style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
           {peso(budget)}
         </div>
       </div>
@@ -115,22 +110,13 @@
       <div class="empty">No outgoing entries yet.</div>
     {:else}
       {#each todayEntries as entry, i}
-        {@const c = CATEGORIES[entry.mainCategory]}
         <div
           class="today-row"
-          style="
-            border-bottom: {i < todayEntries.length - 1 ? '1px solid var(--border)' : 'none'};
-            opacity: {entry.amount === 0 ? 0.5 : 1};
-          "
+          style="border-bottom: {i < todayEntries.length - 1 ? '1px solid var(--border)' : 'none'}; opacity: {entry.amount === 0 ? 0.5 : 1};"
         >
-          <div class="row-bar" style="background: {c?.color ?? 'var(--muted-foreground)'}; box-shadow: 0 0 6px {c?.color ?? 'transparent'}33;"></div>
-          <div class="row-body">
-            <div class="row-desc">{entry.description}</div>
-            <div class="row-meta">
-              <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
-            </div>
-          </div>
-          <Money value={entry.amount} size={15} weight={500} dim={entry.amount === 0} negColor={false} />
+          <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
+          <div class="row-desc">{entry.description}</div>
+          <Money value={entry.amount} size={14} weight={500} dim={entry.amount === 0} negColor={false} />
         </div>
       {/each}
     {/if}
@@ -144,7 +130,7 @@
     padding: 20px 20px 4px;
   }
   .month-label {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 1.2px;
@@ -152,9 +138,9 @@
     color: var(--muted-foreground);
   }
   .greeting {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--foreground);
     margin-top: 2px;
     letter-spacing: -0.5px;
@@ -165,7 +151,7 @@
     padding: 20px 22px 22px;
     border-radius: var(--radius-xl);
     background: linear-gradient(155deg, #fffdf7 0%, #fdf5e0 100%);
-    border: 1px solid rgba(212, 146, 10, 0.2);
+    box-shadow: var(--shadow-card);
     position: relative;
     overflow: hidden;
   }
@@ -180,7 +166,7 @@
     pointer-events: none;
   }
   .hero-onhand-label {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 1.2px;
@@ -188,7 +174,9 @@
     color: var(--muted-foreground);
   }
   .hero-amount {
-    font-size: 38px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 44px;
     font-weight: 500;
     color: var(--foreground);
     letter-spacing: -1.2px;
@@ -210,14 +198,16 @@
     background: var(--border);
   }
   .stat-label {
+    font-family: var(--font-display);
     font-size: 10px;
     color: var(--muted-foreground);
     letter-spacing: 0.8px;
     text-transform: uppercase;
-    font-family: var(--font-sans);
     font-weight: 600;
   }
   .stat-value {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
     margin-top: 4px;
     font-size: 17px;
     color: var(--foreground);
@@ -254,6 +244,7 @@
     padding: 10px 14px;
     border-radius: var(--radius-md);
     background: var(--card);
+    box-shadow: var(--shadow-card);
     min-width: 96px;
   }
   .cat-chip-header {
@@ -268,12 +259,15 @@
     flex-shrink: 0;
   }
   .cat-name {
+    font-family: var(--font-display);
     font-size: 11px;
-    font-family: var(--font-sans);
     font-weight: 600;
     letter-spacing: 0.3px;
+    color: var(--muted-foreground);
   }
   .cat-amount {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
     margin-top: 4px;
     font-size: 13px;
     font-weight: 500;
@@ -283,7 +277,7 @@
     margin: 0 16px;
     border-radius: var(--radius-lg);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .empty {
@@ -296,18 +290,8 @@
   .today-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-  }
-  .row-bar {
-    width: 4px;
-    height: 36px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-  .row-body {
-    flex: 1;
-    min-width: 0;
+    gap: 10px;
+    padding: 12px 16px;
   }
   .row-desc {
     font-family: var(--font-sans);
@@ -317,8 +301,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .row-meta {
-    margin-top: 2px;
+    flex: 1;
+    min-width: 0;
   }
 </style>

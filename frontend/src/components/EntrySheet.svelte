@@ -204,7 +204,7 @@
     background: var(--background);
     border-top-left-radius: 28px;
     border-top-right-radius: 28px;
-    box-shadow: 0 -8px 32px rgba(26, 24, 20, 0.12);
+    box-shadow: var(--shadow-sheet);
     padding-bottom: 32px;
     transition: transform 320ms cubic-bezier(.2,.7,.2,1);
     max-height: 90dvh;
@@ -245,7 +245,7 @@
   }
   .save:disabled { opacity: 0.4; cursor: not-allowed; }
   .sheet-title {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 600;
     color: var(--foreground);
@@ -286,12 +286,12 @@
     padding: 20px 22px;
     border-radius: var(--radius-lg);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     text-align: center;
   }
   .amount-label {
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -331,11 +331,11 @@
     padding: 12px 18px;
     border-radius: var(--radius-md);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
   }
   .field-label {
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -379,7 +379,7 @@
   .tag-section-label {
     padding: 14px 20px 6px;
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;

@@ -1,4 +1,5 @@
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 
 export function peso(n: number): string {
   const abs = Math.abs(n);
@@ -10,6 +11,12 @@ export function peso(n: number): string {
 export function fmtDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return `${m}/${d}/${String(y).slice(2)}`;
+}
+
+/** ISO "YYYY-MM-DD" → "May 21" */
+export function fmtDateShort(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${MONTHS_SHORT[m - 1]} ${d}`;
 }
 
 /** ISO "YYYY-MM-DD" → "Mon" */

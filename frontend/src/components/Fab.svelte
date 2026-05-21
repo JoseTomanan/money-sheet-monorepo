@@ -28,13 +28,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 24px rgba(201, 137, 47, 0.35), 0 2px 6px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-fab);
     z-index: 80;
     transition: transform 120ms, box-shadow 120ms;
   }
 
   .fab:active {
     transform: scale(0.94);
-    box-shadow: 0 4px 12px rgba(201, 137, 47, 0.25);
+    box-shadow: 0 4px 12px rgba(201, 137, 47, 0.28), 0 2px 6px rgba(0,0,0,0.12);
   }
 </style>
