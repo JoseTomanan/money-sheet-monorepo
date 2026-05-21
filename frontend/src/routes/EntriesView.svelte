@@ -10,9 +10,10 @@
   interface Props {
     onopenedit: (entry: Entry) => void;
     scrollEl: HTMLElement | null;
+    scrollTop: number;
   }
 
-  let { onopenedit, scrollEl }: Props = $props();
+  let { onopenedit, scrollEl, scrollTop }: Props = $props();
 
   onMount(async () => {
     await tick();
@@ -115,6 +116,11 @@
       </div>
     {/if}
   </div>
+
+  <!-- Scroll shadow: appears when content is above the viewport -->
+  {#if scrollTop > 0}
+    <div class="scroll-shadow" aria-hidden="true"></div>
+  {/if}
 
   <!-- Entry list -->
   <div class="entry-list" class:empty-state={filtered.length === 0}>
@@ -313,6 +319,13 @@
     font-size: 11px;
     font-variant-numeric: tabular-nums;
     opacity: 0.65;
+  }
+
+  .scroll-shadow {
+    height: 20px;
+    margin: 0;
+    background: linear-gradient(to bottom, var(--border), transparent);
+    pointer-events: none;
   }
 
   .entry-list {
