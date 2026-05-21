@@ -61,49 +61,53 @@
     </div>
   </div>
 
-  <!-- Direction filter chips -->
-  <div class="chip-row">
-    {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
-      <button
-        class="dir-chip"
-        class:active={filterDir === val}
-        onclick={() => { filterDir = val; filterCat = ''; }}
-      >{label}</button>
-    {/each}
-  </div>
-
-  <!-- Category filter chips -->
-  {#if categoryNames.length > 0}
-    <div class="chip-row cat-chips">
-      <button
-        class="cat-chip-btn"
-        class:active={filterCat === ''}
-        onclick={() => (filterCat = '')}
-      >
-        All
-        <span class="chip-count">{store.entries.filter(e => filterDir === 'all' || e.direction === filterDir).length}</span>
-      </button>
-      {#each CATEGORY_ORDER as key}
-        {#if categoryNames.includes(key) && catCounts[key] > 0}
-          {@const c = CATEGORIES[key]}
-          <button
-            class="cat-chip-btn"
-            class:active={filterCat === key}
-            style="
-              --chip-color: {c.color};
-              --chip-soft: {c.soft};
-              {filterCat === key ? `background: ${c.soft}; color: ${c.color}; border-color: ${c.color}33;` : ''}
-            "
-            onclick={() => (filterCat = filterCat === key ? '' : key)}
-          >
-            <span class="chip-dot" style="background: {c.color};"></span>
-            {c.label}
-            <span class="chip-count">{catCounts[key]}</span>
-          </button>
-        {/if}
+  <!-- Filter bar: segmented control + category chips -->
+  <div class="filter-bar">
+    <!-- Direction: segmented control -->
+    <div class="segmented" role="radiogroup" aria-label="Direction">
+      {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
+        <button
+          role="radio"
+          aria-checked={filterDir === val}
+          class:active={filterDir === val}
+          onclick={() => { filterDir = val; filterCat = ''; }}
+        >{label}</button>
       {/each}
     </div>
-  {/if}
+
+    <!-- Category chips -->
+    {#if categoryNames.length > 0}
+      <div class="cat-row">
+        <button
+          class="cat-chip-btn"
+          class:active={filterCat === ''}
+          onclick={() => (filterCat = '')}
+        >
+          All
+          <span class="chip-count">{store.entries.filter(e => filterDir === 'all' || e.direction === filterDir).length}</span>
+        </button>
+        {#each CATEGORY_ORDER as key}
+          {#if categoryNames.includes(key) && catCounts[key] > 0}
+            {@const c = CATEGORIES[key]}
+            <button
+              class="cat-chip-btn"
+              class:active={filterCat === key}
+              style="
+                --chip-color: {c.color};
+                --chip-soft: {c.soft};
+                {filterCat === key ? `background: ${c.soft}; color: ${c.color}; border-color: ${c.color}33;` : ''}
+              "
+              onclick={() => (filterCat = filterCat === key ? '' : key)}
+            >
+              <span class="chip-dot" style="background: {c.color};"></span>
+              {c.label}
+              <span class="chip-count">{catCounts[key]}</span>
+            </button>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+  </div>
 
   <!-- Entry list -->
   <div class="entry-list">
@@ -212,39 +216,61 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .chip-row {
+  .filter-bar {
     display: flex;
-    gap: 6px;
+    flex-direction: column;
+    gap: 8px;
     padding: 10px 16px 0;
-    overflow-x: auto;
-    scrollbar-width: none;
   }
-  .cat-chips { padding-top: 8px; }
   @media (min-width: 768px) {
-    .chip-row {
-      flex-wrap: wrap;
-      overflow-x: unset;
+    .filter-bar {
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      background: var(--background);
+      z-index: 5;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
     }
   }
 
-  .dir-chip {
+  .segmented {
+    display: inline-flex;
     flex-shrink: 0;
-    padding: 7px 14px;
+    padding: 2px;
     border-radius: var(--radius-pill);
     border: 1px solid var(--border);
     background: var(--card);
+  }
+  .segmented button {
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    border: 0;
+    background: transparent;
     color: var(--muted-foreground);
     font-family: var(--font-sans);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 150ms, color 150ms;
     white-space: nowrap;
+    transition: background 150ms, color 150ms;
   }
-  .dir-chip.active {
+  .segmented button.active {
     background: var(--foreground);
     color: var(--background);
-    border-color: var(--foreground);
+  }
+
+  .cat-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+  @media (min-width: 768px) {
+    .cat-row { flex: 1; }
   }
 
   .cat-chip-btn {
@@ -289,8 +315,8 @@
     gap: 6px;
   }
   @media (min-width: 768px) {
-    .entry-body { padding: 8px 0; }
-    .entry-list { gap: 4px; }
+    .entry-body { padding: 6px 0; }
+    .entry-list { gap: 3px; }
   }
   .empty {
     padding: 32px;
