@@ -18,7 +18,7 @@
   }
 
   function scrollToTop() {
-    if (scrollArea) scrollArea.scrollTop = 0;
+    if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // Entry sheet state
