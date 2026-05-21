@@ -115,12 +115,11 @@
         {/each}
       </div>
     {/if}
-  </div>
 
-  <!-- Scroll shadow: appears when content is above the viewport -->
-  {#if scrollTop > 0}
-    <div class="scroll-shadow" aria-hidden="true"></div>
-  {/if}
+    {#if scrollTop > 0}
+      <div class="scroll-shadow" aria-hidden="true"></div>
+    {/if}
+  </div>
 
   <!-- Entry list -->
   <div class="entry-list" class:empty-state={filtered.length === 0}>
@@ -230,6 +229,7 @@
   }
 
   .filter-bar {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -322,10 +322,14 @@
   }
 
   .scroll-shadow {
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    right: 0;
     height: 20px;
-    margin: 0;
     background: linear-gradient(to bottom, var(--border), transparent);
     pointer-events: none;
+    z-index: 4;
   }
 
   .entry-list {
