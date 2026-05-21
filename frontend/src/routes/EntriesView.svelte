@@ -249,14 +249,14 @@
   }
   .segmented::-webkit-scrollbar { display: none; }
   .segmented button {
-    padding: 4px 10px;
+    padding: 4px 8px;
     border-radius: var(--radius-sm);
     border: 0;
     background: transparent;
     color: var(--muted-foreground);
     font-family: var(--font-sans);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
     transition: color 150ms, background 150ms;
