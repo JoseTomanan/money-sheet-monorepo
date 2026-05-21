@@ -36,8 +36,12 @@ async function refreshAll(): Promise<void> {
   }
 }
 
-async function addEntry(payload: AddEntryPayload): Promise<void> {
-  await api.addEntry(payload);
+async function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<void> {
+  const list = Array.isArray(payload) ? payload : [payload];
+  await Promise.all(list.map(api.addEntry)).catch((err) => {
+    console.error("addEntry failed:", err);
+    throw err;
+  });
   await refreshAll();
 }
 

@@ -26,9 +26,11 @@
   }
 
   async function handleSave(
-    payload: AddEntryPayload | { id: number; patch: UpdateEntryPatch }
+    payload: AddEntryPayload | AddEntryPayload[] | { id: number; patch: UpdateEntryPatch }
   ) {
-    if ('id' in payload) {
+    if (Array.isArray(payload)) {
+      await store.addEntry(payload);
+    } else if ('id' in payload) {
       await store.updateEntry(payload.id, payload.patch);
     } else {
       await store.addEntry(payload);
