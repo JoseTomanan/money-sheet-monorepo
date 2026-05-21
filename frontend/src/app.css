@@ -71,27 +71,6 @@
   --app-max-width: 480px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background:        #111110;
-    --foreground:        #f0ede8;
-    --card:              #1c1b19;
-    --card-foreground:   #f0ede8;
-    --muted:             #252422;
-    --muted-foreground:  #8a8580;
-    --border:            #2e2c29;
-    --accent:            #e8a620;
-    --accent-foreground: #111110;
-    --destructive:       #e05a40;
-    --positive:          #3da066;
-
-    --shadow-card:   0 1px 2px rgba(0,0,0,0.35), 0 4px 12px rgba(0,0,0,0.45);
-    --shadow-sheet:  0 -4px 10px rgba(0,0,0,0.5), 0 -12px 40px rgba(0,0,0,0.7);
-    --shadow-fab:    0 4px 10px rgba(0,0,0,0.55), 0 10px 28px rgba(201,137,47,0.25);
-    --shadow-tabbar: 0 -2px 12px rgba(0,0,0,0.4);
-  }
-}
-
 @media (min-width: 768px)  { :root { --app-max-width: 720px;  } }
 @media (min-width: 1024px) { :root { --app-max-width: 960px;  } }
 @media (min-width: 1280px) { :root { --app-max-width: 1120px; } }
