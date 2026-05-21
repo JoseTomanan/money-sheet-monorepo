@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { store } from './lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from './lib/types';
   import TabBar, { type TabId } from './components/TabBar.svelte';
@@ -10,6 +10,7 @@
   import BudgetsView from './routes/BudgetsView.svelte';
 
   let tab = $state<TabId>('home');
+  let scrollArea = $state<HTMLElement | null>(null);
 
   // Entry sheet state
   let sheetOpen = $state(false);
@@ -28,10 +29,15 @@
   async function handleSave(
     payload: AddEntryPayload | { id: number; patch: UpdateEntryPatch }
   ) {
+    const isAdd = !('id' in payload);
     if ('id' in payload) {
       await store.updateEntry(payload.id, payload.patch);
     } else {
       await store.addEntry(payload);
+    }
+    if (isAdd && scrollArea) {
+      await tick();
+      scrollArea.scrollTop = scrollArea.scrollHeight;
     }
   }
 
@@ -42,7 +48,7 @@
 
 <div class="app-shell">
   <!-- Scrollable content area -->
-  <div class="scroll-area">
+  <div class="scroll-area" bind:this={scrollArea}>
     {#if store.loading}
       <div class="state-center">
         <div class="loading-spinner"></div>
@@ -57,7 +63,7 @@
     {:else if tab === 'home'}
       <HomeScreen onnavigate={(t) => (tab = t)} />
     {:else if tab === 'entries'}
-      <EntriesView onopenedit={openEdit} />
+      <EntriesView onopenedit={openEdit} scrollEl={scrollArea} />
     {:else}
       <BudgetsView />
     {/if}

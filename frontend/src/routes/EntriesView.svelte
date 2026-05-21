@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
@@ -8,9 +9,15 @@
 
   interface Props {
     onopenedit: (entry: Entry) => void;
+    scrollEl: HTMLElement | null;
   }
 
-  let { onopenedit }: Props = $props();
+  let { onopenedit, scrollEl }: Props = $props();
+
+  onMount(async () => {
+    await tick();
+    if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+  });
 
   let filterDir  = $state<'all' | 'I' | 'O'>('all');
   let filterCat  = $state('');
@@ -26,7 +33,7 @@
         if (filterCat && e.mainCategory !== filterCat) return false;
         return true;
       })
-      .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
   );
 
   // Per-category count for filter chips
@@ -110,7 +117,7 @@
   </div>
 
   <!-- Entry list -->
-  <div class="entry-list">
+  <div class="entry-list" class:empty-state={filtered.length === 0}>
     {#if filtered.length === 0}
       <div class="empty">No entries found.</div>
     {:else}
@@ -313,6 +320,12 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .entry-list.empty-state {
+    flex: 1;
+    min-height: calc(100dvh - 220px);
+    justify-content: center;
+    align-items: center;
   }
   @media (min-width: 768px) {
     .entry-body { padding: 6px 0; }
