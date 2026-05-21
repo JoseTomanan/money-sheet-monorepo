@@ -3,7 +3,7 @@
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
-  import { fmtDate, dayOfWeek } from '../lib/format';
+  import { fmtDateShort } from '../lib/format';
   import Money from '../components/Money.svelte';
   import TagPill from '../components/TagPill.svelte';
 
@@ -37,7 +37,6 @@
       .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
   );
 
-  // Per-category count for filter chips
   const catCounts = $derived(
     Object.fromEntries(
       categoryNames.map((cat) => [
@@ -71,7 +70,6 @@
 
   <!-- Filter bar: segmented control + category chips -->
   <div class="filter-bar">
-    <!-- Direction: segmented control -->
     <div class="segmented" role="radiogroup" aria-label="Direction">
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
@@ -83,7 +81,6 @@
       {/each}
     </div>
 
-    <!-- Category chips -->
     {#if categoryNames.length > 0}
       <div class="cat-row">
         <button
@@ -100,11 +97,7 @@
             <button
               class="cat-chip-btn"
               class:active={filterCat === key}
-              style="
-                --chip-color: {c.color};
-                --chip-soft: {c.soft};
-                {filterCat === key ? `background: ${c.soft}; color: ${c.color}; border-color: ${c.color}33;` : ''}
-              "
+              style={filterCat === key ? `color: ${c.color};` : ''}
               onclick={() => (filterCat = filterCat === key ? '' : key)}
             >
               <span class="chip-dot" style="background: {c.color};"></span>
@@ -127,7 +120,6 @@
       <div class="empty">No entries found.</div>
     {:else}
       {#each filtered as entry (entry.id)}
-        {@const c = CATEGORIES[entry.mainCategory]}
         {@const dim = entry.amount === 0}
         <div
           class="entry-card"
@@ -137,33 +129,22 @@
           tabindex="0"
           onkeydown={(e) => e.key === 'Enter' && onopenedit(entry)}
         >
-          <!-- colored left bar -->
-          <div
-            class="entry-bar"
-            style="background: {entry.direction === 'I' ? 'var(--positive)' : 'var(--destructive)'};"
-          ></div>
+          <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
 
-          <!-- main content -->
-          <div class="entry-body">
-            <div class="entry-top">
-              <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
-              <Money
-                value={entry.direction === 'I' ? entry.amount : -entry.amount}
-                size={15}
-                weight={500}
-                negColor={false}
-                dim={dim}
-              />
-            </div>
-            <div class="entry-bottom">
-              <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
-              <span class="entry-date" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
-                {dayOfWeek(entry.date)} {fmtDate(entry.date)}
-              </span>
-            </div>
-          </div>
+          <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
 
-          <!-- delete controls (stop propagation so clicking these doesn't also open edit) -->
+          <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
+
+          <Money
+            value={entry.amount}
+            size={14}
+            weight={500}
+            negColor={false}
+            positive={entry.direction === 'I'}
+            {dim}
+          />
+
+          <!-- delete controls -->
           <div class="entry-actions" onclick={(e) => e.stopPropagation()} role="none">
             {#if pendingDelete === entry.id}
               <div class="delete-confirm">
@@ -199,10 +180,10 @@
   .entries-view { padding: 0; }
 
   .page-header {
-    padding: 20px 20px 4px;
+    padding: 20px 20px 8px;
   }
   .month-label {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 1.2px;
@@ -210,9 +191,9 @@
     color: var(--muted-foreground);
   }
   .page-title {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--foreground);
     margin-top: 2px;
     letter-spacing: -0.5px;
@@ -232,8 +213,10 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 10px 16px 0;
+    gap: 6px;
+    padding: 10px 16px 10px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
   }
   @media (min-width: 768px) {
     .filter-bar {
@@ -244,22 +227,17 @@
       top: 0;
       background: var(--background);
       z-index: 5;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
     }
   }
 
   .segmented {
     display: inline-flex;
     flex-shrink: 0;
-    padding: 2px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    background: var(--card);
+    gap: 2px;
   }
   .segmented button {
-    padding: 6px 14px;
-    border-radius: var(--radius-pill);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
     border: 0;
     background: transparent;
     color: var(--muted-foreground);
@@ -268,11 +246,14 @@
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 150ms, color 150ms;
+    transition: color 150ms, background 150ms;
   }
   .segmented button.active {
-    background: var(--foreground);
-    color: var(--background);
+    color: var(--accent);
+    background: transparent;
+  }
+  .segmented button:hover:not(.active) {
+    background: var(--muted);
   }
 
   .cat-row {
@@ -291,22 +272,23 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    background: var(--card);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 0;
+    background: transparent;
     color: var(--muted-foreground);
     font-family: var(--font-sans);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 150ms, color 150ms, border-color 150ms;
+    transition: background 150ms, color 150ms;
     white-space: nowrap;
   }
-  .cat-chip-btn.active:not([style*='background']) {
-    background: var(--foreground);
-    color: var(--background);
-    border-color: var(--foreground);
+  .cat-chip-btn.active:not([style]) {
+    color: var(--accent);
+  }
+  .cat-chip-btn:hover {
+    background: var(--muted);
   }
   .chip-dot {
     width: 6px;
@@ -333,20 +315,16 @@
   }
 
   .entry-list {
-    margin: 12px 16px 0;
+    margin: 8px 16px 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
   }
   .entry-list.empty-state {
     flex: 1;
     min-height: calc(100dvh - 220px);
     justify-content: center;
     align-items: center;
-  }
-  @media (min-width: 768px) {
-    .entry-body { padding: 6px 0; }
-    .entry-list { gap: 3px; }
   }
   .empty {
     padding: 32px;
@@ -358,38 +336,30 @@
 
   .entry-card {
     display: flex;
-    align-items: stretch;
-    gap: 12px;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
     background: var(--card);
-    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    box-shadow: var(--shadow-card);
     cursor: pointer;
-    transition: background 120ms;
+    transition: box-shadow 120ms;
   }
-  .entry-card:hover { background: var(--muted); }
+  .entry-card:hover {
+    box-shadow: 0 2px 4px rgba(20,18,14,0.06), 0 8px 20px rgba(20,18,14,0.10);
+  }
   .entry-card.dim { opacity: 0.55; }
 
-  .entry-bar {
-    width: 4px;
+  .entry-date-lead {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+    white-space: nowrap;
     flex-shrink: 0;
-    align-self: stretch;
   }
 
-  .entry-body {
-    flex: 1;
-    min-width: 0;
-    padding: 12px 0 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .entry-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
   .entry-desc {
     font-family: var(--font-sans);
     font-size: 14px;
@@ -399,22 +369,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1;
+    min-width: 0;
   }
   .strikethrough { text-decoration: line-through; }
-  .entry-bottom {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .entry-date {
-    font-size: 10px;
-    color: var(--muted-foreground);
-  }
 
   .entry-actions {
     display: flex;
     align-items: center;
-    padding: 0 10px 0 0;
     flex-shrink: 0;
   }
   .delete-trigger {
@@ -422,13 +383,15 @@
     border: 0;
     cursor: pointer;
     color: var(--muted-foreground);
-    padding: 6px;
+    padding: 4px;
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: color 150ms;
+    opacity: 0.4;
   }
+  .entry-card:hover .delete-trigger { opacity: 1; }
   .delete-trigger:hover { color: var(--destructive); }
 
   .delete-confirm {
