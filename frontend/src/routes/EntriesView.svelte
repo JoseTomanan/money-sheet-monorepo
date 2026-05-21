@@ -4,6 +4,7 @@
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { fmtDateShort } from '../lib/format';
+  import { groupByWeek } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import TagPill from '../components/TagPill.svelte';
 
@@ -36,6 +37,8 @@
       })
       .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
   );
+
+  const weekGroups = $derived(groupByWeek(filtered));
 
   const catCounts = $derived(
     Object.fromEntries(
@@ -119,57 +122,62 @@
     {#if filtered.length === 0}
       <div class="empty">No entries found.</div>
     {:else}
-      {#each filtered as entry (entry.id)}
-        {@const dim = entry.amount === 0}
-        <div
-          class="entry-card"
-          class:dim
-          onclick={() => { pendingDelete = null; onopenedit(entry); }}
-          role="button"
-          tabindex="0"
-          onkeydown={(e) => e.key === 'Enter' && onopenedit(entry)}
-        >
-          <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+      {#each weekGroups as group (group.key)}
+        <div class="week-group">
+          <div class="week-label">{group.label}</div>
+          {#each group.entries as entry (entry.id)}
+            {@const dim = entry.amount === 0}
+            <div
+              class="entry-card"
+              class:dim
+              onclick={() => { pendingDelete = null; onopenedit(entry); }}
+              role="button"
+              tabindex="0"
+              onkeydown={(e) => e.key === 'Enter' && onopenedit(entry)}
+            >
+              <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
 
-          <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
+              <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
 
-          <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
+              <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
 
-          <Money
-            value={entry.amount}
-            size={14}
-            weight={500}
-            negColor={false}
-            positive={entry.direction === 'I'}
-            {dim}
-          />
+              <Money
+                value={entry.amount}
+                size={14}
+                weight={500}
+                negColor={false}
+                positive={entry.direction === 'I'}
+                {dim}
+              />
 
-          <!-- delete controls -->
-          <div class="entry-actions" onclick={(e) => e.stopPropagation()} role="none">
-            {#if pendingDelete === entry.id}
-              <div class="delete-confirm">
-                <button
-                  class="confirm-btn"
-                  disabled={deleting === entry.id}
-                  onclick={() => confirmDelete(entry.id)}
-                >
-                  {deleting === entry.id ? '…' : 'Delete'}
-                </button>
-                <button class="cancel-btn" onclick={() => (pendingDelete = null)}>✕</button>
+              <!-- delete controls -->
+              <div class="entry-actions" onclick={(e) => e.stopPropagation()} role="none">
+                {#if pendingDelete === entry.id}
+                  <div class="delete-confirm">
+                    <button
+                      class="confirm-btn"
+                      disabled={deleting === entry.id}
+                      onclick={() => confirmDelete(entry.id)}
+                    >
+                      {deleting === entry.id ? '…' : 'Delete'}
+                    </button>
+                    <button class="cancel-btn" onclick={() => (pendingDelete = null)}>✕</button>
+                  </div>
+                {:else}
+                  <button
+                    class="delete-trigger"
+                    aria-label="Delete entry"
+                    onclick={() => (pendingDelete = entry.id)}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    </svg>
+                  </button>
+                {/if}
               </div>
-            {:else}
-              <button
-                class="delete-trigger"
-                aria-label="Delete entry"
-                onclick={() => (pendingDelete = entry.id)}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                </svg>
-              </button>
-            {/if}
-          </div>
+            </div>
+          {/each}
         </div>
       {/each}
     {/if}
@@ -217,6 +225,7 @@
     padding: 10px 16px 10px;
     margin-bottom: 0;
     border-bottom: 1px solid var(--border);
+    overflow: hidden;
   }
   @media (min-width: 768px) {
     .filter-bar {
@@ -231,10 +240,14 @@
   }
 
   .segmented {
-    display: inline-flex;
+    display: flex;
     flex-shrink: 0;
     gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
   }
+  .segmented::-webkit-scrollbar { display: none; }
   .segmented button {
     padding: 4px 10px;
     border-radius: var(--radius-sm);
@@ -318,7 +331,24 @@
     margin: 8px 16px 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 0;
+  }
+
+  .week-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .week-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+    padding: 4px 2px 2px;
   }
   .entry-list.empty-state {
     flex: 1;
