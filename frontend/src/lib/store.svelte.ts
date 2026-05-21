@@ -67,7 +67,15 @@ async function init(): Promise<void> {
   }
 }
 
-function addEntry(payload: AddEntryPayload): void {
+function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
+  if (Array.isArray(payload)) {
+    masterLoading = true;
+    void Promise.all(payload.map((p) => api.addEntry(p)))
+      .then(() => { void refreshAll(true); })
+      .catch((err) => { showToast(err); })
+      .finally(() => { masterLoading = false; });
+    return;
+  }
   const tempId = -(Date.now());
   const optimistic: Entry = {
     id: tempId,

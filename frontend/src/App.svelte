@@ -36,10 +36,12 @@
   }
 
   async function handleSave(
-    payload: AddEntryPayload | { id: number; patch: UpdateEntryPatch }
+    payload: AddEntryPayload | AddEntryPayload[] | { id: number; patch: UpdateEntryPatch }
   ) {
-    const isAdd = !('id' in payload);
-    if ('id' in payload) {
+    const isAdd = Array.isArray(payload) || !('id' in payload);
+    if (Array.isArray(payload)) {
+      store.addEntry(payload);
+    } else if ('id' in payload) {
       store.updateEntry(payload.id, payload.patch);
     } else {
       store.addEntry(payload);
