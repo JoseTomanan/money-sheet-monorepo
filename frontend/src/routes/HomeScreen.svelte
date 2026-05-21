@@ -56,7 +56,7 @@
   <div class="hero-card">
     <div class="hero-glow"></div>
     <div class="hero-onhand-label">ON HAND</div>
-    <div class="hero-amount">
+    <div class="hero-amount" class:shimmer={store.masterLoading}>
       {peso(store.master.onHand)}
     </div>
     <div class="hero-divider"></div>
@@ -90,7 +90,7 @@
           <span class="cat-dot" style="background: {c.color};"></span>
           <span class="cat-name">{c.label}</span>
         </div>
-        <div class="cat-amount" style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
+        <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
           {peso(budget)}
         </div>
       </div>
@@ -272,6 +272,9 @@
     font-size: 13px;
     font-weight: 500;
   }
+
+  .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 
   .today-list {
     margin: 0 16px;

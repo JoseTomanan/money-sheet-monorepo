@@ -54,7 +54,7 @@
   <div class="onhand-card">
     <div class="onhand-left">
       <div class="card-label">On Hand</div>
-      <div class="onhand-amount" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
+      <div class="onhand-amount" class:shimmer={store.masterLoading} style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
         {peso(store.master.onHand)}
       </div>
     </div>
@@ -124,7 +124,7 @@
         </div>
         <!-- Budget label -->
         <div class="cat-budget-label">
-          Budget: <span style="
+          Budget: <span class:shimmer={store.masterLoading} style="
             font-family: var(--font-mono);
             font-variant-numeric: tabular-nums;
             color: {d.budget < 0 ? 'var(--destructive)' : 'var(--positive)'};
@@ -280,4 +280,7 @@
     font-size: 11px;
     color: var(--muted-foreground);
   }
+
+  .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 </style>

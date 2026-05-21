@@ -40,9 +40,9 @@
   ) {
     const isAdd = !('id' in payload);
     if ('id' in payload) {
-      await store.updateEntry(payload.id, payload.patch);
+      store.updateEntry(payload.id, payload.patch);
     } else {
-      await store.addEntry(payload);
+      store.addEntry(payload);
     }
     if (isAdd && scrollArea) {
       await tick();
@@ -51,7 +51,7 @@
   }
 
   onMount(() => {
-    store.refreshAll();
+    store.init();
   });
 </script>
 
@@ -88,6 +88,10 @@
       </button>
     {/if}
     <Fab onclick={openAdd} />
+  {/if}
+
+  {#if store.toastMsg}
+    <div class="toast" role="alert">{store.toastMsg}</div>
   {/if}
 
   <TabBar active={tab} onchange={(t) => (tab = t)} />
@@ -191,5 +195,28 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 92px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(var(--app-max-width) - 32px);
+    width: calc(100% - 32px);
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    background: var(--foreground);
+    color: var(--background);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 300;
+    cursor: pointer;
+    animation: toast-in 200ms ease-out;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
 </style>
