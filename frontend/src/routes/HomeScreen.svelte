@@ -85,7 +85,7 @@
     {#each CATEGORY_ORDER as key}
       {@const c = CATEGORIES[key]}
       {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip" style="background: {c.pastel}; box-shadow: 0 2px 6px {c.color}33, 0 4px 12px {c.color}22;">
+      <div class="cat-chip" style="background: {c.pastel}; border: 1px solid {c.color}4D;">
         <div class="cat-chip-header">
           <span class="cat-name" style="color: {c.color};">{c.label}</span>
         </div>
