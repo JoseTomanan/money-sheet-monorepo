@@ -104,6 +104,7 @@
     entry={sheetEntry}
     onclose={() => (sheetOpen = false)}
     onsave={handleSave}
+    ondelete={(id) => { store.deleteEntry(id); sheetOpen = false; }}
   />
 </div>
 
