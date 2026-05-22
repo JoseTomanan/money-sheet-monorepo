@@ -6,14 +6,9 @@ import type {
   UpdateEntryPatch,
 } from "./types";
 import { CATEGORY_MAP } from "./theme";
+import { getMainCategory } from "./domain";
 
 export const isMockMode = import.meta.env.VITE_MOCK === "true";
-
-// Subcategory → parent Category lookup (derived from canonical theme catalog)
-const SUB_TO_CAT: Record<string, string> = {};
-for (const [cat, subs] of Object.entries(CATEGORY_MAP)) {
-  for (const sub of subs) SUB_TO_CAT[sub] = cat;
-}
 
 let entries: Entry[] = [
   // 2026-05-06
@@ -102,7 +97,7 @@ export function mockGetSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
 
 export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
   const nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const mainCategory = SUB_TO_CAT[payload.tag] ?? payload.tag;
+  const mainCategory = getMainCategory(payload.tag, CATEGORY_MAP);
   const entry: Entry = { id: nextId, mainCategory, ...payload };
   entries = [...entries, entry];
   return Promise.resolve(entry);
@@ -112,7 +107,7 @@ export function mockUpdateEntry(id: number, patch: UpdateEntryPatch): Promise<vo
   entries = entries.map(e => {
     if (e.id !== id) return e;
     const updated = { ...e, ...patch };
-    if (patch.tag) updated.mainCategory = SUB_TO_CAT[patch.tag] ?? patch.tag;
+    if (patch.tag) updated.mainCategory = getMainCategory(patch.tag, CATEGORY_MAP);
     return updated;
   });
   return Promise.resolve();

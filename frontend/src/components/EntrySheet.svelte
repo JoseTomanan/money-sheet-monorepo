@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { CATEGORIES } from '../lib/theme';
+  import { getTagOptions } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
   import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction } from '../lib/types';
   import {
@@ -72,15 +73,7 @@
     }
   });
 
-  const categoryNames = $derived(Object.keys(categories).sort());
-
-  const tagOptions = $derived(
-    direction === 'I'
-      ? categoryNames.map((c) => ({ value: c, parentCat: c }))
-      : categoryNames.flatMap((cat) =>
-          (categories[cat] ?? []).map((sub) => ({ value: sub, parentCat: cat }))
-        )
-  );
+  const tagOptions = $derived(getTagOptions(direction, categories));
 
   function handleBackdrop() {
     onclose();

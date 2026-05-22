@@ -1,5 +1,6 @@
 import * as api from './api';
 import { readCache, writeCache } from './cache';
+import { getMainCategory } from './domain';
 import type {
   Entry,
   MasterRow,
@@ -18,12 +19,6 @@ let error = $state<string | null>(null);
 let masterLoading = $state(false);
 let toastMsg = $state<string | null>(null);
 
-function tagToCategory(tag: string): string {
-  for (const [cat, subs] of Object.entries(categories)) {
-    if (subs.includes(tag)) return cat;
-  }
-  return tag;
-}
 
 function showToast(err: unknown): void {
   toastMsg = err instanceof Error ? err.message : 'Something went wrong';
@@ -79,7 +74,7 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
   const tempId = -(Date.now());
   const optimistic: Entry = {
     id: tempId,
-    mainCategory: tagToCategory(payload.tag),
+    mainCategory: getMainCategory(payload.tag, categories),
     ...payload,
   };
   entries = [...entries, optimistic];
@@ -103,7 +98,7 @@ function updateEntry(id: number, patch: UpdateEntryPatch): void {
   if (!prev) return;
   entries = entries.map((e) =>
     e.id === id
-      ? { ...e, ...patch, mainCategory: patch.tag ? tagToCategory(patch.tag) : e.mainCategory }
+      ? { ...e, ...patch, mainCategory: patch.tag ? getMainCategory(patch.tag, categories) : e.mainCategory }
       : e
   );
   masterLoading = true;
