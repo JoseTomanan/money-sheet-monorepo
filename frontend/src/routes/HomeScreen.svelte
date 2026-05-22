@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
-  import { peso, fmtDate, dayOfWeek, currentYearMonth, yearMonth } from '../lib/format';
+  import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth, yearMonth } from '../lib/format';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
 
@@ -26,16 +26,16 @@
   const allTotal = $derived(outgoingEntries.reduce((s, e) => s + e.amount, 0));
 
   const latestDate = $derived(
-    outgoingEntries.length > 0
-      ? outgoingEntries.reduce((max, e) => e.date > max ? e.date : max, outgoingEntries[0].date)
+    store.entries.length > 0
+      ? store.entries.reduce((max, e) => e.date > max ? e.date : max, store.entries[0].date)
       : null
   );
 
-  const todayEntries = $derived(
-    latestDate
-      ? store.entries.filter(e => e.direction === 'O' && e.date === latestDate)
-      : []
+  const allSorted = $derived(
+    [...store.entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
   );
+
+  const todayEntries = $derived(allSorted.slice(-2));
 
   const latestLabel = $derived(
     latestDate
@@ -102,26 +102,36 @@
     {/snippet}
   </SectionHeader>
 
-  <div class="today-list">
+  <button class="today-teaser" onclick={() => onnavigate('entries')} aria-label="Go to entries">
+    <!-- Blurred teaser card — no real content, just a shape -->
+    <div class="teaser-wrap" aria-hidden="true">
+      <div class="teaser-card"></div>
+    </div>
+
     {#if todayEntries.length === 0}
-      <div class="empty">No outgoing entries yet.</div>
+      <div class="empty">No entries yet.</div>
     {:else}
-      {#each todayEntries as entry, i}
-        {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
-        <div
-          class="today-row"
-          style="border-bottom: {i < todayEntries.length - 1 ? '1px solid var(--border)' : 'none'}; opacity: {entry.amount === 0 ? 0.5 : 1};"
-        >
-          <div class="row-desc-band" style="background: {catStyle.pastel}80; color: {catStyle.color};">
-            <span class="row-desc">{entry.description}</span>
+      <div class="today-card">
+        {#each todayEntries as entry, i (entry.id)}
+          {@const dim = entry.amount === 0}
+          {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
+          <div
+            class="today-row"
+            class:dim
+            style="border-top: {i > 0 ? '1px solid var(--border)' : 'none'};"
+          >
+            <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+            <div class="entry-desc-band" style="background: {catStyle.pastel}80; color: {catStyle.color};">
+              <span class="entry-desc">{entry.description || '—'}</span>
+            </div>
+            <div class="entry-amount-wrap">
+              <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
+            </div>
           </div>
-          <div class="row-amount-wrap">
-            <Money value={entry.amount} size={14} weight={500} dim={entry.amount === 0} negColor={false} />
-          </div>
-        </div>
-      {/each}
+        {/each}
+      </div>
     {/if}
-  </div>
+  </button>
 </div>
 
 <style>
@@ -250,13 +260,42 @@
   .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 
-  .today-list {
+  .today-teaser {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  .teaser-wrap {
+    height: 10px;
     margin: 0 16px;
-    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .teaser-card {
+    height: 48px;
+    background: var(--card);
+    border-radius: 0;
+    box-shadow: var(--shadow-card);
+    border-bottom: 1px solid var(--border);
+    transform: translateY(calc(-100% + 10px));
+  }
+  .today-card {
+    margin: 0 16px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     background: var(--card);
     box-shadow: var(--shadow-card);
     overflow: hidden;
   }
+  .today-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
+  }
+  .today-row.dim { opacity: 0.55; }
   .empty {
     padding: 20px;
     text-align: center;
@@ -264,24 +303,23 @@
     font-size: 14px;
     font-family: var(--font-sans);
   }
-  .today-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
+  .entry-date-lead {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
-  .row-desc-band {
+  .entry-desc-band {
     flex-shrink: 1;
     min-width: 0;
-    max-width: 60%;
+    max-width: 55%;
     padding: 2px 5px;
     border-radius: 0;
   }
-  .row-amount-wrap {
-    flex-shrink: 0;
-    margin-left: auto;
-  }
-  .row-desc {
+  .entry-desc {
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 500;
@@ -289,5 +327,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     display: block;
+  }
+  .entry-amount-wrap {
+    flex-shrink: 0;
+    margin-left: auto;
   }
 </style>
