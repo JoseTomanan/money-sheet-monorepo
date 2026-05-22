@@ -5,26 +5,22 @@
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { peso } from '../lib/format';
+  import { totalOutgoing, outgoingByCategory } from '../lib/aggregations';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
 
   const now = new Date();
   const monthLabel = now.toLocaleString('en-PH', { month: 'long', year: 'numeric' });
 
-  const totalOutgoing = $derived(
-    store.entries
-      .filter(e => e.direction === 'O')
-      .reduce((s, e) => s + e.amount, 0)
-  );
+  const spendTotal = $derived(totalOutgoing(store.entries));
+  const spendByCategory = $derived(outgoingByCategory(store.entries));
 
   const categoryData = $derived(
     CATEGORY_ORDER.map((key) => {
       const c = CATEGORIES[key];
       const budget = store.master.budgets[key] ?? 0;
-      const spent = store.entries
-        .filter(e => e.direction === 'O' && e.mainCategory === key)
-        .reduce((s, e) => s + e.amount, 0);
-      const pct = totalOutgoing > 0 ? (spent / totalOutgoing) * 100 : 0;
+      const spent = spendByCategory[key] ?? 0;
+      const pct = spendTotal > 0 ? (spent / spendTotal) * 100 : 0;
       return { key, c, budget, spent, pct };
     })
   );
@@ -60,7 +56,7 @@
     </div>
     <div class="onhand-right">
       <div class="card-label">Total Spent</div>
-      <Money value={totalOutgoing} size={17} weight={500} negColor={false} dim />
+      <Money value={spendTotal} size={17} weight={500} negColor={false} dim />
     </div>
   </div>
 
