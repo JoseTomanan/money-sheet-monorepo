@@ -80,11 +80,12 @@
     {/snippet}
   </SectionHeader>
 
+  <div class="category-scroll-wrap">
   <div class="category-scroll">
     {#each CATEGORY_ORDER as key}
       {@const c = CATEGORIES[key]}
       {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip" style="background: {c.pastel}; border: 1px solid {c.color}40;">
+      <div class="cat-chip" style="background: {c.pastel}; box-shadow: 0 2px 6px {c.color}33, 0 4px 12px {c.color}22;">
         <div class="cat-chip-header">
           <span class="cat-name" style="color: {c.color};">{c.label}</span>
         </div>
@@ -93,6 +94,7 @@
         </div>
       </div>
     {/each}
+  </div>
   </div>
 
   <!-- Latest-day outgoing -->
@@ -196,18 +198,26 @@
     color: var(--accent);
   }
 
+  .category-scroll-wrap {
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0 0 10px;
+    margin-bottom: -10px;
+  }
+  .category-scroll-wrap::-webkit-scrollbar { display: none; }
   .category-scroll {
     display: flex;
     gap: 8px;
-    overflow-x: auto;
-    padding: 0 16px 4px;
-    scrollbar-width: none;
+    padding: 2px 0 2px 16px;
   }
   .cat-chip {
     flex-shrink: 0;
     padding: 10px 14px;
     border-radius: var(--radius-md);
     min-width: 96px;
+  }
+  .cat-chip:last-child {
+    margin-right: 16px;
   }
   .cat-chip-header {
     display: flex;

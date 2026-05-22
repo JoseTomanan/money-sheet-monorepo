@@ -119,7 +119,7 @@
   .scroll-area {
     height: 100dvh;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .scroll-top-btn {
