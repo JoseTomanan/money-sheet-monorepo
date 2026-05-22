@@ -69,12 +69,11 @@
     max-width: var(--app-max-width);
     height: 60px;
     padding: 0 8px env(safe-area-inset-bottom, 0px);
-    border-radius: 20px 20px 0 0;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.10);
+    box-shadow: var(--shadow-tabbar);
     pointer-events: all;
   }
 
@@ -99,6 +98,7 @@
   }
 
   .tab-label {
+    font-family: var(--font-display);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.2px;

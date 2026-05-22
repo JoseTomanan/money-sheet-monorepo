@@ -9,3 +9,9 @@
 
 # Claude Code local settings (project settings CLAUDE.md is committed)
 .claude/
+
+# Playwright MCP snapshots
+.playwright-mcp/
+
+# Ad-hoc verification screenshots
+*.png
