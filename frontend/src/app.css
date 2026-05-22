@@ -91,3 +91,39 @@ html, body {
 
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
+
+/* ── Shared card ───────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.card-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* ── Shared page-header layout ─────────────────────────────────── */
+.page-header {
+  padding: 20px 20px 4px;
+}
+.page-eyebrow {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-top: 2px;
+  letter-spacing: -0.5px;
+}

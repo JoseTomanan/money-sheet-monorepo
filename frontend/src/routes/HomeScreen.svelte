@@ -48,13 +48,13 @@
 <div class="home" style="padding-bottom: 72px;">
   <!-- Month header -->
   <div class="page-header">
-    <div class="month-label">{monthLabel.toUpperCase()}</div>
-    <div class="greeting">On Hand</div>
+    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
+    <div class="page-title">On Hand</div>
   </div>
 
   <!-- On Hand hero card -->
-  <div class="hero-card">
-    <div class="hero-onhand-label">ON HAND</div>
+  <div class="hero-card card">
+    <div class="card-label">ON HAND</div>
     <div class="hero-amount" class:shimmer={store.masterLoading}>
       {peso(store.master.onHand)}
     </div>
@@ -104,6 +104,7 @@
   </SectionHeader>
 
   <button class="today-teaser" onclick={() => onnavigate('entries')} aria-label="Go to entries">
+    <div class="today-section">
     <!-- Blurred teaser card — no real content, just a shape -->
     <div class="teaser-wrap" aria-hidden="true">
       <div class="teaser-card"></div>
@@ -130,46 +131,18 @@
         {/each}
       </div>
     {/if}
+    </div>
   </button>
 </div>
 
 <style>
   .home { padding: 0; }
 
-  .page-header {
-    padding: 20px 20px 4px;
-  }
-  .month-label {
-    font-family: var(--font-display);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .greeting {
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--foreground);
-    margin-top: 2px;
-    letter-spacing: -0.5px;
-  }
+
 
   .hero-card {
     margin: 14px 16px 0;
-    padding: 20px 22px 22px;
-    border-radius: var(--radius-xl);
-    background: var(--card);
-    box-shadow: var(--shadow-card);
-  }
-  .hero-onhand-label {
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
+    padding: 20px 22px;
   }
   .hero-amount {
     font-family: var(--font-mono);
@@ -268,24 +241,25 @@
     cursor: pointer;
     text-align: left;
   }
+  .today-section {
+    margin: 0 16px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
   .teaser-wrap {
     height: 10px;
-    margin: 0 16px;
     overflow: hidden;
   }
   .teaser-card {
     height: 48px;
     background: var(--card);
     border-radius: 0;
-    box-shadow: var(--shadow-card);
     border-bottom: 1px solid var(--border);
     transform: translateY(calc(-100% + 10px));
   }
   .today-card {
-    margin: 0 16px;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     background: var(--card);
-    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .today-row {

@@ -46,12 +46,12 @@
 <div class="summary-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
-    <div class="month-label">{monthLabel.toUpperCase()}</div>
+    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
     <div class="page-title">Summary</div>
   </div>
 
   <!-- On Hand card -->
-  <div class="onhand-card">
+  <div class="onhand-card card">
     <div class="onhand-left">
       <div class="card-label">On Hand</div>
       <div class="onhand-amount" class:shimmer={store.masterLoading} style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
@@ -126,43 +126,14 @@
 <style>
   .summary-view { padding: 0; }
 
-  .page-header {
-    padding: 20px 20px 4px;
-  }
-  .month-label {
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .page-title {
-    font-family: var(--font-sans);
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin-top: 2px;
-    letter-spacing: -0.5px;
-  }
+
 
   .onhand-card {
     margin: 14px 16px 0;
-    padding: 18px 22px;
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    border: 1px solid var(--border);
+    padding: 20px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-  .card-label {
-    font-size: 11px;
-    font-family: var(--font-sans);
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
   }
   .onhand-amount {
     margin-top: 4px;
