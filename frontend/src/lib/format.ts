@@ -1,4 +1,22 @@
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+/** Normalize any reasonable date string to "YYYY-MM-DD". Returns "" for unrecognized input. */
+export function normalizeDate(raw: string): string {
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const [, m, d, y] = slash;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+  // Fallback: parse Date.toString() format (e.g. from GAS String(date) serialization)
+  const parsed = new Date(raw);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  }
+  return '';
+}
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 
 export function peso(n: number): string {
