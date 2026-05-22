@@ -4,6 +4,7 @@
   import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth, yearMonth } from '../lib/format';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
+  import EntryDescBand from '../components/EntryDescBand.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
@@ -121,9 +122,7 @@
             style="border-top: {i > 0 ? '1px solid var(--border)' : 'none'};"
           >
             <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
-            <div class="entry-desc-band" style="background: {catStyle.pastel}80; color: {catStyle.color};">
-              <span class="entry-desc">{entry.description || '—'}</span>
-            </div>
+            <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
             <div class="entry-amount-wrap">
               <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
             </div>
@@ -311,22 +310,6 @@
     color: var(--muted-foreground);
     white-space: nowrap;
     flex-shrink: 0;
-  }
-  .entry-desc-band {
-    flex-shrink: 1;
-    min-width: 0;
-    max-width: 55%;
-    padding: 2px 5px;
-    border-radius: 0;
-  }
-  .entry-desc {
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
   }
   .entry-amount-wrap {
     flex-shrink: 0;

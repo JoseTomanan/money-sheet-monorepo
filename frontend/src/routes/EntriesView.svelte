@@ -6,6 +6,7 @@
   import { fmtDateShort } from '../lib/format';
   import { groupByWeek } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
+  import EntryDescBand from '../components/EntryDescBand.svelte';
 
   interface Props {
     onopenedit: (entry: Entry) => void;
@@ -130,12 +131,7 @@
             >
               <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
 
-              <div
-                class="entry-desc-band"
-                style="background: {catStyle.pastel}80; color: {catStyle.color};"
-              >
-                <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
-              </div>
+              <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
 
               <div class="entry-amount-wrap">
                 <Money
@@ -373,25 +369,6 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-
-  .entry-desc-band {
-    flex-shrink: 1;
-    min-width: 0;
-    max-width: 55%;
-    padding: 2px 5px;
-    border-radius: 0;
-  }
-
-  .entry-desc {
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
-  }
-  .strikethrough { text-decoration: line-through; }
 
   .entry-amount-wrap {
     flex-shrink: 0;
