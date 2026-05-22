@@ -81,7 +81,7 @@
 
   function handleSave() {
     if (splitMode) {
-      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description }) });
+      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description, direction }) });
     } else {
       const amt = parseFloat(amount) || 0;
       const payload: AddEntryPayload = { date, tag, description, direction, amount: amt };
@@ -184,10 +184,10 @@
         >Incoming</button>
       </div>
 
-      <!-- split toggle — only for new Incoming entries -->
-      {#if direction === 'I' && !entry}
+      <!-- split toggle — only for new entries -->
+      {#if !entry}
         <div class="split-toggle-row">
-          <span class="split-toggle-label">Split across categories</span>
+          <span class="split-toggle-label">{direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
           <button
             class="split-toggle-btn"
             class:split-active={splitMode}

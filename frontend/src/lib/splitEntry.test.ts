@@ -34,6 +34,7 @@ describe("toAddEntryPayloads", () => {
     const payloads = toAddEntryPayloads(state, {
       date: "2026-05-21",
       description: "payday",
+      direction: "I",
     });
     expect(payloads).toHaveLength(2);
     expect(payloads[0]).toEqual({
@@ -49,6 +50,33 @@ describe("toAddEntryPayloads", () => {
       description: "payday",
       direction: "I",
       amount: 1500.5,
+    });
+  });
+
+  it("emits one payload per leg with direction O for Outgoing split", () => {
+    const state = updateLeg(
+      updateLeg(initSplitState(), 0, { tag: "Dining", amount: "250" }),
+      1, { tag: "Fuel", amount: "800" }
+    );
+    const payloads = toAddEntryPayloads(state, {
+      date: "2026-05-22",
+      description: "weekly expenses",
+      direction: "O",
+    });
+    expect(payloads).toHaveLength(2);
+    expect(payloads[0]).toEqual({
+      date: "2026-05-22",
+      tag: "Dining",
+      description: "weekly expenses",
+      direction: "O",
+      amount: 250,
+    });
+    expect(payloads[1]).toEqual({
+      date: "2026-05-22",
+      tag: "Fuel",
+      description: "weekly expenses",
+      direction: "O",
+      amount: 800,
     });
   });
 });

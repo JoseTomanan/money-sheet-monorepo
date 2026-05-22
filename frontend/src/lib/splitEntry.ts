@@ -1,4 +1,4 @@
-import type { AddEntryPayload } from "./types";
+import type { AddEntryPayload, Direction } from "./types";
 
 export interface Leg {
   tag: string;
@@ -36,13 +36,13 @@ export function isSplitValid(state: SplitState): boolean {
 
 export function toAddEntryPayloads(
   state: SplitState,
-  shared: { date: string; description: string }
+  shared: { date: string; description: string; direction: Direction }
 ): AddEntryPayload[] {
   return state.legs.map((leg) => ({
     date: shared.date,
     tag: leg.tag,
     description: shared.description,
-    direction: "I" as const,
+    direction: shared.direction,
     amount: parseFloat(leg.amount),
   }));
 }
