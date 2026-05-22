@@ -185,7 +185,7 @@
     margin: 0 16px;
     border-radius: var(--radius-lg);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .cat-row {
