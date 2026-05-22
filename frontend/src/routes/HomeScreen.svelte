@@ -4,7 +4,6 @@
   import { peso, fmtDate, dayOfWeek, currentYearMonth, yearMonth } from '../lib/format';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
-  import TagPill from '../components/TagPill.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
@@ -54,7 +53,6 @@
 
   <!-- On Hand hero card -->
   <div class="hero-card">
-    <div class="hero-glow"></div>
     <div class="hero-onhand-label">ON HAND</div>
     <div class="hero-amount" class:shimmer={store.masterLoading}>
       {peso(store.master.onHand)}
@@ -85,10 +83,9 @@
     {#each CATEGORY_ORDER as key}
       {@const c = CATEGORIES[key]}
       {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip">
+      <div class="cat-chip" style="background: {c.pastel}; border: 1px solid {c.color}40;">
         <div class="cat-chip-header">
-          <span class="cat-dot" style="background: {c.color};"></span>
-          <span class="cat-name">{c.label}</span>
+          <span class="cat-name" style="color: {c.color};">{c.label}</span>
         </div>
         <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
           {peso(budget)}
@@ -110,13 +107,17 @@
       <div class="empty">No outgoing entries yet.</div>
     {:else}
       {#each todayEntries as entry, i}
+        {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
         <div
           class="today-row"
           style="border-bottom: {i < todayEntries.length - 1 ? '1px solid var(--border)' : 'none'}; opacity: {entry.amount === 0 ? 0.5 : 1};"
         >
-          <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
-          <div class="row-desc">{entry.description}</div>
-          <Money value={entry.amount} size={14} weight={500} dim={entry.amount === 0} negColor={false} />
+          <div class="row-desc-band" style="background: {catStyle.pastel}80; color: {catStyle.color};">
+            <span class="row-desc">{entry.description}</span>
+          </div>
+          <div class="row-amount-wrap">
+            <Money value={entry.amount} size={14} weight={500} dim={entry.amount === 0} negColor={false} />
+          </div>
         </div>
       {/each}
     {/if}
@@ -150,20 +151,8 @@
     margin: 14px 16px 0;
     padding: 20px 22px 22px;
     border-radius: var(--radius-xl);
-    background: linear-gradient(155deg, #fffdf7 0%, #fdf5e0 100%);
+    background: var(--card);
     box-shadow: var(--shadow-card);
-    position: relative;
-    overflow: hidden;
-  }
-  .hero-glow {
-    position: absolute;
-    top: -40px;
-    right: -40px;
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(212,146,10,0.18), transparent 60%);
-    pointer-events: none;
   }
   .hero-onhand-label {
     font-family: var(--font-display);
@@ -232,31 +221,16 @@
     padding: 0 16px 4px;
     scrollbar-width: none;
   }
-  @media (min-width: 768px) {
-    .category-scroll {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      overflow-x: unset;
-    }
-  }
   .cat-chip {
     flex-shrink: 0;
     padding: 10px 14px;
     border-radius: var(--radius-md);
-    background: var(--card);
-    box-shadow: var(--shadow-card);
     min-width: 96px;
   }
   .cat-chip-header {
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-  .cat-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
   }
   .cat-name {
     font-family: var(--font-display);
@@ -296,15 +270,24 @@
     gap: 10px;
     padding: 12px 16px;
   }
+  .row-desc-band {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 60%;
+    padding: 2px 5px;
+    border-radius: 0;
+  }
+  .row-amount-wrap {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
   .row-desc {
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 500;
-    color: var(--foreground);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
-    min-width: 0;
+    display: block;
   }
 </style>

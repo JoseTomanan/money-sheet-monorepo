@@ -6,7 +6,6 @@
   import { fmtDateShort } from '../lib/format';
   import { groupByWeek } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
-  import TagPill from '../components/TagPill.svelte';
 
   interface Props {
     onopenedit: (entry: Entry) => void;
@@ -23,8 +22,6 @@
 
   let filterDir  = $state<'all' | 'I' | 'O'>('all');
   let filterCat  = $state('');
-  let pendingDelete = $state<number | null>(null);
-  let deleting = $state<number | null>(null);
 
   const categoryNames = $derived(Object.keys(store.categories).sort());
 
@@ -53,12 +50,6 @@
     )
   );
 
-  async function confirmDelete(id: number) {
-    deleting = id;
-    await store.deleteEntry(id);
-    pendingDelete = null;
-    deleting = null;
-  }
 </script>
 
 <div class="entries-view" style="padding-bottom: 72px;">
@@ -85,6 +76,7 @@
     </div>
 
     {#if categoryNames.length > 0}
+      <div class="filter-sep" aria-hidden="true"></div>
       <div class="cat-row">
         <button
           class="cat-chip-btn"
@@ -127,54 +119,33 @@
           <div class="week-label">{group.label}</div>
           {#each group.entries as entry (entry.id)}
             {@const dim = entry.amount === 0}
+            {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
             <div
               class="entry-card"
               class:dim
-              onclick={() => { pendingDelete = null; onopenedit(entry); }}
+              onclick={() => onopenedit(entry)}
               role="button"
               tabindex="0"
               onkeydown={(e) => e.key === 'Enter' && onopenedit(entry)}
             >
               <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
 
-              <TagPill tag={entry.tag} direction={entry.direction} mainCategory={entry.mainCategory} small />
+              <div
+                class="entry-desc-band"
+                style="background: {catStyle.pastel}80; color: {catStyle.color};"
+              >
+                <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
+              </div>
 
-              <span class="entry-desc" class:strikethrough={dim}>{entry.description || '—'}</span>
-
-              <Money
-                value={entry.amount}
-                size={14}
-                weight={500}
-                negColor={false}
-                positive={entry.direction === 'I'}
-                {dim}
-              />
-
-              <!-- delete controls -->
-              <div class="entry-actions" onclick={(e) => e.stopPropagation()} role="none">
-                {#if pendingDelete === entry.id}
-                  <div class="delete-confirm">
-                    <button
-                      class="confirm-btn"
-                      disabled={deleting === entry.id}
-                      onclick={() => confirmDelete(entry.id)}
-                    >
-                      {deleting === entry.id ? '…' : 'Delete'}
-                    </button>
-                    <button class="cancel-btn" onclick={() => (pendingDelete = null)}>✕</button>
-                  </div>
-                {:else}
-                  <button
-                    class="delete-trigger"
-                    aria-label="Delete entry"
-                    onclick={() => (pendingDelete = entry.id)}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    </svg>
-                  </button>
-                {/if}
+              <div class="entry-amount-wrap">
+                <Money
+                  value={entry.amount}
+                  size={14}
+                  weight={500}
+                  negColor={false}
+                  positive={entry.direction === 'I'}
+                  {dim}
+                />
               </div>
             </div>
           {/each}
@@ -267,6 +238,19 @@
   }
   .segmented button:hover:not(.active) {
     background: var(--muted);
+  }
+
+  .filter-sep {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .filter-sep {
+      display: block;
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
   }
 
   .cat-row {
@@ -390,64 +374,28 @@
     flex-shrink: 0;
   }
 
+  .entry-desc-band {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 55%;
+    padding: 2px 5px;
+    border-radius: 0;
+  }
+
   .entry-desc {
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 500;
-    color: var(--foreground);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
-    min-width: 0;
+    display: block;
   }
   .strikethrough { text-decoration: line-through; }
 
-  .entry-actions {
-    display: flex;
-    align-items: center;
+  .entry-amount-wrap {
     flex-shrink: 0;
+    margin-left: auto;
   }
-  .delete-trigger {
-    background: none;
-    border: 0;
-    cursor: pointer;
-    color: var(--muted-foreground);
-    padding: 4px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 150ms;
-    opacity: 0.4;
-  }
-  .entry-card:hover .delete-trigger { opacity: 1; }
-  .delete-trigger:hover { color: var(--destructive); }
 
-  .delete-confirm {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .confirm-btn {
-    padding: 4px 10px;
-    border-radius: var(--radius-sm);
-    border: 0;
-    background: rgba(193, 74, 50, 0.12);
-    color: var(--destructive);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .cancel-btn {
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    border: 0;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    font-size: 12px;
-    cursor: pointer;
-  }
 </style>

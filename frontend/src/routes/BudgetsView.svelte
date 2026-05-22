@@ -87,7 +87,7 @@
       {#each categoryData.filter(d => d.spent > 0) as d}
         <span class="legend-item">
           <span class="legend-dot" style="background: {d.c.color};"></span>
-          {d.c.label}
+          {d.c.label} {d.pct.toFixed(1)}%
         </span>
       {/each}
     </div>
@@ -104,32 +104,19 @@
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
       >
         <div class="cat-row-main">
-          <span class="cat-dot" style="background: {d.c.color}; box-shadow: 0 0 8px {d.c.color}55;"></span>
+          <span class="cat-dot" style="background: {d.c.color}cc;"></span>
           <span class="cat-label">{d.c.label}</span>
           <span class="cat-pct" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
             {d.pct.toFixed(1)}%
           </span>
-          <Money value={d.spent} size={14} weight={500} negColor={false} />
+          <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
         </div>
         <!-- animated bar -->
-        <div class="cat-bar-track">
+        <div class="cat-bar-track" style="background: {d.c.pastel};">
           <div
             class="cat-bar-fill"
-            style="
-              width: {$barWidths[d.key] ?? 0}%;
-              background: {d.c.color};
-              box-shadow: 0 0 6px {d.c.color}44;
-            "
+            style="width: {$barWidths[d.key] ?? 0}%; background: {d.c.color}cc;"
           ></div>
-        </div>
-        <!-- Budget label -->
-        <div class="cat-budget-label">
-          Budget: <span class:shimmer={store.masterLoading} style="
-            font-family: var(--font-mono);
-            font-variant-numeric: tabular-nums;
-            color: {d.budget < 0 ? 'var(--destructive)' : 'var(--positive)'};
-            font-weight: 500;
-          ">{peso(d.budget)}</span>
         </div>
       </div>
     {/each}
@@ -194,10 +181,9 @@
   }
   .dist-bar {
     display: flex;
-    height: 14px;
-    border-radius: 8px;
-    overflow: hidden;
+    height: 20px;
     background: var(--muted);
+    gap: 2px;
   }
   .dist-segment {
     transition: flex 500ms cubic-bezier(.2,.7,.2,1);
@@ -263,7 +249,6 @@
     margin-top: 8px;
     margin-left: 20px;
     height: 4px;
-    background: var(--muted);
     border-radius: 2px;
     overflow: hidden;
   }
