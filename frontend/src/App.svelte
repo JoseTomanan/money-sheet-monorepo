@@ -80,8 +80,7 @@
     {/if}
   </div>
 
-  <!-- FAB + scroll-to-top: only on Entries tab -->
-  {#if tab === 'entries' && !store.loading && !store.error}
+  {#if !store.loading && !store.error}
     {#if scrollTop > 200}
       <button class="scroll-top-btn" onclick={scrollToTop} aria-label="Scroll to top">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -125,8 +124,8 @@
 
   .scroll-top-btn {
     position: fixed;
-    bottom: 146px;
-    right: calc(max(0px, (100vw - var(--app-max-width)) / 2) + 28px);
+    bottom: 80px;
+    right: calc(max(0px, (100vw - var(--app-max-width)) / 2) + 72px);
     width: 44px;
     height: 44px;
     border-radius: 50%;

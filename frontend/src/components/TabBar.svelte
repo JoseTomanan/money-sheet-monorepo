@@ -69,7 +69,7 @@
     max-width: var(--app-max-width);
     height: 60px;
     padding: 0 8px env(safe-area-inset-bottom, 0px);
-    border-radius: 20px 20px 0 0;
+    border-radius: 0;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
