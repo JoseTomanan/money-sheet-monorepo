@@ -13,9 +13,10 @@ const GAS_URL = import.meta.env.VITE_GAS_URL as string;
 const API_SECRET = import.meta.env.VITE_API_SECRET as string;
 
 async function gasGet<T>(action: string): Promise<T> {
-  const res = await fetch(`${GAS_URL}?action=${action}`, {
+  const res = await fetch(`${GAS_URL}?action=${action}&t=${Date.now()}`, {
     mode: "cors",
     redirect: "follow",
+    cache: "no-store",
   });
   const json = JSON.parse(await res.text()) as Record<string, unknown>;
   if (json.error) throw new Error(String(json.error));
