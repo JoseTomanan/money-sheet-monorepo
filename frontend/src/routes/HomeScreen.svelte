@@ -1,7 +1,8 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
-  import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth, yearMonth } from '../lib/format';
+  import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth } from '../lib/format';
+  import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
@@ -16,15 +17,8 @@
   const monthLabel = now.toLocaleString('en-PH', { month: 'long', year: 'numeric' });
   const ym = currentYearMonth();
 
-  const outgoingEntries = $derived(store.entries.filter(e => e.direction === 'O'));
-
-  const thisMonthTotal = $derived(
-    outgoingEntries
-      .filter(e => yearMonth(e.date) === ym)
-      .reduce((s, e) => s + e.amount, 0)
-  );
-
-  const allTotal = $derived(outgoingEntries.reduce((s, e) => s + e.amount, 0));
+  const thisMonthTotal = $derived(outgoingByMonth(store.entries, ym));
+  const allTotal = $derived(totalOutgoing(store.entries));
 
   const latestDate = $derived(
     store.entries.length > 0

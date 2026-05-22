@@ -36,3 +36,7 @@ export interface UpdateEntryPatch {
   direction?: Direction;
   amount?: number;
 }
+
+export type EntryMutation =
+  | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
+  | { type: 'edit'; id: number; patch: UpdateEntryPatch };

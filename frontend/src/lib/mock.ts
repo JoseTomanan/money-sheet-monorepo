@@ -1,29 +1,14 @@
 import type {
   Entry,
   MasterRow,
-  CategoryMap,
   SubcategoryBreakdown,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
+import { CATEGORY_MAP } from "./theme";
+import { getMainCategory } from "./domain";
 
 export const isMockMode = import.meta.env.VITE_MOCK === "true";
-
-const CATEGORIES: CategoryMap = {
-  HOUSING: ["Rent", "Utilities"],
-  FOOD: ["Dining", "Groceries"],
-  TRANSIT: ["Commute Fare", "Fuel"],
-  HEALTH: ["Pharmacy", "Checkup"],
-  FINANCE: ["Savings", "Fees"],
-  LIFESTYLE: ["Leisure", "Clothing", "Uniform"],
-  MISC: ["Other"],
-};
-
-// Subcategory → parent Category lookup
-const SUB_TO_CAT: Record<string, string> = {};
-for (const [cat, subs] of Object.entries(CATEGORIES)) {
-  for (const sub of subs) SUB_TO_CAT[sub] = cat;
-}
 
 let entries: Entry[] = [
   // 2026-05-06
@@ -56,7 +41,7 @@ let entries: Entry[] = [
   { id: 19, date: "2026-05-14", tag: "Groceries",    mainCategory: "FOOD",      description: "midweek snack restock",     direction: "O", amount: 290 },
   { id: 20, date: "2026-05-14", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "coffee run with coworker",  direction: "O", amount: 160 },
   // 2026-05-15
-  { id: 21, date: "2026-05-15", tag: "Checkup",      mainCategory: "HEALTH",    description: "dental cleaning",           direction: "O", amount: 900 },
+  { id: 21, date: "2026-05-15", tag: "Consultation Fee", mainCategory: "HEALTH", description: "dental cleaning",           direction: "O", amount: 900 },
   { id: 22, date: "2026-05-15", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "taxi back from clinic",      direction: "O", amount: 180 },
   // 2026-05-16
   { id: 23, date: "2026-05-16", tag: "Dining",       mainCategory: "FOOD",      description: "friday pizza",              direction: "O", amount: 410 },
@@ -75,7 +60,7 @@ let entries: Entry[] = [
   { id: 33, date: "2026-05-19", tag: "Dining",       mainCategory: "FOOD",      description: "breakfast at nonos",        direction: "O", amount: 250 },
   { id: 34, date: "2026-05-19", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "coffee from lunar",         direction: "O", amount: 150 },
   { id: 35, date: "2026-05-19", tag: "Clothing",     mainCategory: "LIFESTYLE", description: "new clothes from mango",    direction: "O", amount: 1998 },
-  { id: 36, date: "2026-05-19", tag: "Uniform",      mainCategory: "LIFESTYLE", description: "polo shirt from company",   direction: "O", amount: 1500 },
+  { id: 36, date: "2026-05-19", tag: "Uniform",      mainCategory: "MISC",      description: "polo shirt from company",   direction: "O", amount: 1500 },
   { id: 37, date: "2026-05-19", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "grab to home",               direction: "O", amount: 350 },
   // 2026-05-20
   { id: 38, date: "2026-05-20", tag: "Dining",       mainCategory: "FOOD",      description: "monday breakfast",          direction: "O", amount: 120 },
@@ -86,15 +71,15 @@ export function mockGetEntries(): Promise<Entry[]> {
   return Promise.resolve([...entries]);
 }
 
-export function mockGetCategories(): Promise<CategoryMap> {
-  return Promise.resolve(structuredClone(CATEGORIES));
+export function mockGetCategories(): Promise<import("./types").CategoryMap> {
+  return Promise.resolve(structuredClone(CATEGORY_MAP));
 }
 
 export function mockGetMaster(): Promise<MasterRow> {
   const totalIn = entries.filter(e => e.direction === "I").reduce((s, e) => s + e.amount, 0);
   const totalOut = entries.filter(e => e.direction === "O").reduce((s, e) => s + e.amount, 0);
   const budgets: Record<string, number> = {};
-  for (const cat of Object.keys(CATEGORIES)) {
+  for (const cat of Object.keys(CATEGORY_MAP)) {
     const inc = entries.filter(e => e.direction === "I" && e.mainCategory === cat).reduce((s, e) => s + e.amount, 0);
     const out = entries.filter(e => e.direction === "O" && e.mainCategory === cat).reduce((s, e) => s + e.amount, 0);
     budgets[cat] = inc - out;
@@ -112,7 +97,7 @@ export function mockGetSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
 
 export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
   const nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const mainCategory = SUB_TO_CAT[payload.tag] ?? payload.tag;
+  const mainCategory = getMainCategory(payload.tag, CATEGORY_MAP);
   const entry: Entry = { id: nextId, mainCategory, ...payload };
   entries = [...entries, entry];
   return Promise.resolve(entry);
@@ -122,7 +107,7 @@ export function mockUpdateEntry(id: number, patch: UpdateEntryPatch): Promise<vo
   entries = entries.map(e => {
     if (e.id !== id) return e;
     const updated = { ...e, ...patch };
-    if (patch.tag) updated.mainCategory = SUB_TO_CAT[patch.tag] ?? patch.tag;
+    if (patch.tag) updated.mainCategory = getMainCategory(patch.tag, CATEGORY_MAP);
     return updated;
   });
   return Promise.resolve();

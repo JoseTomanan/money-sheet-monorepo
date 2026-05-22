@@ -3,6 +3,7 @@
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
   import { groupByWeek } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
@@ -39,16 +40,7 @@
   const weekGroups = $derived(groupByWeek(filtered));
 
   const catCounts = $derived(
-    Object.fromEntries(
-      categoryNames.map((cat) => [
-        cat,
-        store.entries.filter(
-          (e) =>
-            e.mainCategory === cat &&
-            (filterDir === 'all' || e.direction === filterDir)
-        ).length,
-      ])
-    )
+    countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
   );
 
 </script>

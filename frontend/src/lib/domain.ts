@@ -1,0 +1,30 @@
+import type { Direction, CategoryMap } from './types';
+
+export function getTagOptions(
+  direction: Direction,
+  categories: CategoryMap
+): Array<{ value: string; parentCat: string }> {
+  const cats = Object.keys(categories).sort();
+  if (direction === 'I') {
+    return cats.map((c) => ({ value: c, parentCat: c }));
+  }
+  return cats.flatMap((cat) =>
+    (categories[cat] ?? []).map((sub) => ({ value: sub, parentCat: cat }))
+  );
+}
+
+export function getMainCategory(tag: string, categories: CategoryMap): string {
+  for (const [cat, subs] of Object.entries(categories)) {
+    if (subs.includes(tag)) return cat;
+  }
+  return tag;
+}
+
+export function isValidTag(
+  tag: string,
+  direction: Direction,
+  categories: CategoryMap
+): boolean {
+  if (direction === 'I') return Object.keys(categories).includes(tag);
+  return Object.values(categories).flat().includes(tag);
+}
