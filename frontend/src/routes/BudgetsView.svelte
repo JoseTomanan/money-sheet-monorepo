@@ -46,15 +46,15 @@
 <div class="summary-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
-    <div class="month-label">{monthLabel.toUpperCase()}</div>
+    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
     <div class="page-title">Summary</div>
   </div>
 
   <!-- On Hand card -->
-  <div class="onhand-card">
+  <div class="onhand-card card">
     <div class="onhand-left">
       <div class="card-label">On Hand</div>
-      <div class="onhand-amount" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
+      <div class="onhand-amount" class:shimmer={store.masterLoading} style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
         {peso(store.master.onHand)}
       </div>
     </div>
@@ -87,7 +87,7 @@
       {#each categoryData.filter(d => d.spent > 0) as d}
         <span class="legend-item">
           <span class="legend-dot" style="background: {d.c.color};"></span>
-          {d.c.label}
+          {d.c.label} {d.pct.toFixed(1)}%
         </span>
       {/each}
     </div>
@@ -104,32 +104,19 @@
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
       >
         <div class="cat-row-main">
-          <span class="cat-dot" style="background: {d.c.color}; box-shadow: 0 0 8px {d.c.color}55;"></span>
+          <span class="cat-dot" style="background: {d.c.color}cc;"></span>
           <span class="cat-label">{d.c.label}</span>
           <span class="cat-pct" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
             {d.pct.toFixed(1)}%
           </span>
-          <Money value={d.spent} size={14} weight={500} negColor={false} />
+          <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
         </div>
         <!-- animated bar -->
-        <div class="cat-bar-track">
+        <div class="cat-bar-track" style="background: {d.c.pastel};">
           <div
             class="cat-bar-fill"
-            style="
-              width: {$barWidths[d.key] ?? 0}%;
-              background: {d.c.color};
-              box-shadow: 0 0 6px {d.c.color}44;
-            "
+            style="width: {$barWidths[d.key] ?? 0}%; background: {d.c.color}cc;"
           ></div>
-        </div>
-        <!-- Budget label -->
-        <div class="cat-budget-label">
-          Budget: <span style="
-            font-family: var(--font-mono);
-            font-variant-numeric: tabular-nums;
-            color: {d.budget < 0 ? 'var(--destructive)' : 'var(--positive)'};
-            font-weight: 500;
-          ">{peso(d.budget)}</span>
         </div>
       </div>
     {/each}
@@ -139,43 +126,14 @@
 <style>
   .summary-view { padding: 0; }
 
-  .page-header {
-    padding: 20px 20px 4px;
-  }
-  .month-label {
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .page-title {
-    font-family: var(--font-sans);
-    font-size: 28px;
-    font-weight: 600;
-    color: var(--foreground);
-    margin-top: 2px;
-    letter-spacing: -0.5px;
-  }
+
 
   .onhand-card {
     margin: 14px 16px 0;
-    padding: 18px 22px;
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    border: 1px solid var(--border);
+    padding: 20px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-  .card-label {
-    font-size: 11px;
-    font-family: var(--font-sans);
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
   }
   .onhand-amount {
     margin-top: 4px;
@@ -194,10 +152,9 @@
   }
   .dist-bar {
     display: flex;
-    height: 14px;
-    border-radius: 8px;
-    overflow: hidden;
+    height: 20px;
     background: var(--muted);
+    gap: 2px;
   }
   .dist-segment {
     transition: flex 500ms cubic-bezier(.2,.7,.2,1);
@@ -228,7 +185,7 @@
     margin: 0 16px;
     border-radius: var(--radius-lg);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .cat-row {
@@ -263,7 +220,6 @@
     margin-top: 8px;
     margin-left: 20px;
     height: 4px;
-    background: var(--muted);
     border-radius: 2px;
     overflow: hidden;
   }
@@ -280,4 +236,7 @@
     font-size: 11px;
     color: var(--muted-foreground);
   }
+
+  .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 </style>

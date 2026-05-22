@@ -10,7 +10,7 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:1111",
     trace: "on-first-retry",
   },
   projects: [
@@ -21,7 +21,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:5173",
+    url: "http://localhost:1111",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     env: {

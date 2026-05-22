@@ -11,6 +11,7 @@
     toAddEntryPayloads,
     type SplitState,
   } from '../lib/splitEntry';
+  import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '../lib/dragGesture';
 
   interface Props {
     open: boolean;
@@ -18,10 +19,11 @@
     entry?: Entry | null;
     onclose: () => void;
     onsave: (payload: AddEntryPayload | AddEntryPayload[] | { id: number; patch: UpdateEntryPatch }) => void;
+    ondelete?: (id: number) => void;
     defaultDirection?: Direction;
   }
 
-  let { open, categories, entry = null, onclose, onsave, defaultDirection = 'O' }: Props = $props();
+  let { open, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -36,6 +38,10 @@
   let splitMode = $state(false);
   let split     = $state<SplitState>(initSplitState());
 
+  let snap        = $state<Snap>('default');
+  let activeDrag  = $state<DragState | null>(null);
+  let dragOffset  = $state(0);
+
   $effect(() => {
     if (open) {
       date        = entry?.date ?? today;
@@ -45,6 +51,9 @@
       amount      = entry != null ? String(entry.amount) : '';
       splitMode   = false;
       split       = initSplitState();
+      snap        = 'default';
+      activeDrag  = null;
+      dragOffset  = 0;
       animTimer = setTimeout(() => { animOpen = true; }, 10);
     } else {
       animOpen = false;
@@ -94,6 +103,39 @@
 
   const saveDisabled = $derived(splitMode ? !isSplitValid(split) : (!tag || !amount));
   const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
+
+  const sheetTransform = $derived(
+    activeDrag
+      ? `translateX(-50%) translateY(${Math.max(0, dragOffset)}px)`
+      : 'translateX(-50%) translateY(0)'
+  );
+  const sheetTransition = $derived(
+    activeDrag ? 'none' : 'transform 320ms cubic-bezier(.2,.7,.2,1)'
+  );
+
+  function onHandlePointerDown(e: PointerEvent) {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    activeDrag = startDrag(e.clientY, snap);
+  }
+
+  function onHandlePointerMove(e: PointerEvent) {
+    if (!activeDrag) return;
+    activeDrag = moveDrag(activeDrag, e.clientY);
+    dragOffset = activeDrag.offsetY;
+  }
+
+  function onHandlePointerUp(e: PointerEvent) {
+    if (!activeDrag) return;
+    const result = endDrag(activeDrag);
+    activeDrag = null;
+    dragOffset = 0;
+    if (result.action === 'dismiss') {
+      onclose();
+    } else {
+      snap = result.to;
+    }
+  }
 </script>
 
 {#if open}
@@ -110,9 +152,21 @@
     ></div>
 
     <!-- sheet -->
-    <div class="sheet" class:open={animOpen}>
+    <div
+      class="sheet"
+      class:open={animOpen}
+      style="transform: {animOpen ? sheetTransform : 'translateX(-50%) translateY(100%)'}; transition: {sheetTransition};"
+    >
       <!-- handle -->
-      <div class="handle-row">
+      <div
+        class="handle-row"
+        role="separator"
+        aria-label="Drag to resize or dismiss"
+        onpointerdown={onHandlePointerDown}
+        onpointermove={onHandlePointerMove}
+        onpointerup={onHandlePointerUp}
+        onpointercancel={onHandlePointerUp}
+      >
         <div class="handle"></div>
       </div>
 
@@ -264,6 +318,15 @@
           {/each}
         </div>
       {/if}
+
+      {#if entry && ondelete}
+        <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
+          <button
+            class="delete-btn"
+            onclick={() => { ondelete!(entry!.id); onclose(); }}
+          >Delete entry</button>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -291,27 +354,30 @@
     transform: translateX(-50%) translateY(100%);
     width: 100%;
     max-width: var(--app-max-width);
+    max-height: 90dvh;
     background: var(--background);
     border-top-left-radius: 28px;
     border-top-right-radius: 28px;
-    box-shadow: 0 -8px 32px rgba(26, 24, 20, 0.12);
+    box-shadow: var(--shadow-sheet);
     padding-bottom: 32px;
-    transition: transform 320ms cubic-bezier(.2,.7,.2,1);
-    max-height: 90dvh;
     overflow-y: auto;
   }
-  .sheet.open { transform: translateX(-50%) translateY(0); }
 
   .handle-row {
     display: flex;
     justify-content: center;
-    padding: 10px 0 6px;
+    padding: 14px 0 10px;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
   }
+  .handle-row:active { cursor: grabbing; }
   .handle {
     width: 36px;
     height: 4px;
     border-radius: 2px;
     background: var(--border);
+    pointer-events: none;
   }
 
   .sheet-header {
@@ -335,7 +401,7 @@
   }
   .save:disabled { opacity: 0.4; cursor: not-allowed; }
   .sheet-title {
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 600;
     color: var(--foreground);
@@ -482,12 +548,12 @@
     padding: 20px 22px;
     border-radius: var(--radius-lg);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     text-align: center;
   }
   .amount-label {
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -527,11 +593,11 @@
     padding: 12px 18px;
     border-radius: var(--radius-md);
     background: var(--card);
-    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
   }
   .field-label {
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -575,7 +641,7 @@
   .tag-section-label {
     padding: 14px 20px 6px;
     font-size: 10px;
-    font-family: var(--font-sans);
+    font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -614,5 +680,33 @@
     height: 6px;
     border-radius: 50%;
     flex-shrink: 0;
+  }
+
+  .delete-wrap {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 300ms cubic-bezier(.2,.7,.2,1), opacity 220ms ease;
+  }
+  .delete-wrap-visible {
+    max-height: 80px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .delete-btn {
+    display: block;
+    margin: 20px 16px 0;
+    width: calc(100% - 32px);
+    padding: 13px 0;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(193, 74, 50, 0.3);
+    background: rgba(193, 74, 50, 0.08);
+    color: var(--destructive);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
   }
 </style>

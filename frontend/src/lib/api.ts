@@ -7,14 +7,16 @@ import type {
   UpdateEntryPatch,
 } from "./types";
 import * as mock from "./mock";
+import { normalizeDate } from "./format";
 
 const GAS_URL = import.meta.env.VITE_GAS_URL as string;
 const API_SECRET = import.meta.env.VITE_API_SECRET as string;
 
 async function gasGet<T>(action: string): Promise<T> {
-  const res = await fetch(`${GAS_URL}?action=${action}`, {
+  const res = await fetch(`${GAS_URL}?action=${action}&t=${Date.now()}`, {
     mode: "cors",
     redirect: "follow",
+    cache: "no-store",
   });
   const json = JSON.parse(await res.text()) as Record<string, unknown>;
   if (json.error) throw new Error(String(json.error));
@@ -38,7 +40,7 @@ async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
 export async function getEntries(): Promise<Entry[]> {
   if (mock.isMockMode) return mock.mockGetEntries();
   const data = await gasGet<{ entries: Entry[] }>("getEntries");
-  return data.entries;
+  return data.entries.map((e) => ({ ...e, date: normalizeDate(e.date) }));
 }
 
 export async function getMaster(): Promise<MasterRow> {

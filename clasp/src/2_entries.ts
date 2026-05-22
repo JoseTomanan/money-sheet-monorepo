@@ -5,10 +5,13 @@ function getEntries(): Entry[] {
     const id = row[6]; // H column (index 6 in B-based slice)
     if (id === "" || id === null || id === undefined) continue;
     const rawDate = row[0];
-    const dateStr =
-      rawDate instanceof Date
-        ? Utilities.formatDate(rawDate, "Asia/Manila", "yyyy-MM-dd")
-        : String(rawDate);
+    let dateStr: string;
+    try {
+      // Utilities.formatDate handles Date objects; try/catch avoids instanceof issues in the GAS sandbox
+      dateStr = Utilities.formatDate(rawDate as Date, "Asia/Manila", "yyyy-MM-dd");
+    } catch {
+      dateStr = rawDate ? String(rawDate) : "";
+    }
     entries.push({
       id: Number(id),
       date: dateStr,

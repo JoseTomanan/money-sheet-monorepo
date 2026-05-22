@@ -1,4 +1,5 @@
-import * as api from "./api";
+import * as api from './api';
+import { readCache, writeCache } from './cache';
 import type {
   Entry,
   MasterRow,
@@ -6,7 +7,7 @@ import type {
   SubcategoryBreakdown,
   AddEntryPayload,
   UpdateEntryPatch,
-} from "./types";
+} from './types';
 
 let entries = $state<Entry[]>([]);
 let master = $state<MasterRow>({ onHand: 0, budgets: {} });
@@ -14,10 +15,26 @@ let categories = $state<CategoryMap>({});
 let breakdown = $state<SubcategoryBreakdown>({});
 let loading = $state(false);
 let error = $state<string | null>(null);
+let masterLoading = $state(false);
+let toastMsg = $state<string | null>(null);
 
-async function refreshAll(): Promise<void> {
-  loading = true;
-  error = null;
+function tagToCategory(tag: string): string {
+  for (const [cat, subs] of Object.entries(categories)) {
+    if (subs.includes(tag)) return cat;
+  }
+  return tag;
+}
+
+function showToast(err: unknown): void {
+  toastMsg = err instanceof Error ? err.message : 'Something went wrong';
+  setTimeout(() => { toastMsg = null; }, 3000);
+}
+
+async function refreshAll(silent = false): Promise<void> {
+  if (!silent) {
+    loading = true;
+    error = null;
+  }
   try {
     const [e, m, c, b] = await Promise.all([
       api.getEntries(),
@@ -29,30 +46,89 @@ async function refreshAll(): Promise<void> {
     master = m;
     categories = c;
     breakdown = b;
+    writeCache({ entries, master, categories, breakdown });
   } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
+    if (!silent) error = err instanceof Error ? err.message : String(err);
   } finally {
-    loading = false;
+    if (!silent) loading = false;
   }
 }
 
-async function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<void> {
-  const list = Array.isArray(payload) ? payload : [payload];
-  await Promise.all(list.map(api.addEntry)).catch((err) => {
-    console.error("addEntry failed:", err);
-    throw err;
-  });
-  await refreshAll();
+async function init(): Promise<void> {
+  const cache = readCache();
+  if (cache) {
+    entries = cache.entries;
+    master = cache.master;
+    categories = cache.categories;
+    breakdown = cache.breakdown;
+    void refreshAll(true);
+  } else {
+    await refreshAll(false);
+  }
 }
 
-async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
-  await api.updateEntry(id, patch);
-  await refreshAll();
+function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
+  if (Array.isArray(payload)) {
+    masterLoading = true;
+    void Promise.all(payload.map((p) => api.addEntry(p)))
+      .then(() => { void refreshAll(true); })
+      .catch((err) => { showToast(err); })
+      .finally(() => { masterLoading = false; });
+    return;
+  }
+  const tempId = -(Date.now());
+  const optimistic: Entry = {
+    id: tempId,
+    mainCategory: tagToCategory(payload.tag),
+    ...payload,
+  };
+  entries = [...entries, optimistic];
+  masterLoading = true;
+  void api.addEntry(payload)
+    .then((real) => {
+      entries = entries.map((e) => (e.id === tempId ? real : e));
+      void refreshAll(true);
+    })
+    .catch((err) => {
+      entries = entries.filter((e) => e.id !== tempId);
+      showToast(err);
+    })
+    .finally(() => {
+      masterLoading = false;
+    });
 }
 
-async function deleteEntry(id: number): Promise<void> {
-  await api.deleteEntry(id);
-  await refreshAll();
+function updateEntry(id: number, patch: UpdateEntryPatch): void {
+  const prev = entries.find((e) => e.id === id);
+  if (!prev) return;
+  entries = entries.map((e) =>
+    e.id === id
+      ? { ...e, ...patch, mainCategory: patch.tag ? tagToCategory(patch.tag) : e.mainCategory }
+      : e
+  );
+  masterLoading = true;
+  void api.updateEntry(id, patch)
+    .then(() => { void refreshAll(true); })
+    .catch((err) => {
+      entries = entries.map((e) => (e.id === id ? prev : e));
+      showToast(err);
+    })
+    .finally(() => { masterLoading = false; });
+}
+
+function deleteEntry(id: number): void {
+  const prev = entries.find((e) => e.id === id);
+  const idx = entries.findIndex((e) => e.id === id);
+  if (!prev) return;
+  entries = entries.filter((e) => e.id !== id);
+  masterLoading = true;
+  void api.deleteEntry(id)
+    .then(() => { void refreshAll(true); })
+    .catch((err) => {
+      entries = [...entries.slice(0, idx), prev, ...entries.slice(idx)];
+      showToast(err);
+    })
+    .finally(() => { masterLoading = false; });
 }
 
 export const store = {
@@ -62,8 +138,12 @@ export const store = {
   get breakdown() { return breakdown; },
   get loading() { return loading; },
   get error() { return error; },
+  get masterLoading() { return masterLoading; },
+  get toastMsg() { return toastMsg; },
+  init,
   refreshAll,
   addEntry,
   updateEntry,
   deleteEntry,
+  dismissToast: () => { toastMsg = null; },
 };
