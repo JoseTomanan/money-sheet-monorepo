@@ -1,15 +1,3 @@
-function toIsoDate(raw: unknown): string {
-  if (raw instanceof Date) {
-    return Utilities.formatDate(raw, "Asia/Manila", "yyyy-MM-dd");
-  }
-  if (raw === "" || raw == null) return "";
-  const d = new Date(raw as string | number);
-  if (!isNaN(d.getTime())) {
-    return Utilities.formatDate(d, "Asia/Manila", "yyyy-MM-dd");
-  }
-  return "";
-}
-
 function getEntries(): Entry[] {
   const rows = getIODataRows();
   const entries: Entry[] = [];
