@@ -2,7 +2,7 @@
   import { CATEGORIES } from '../lib/theme';
   import { getTagOptions } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
-  import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction } from '../lib/types';
+  import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction, EntryMutation } from '../lib/types';
   import {
     initSplitState,
     addLeg,
@@ -19,7 +19,7 @@
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
-    onsave: (payload: AddEntryPayload | AddEntryPayload[] | { id: number; patch: UpdateEntryPatch }) => void;
+    onsave: (m: EntryMutation) => void;
     ondelete?: (id: number) => void;
     defaultDirection?: Direction;
   }
@@ -81,14 +81,14 @@
 
   function handleSave() {
     if (splitMode) {
-      onsave(toAddEntryPayloads(split, { date, description }));
+      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description }) });
     } else {
       const amt = parseFloat(amount) || 0;
       const payload: AddEntryPayload = { date, tag, description, direction, amount: amt };
       if (entry) {
-        onsave({ id: entry.id, patch: payload });
+        onsave({ type: 'edit', id: entry.id, patch: payload });
       } else {
-        onsave(payload);
+        onsave({ type: 'add', payload });
       }
     }
     onclose();

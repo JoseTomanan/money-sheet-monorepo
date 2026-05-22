@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { store } from './lib/store.svelte';
-  import type { Entry, AddEntryPayload, UpdateEntryPatch } from './lib/types';
+  import type { Entry, EntryMutation } from './lib/types';
+  import { applyMutation } from './lib/applyMutation';
   import TabBar, { type TabId } from './components/TabBar.svelte';
   import Fab from './components/Fab.svelte';
   import EntrySheet from './components/EntrySheet.svelte';
@@ -35,18 +36,9 @@
     sheetOpen = true;
   }
 
-  async function handleSave(
-    payload: AddEntryPayload | AddEntryPayload[] | { id: number; patch: UpdateEntryPatch }
-  ) {
-    const isAdd = Array.isArray(payload) || !('id' in payload);
-    if (Array.isArray(payload)) {
-      store.addEntry(payload);
-    } else if ('id' in payload) {
-      store.updateEntry(payload.id, payload.patch);
-    } else {
-      store.addEntry(payload);
-    }
-    if (isAdd && scrollArea) {
+  async function handleSave(m: EntryMutation) {
+    applyMutation(store, m);
+    if (m.type === 'add' && scrollArea) {
       await tick();
       scrollArea.scrollTop = scrollArea.scrollHeight;
     }
