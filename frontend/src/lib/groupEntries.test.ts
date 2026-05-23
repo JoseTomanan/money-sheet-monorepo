@@ -60,22 +60,22 @@ describe("groupByWeek", () => {
     expect(groups[0].entries.map((e) => e.id)).toEqual([1, 2, 3]);
   });
 
-  it("formats label as 'Mon D – D' when week is within one month", () => {
+  it("formats label as 'Mon D – D, YYYY' when week is within one month", () => {
     const entries = [entry(1, "2026-05-21")]; // week: May 17 – 23
     const groups = groupByWeek(entries);
-    expect(groups[0].label).toBe("May 17 – 23");
+    expect(groups[0].label).toBe("May 17 – 23, 2026");
   });
 
-  it("formats label as 'Mon D – Mon D' when week crosses a month boundary", () => {
+  it("formats label as 'Mon D – Mon D, YYYY' when week crosses a month boundary", () => {
     const entries = [entry(1, "2026-06-01")]; // week: May 31 – Jun 6
     const groups = groupByWeek(entries);
-    expect(groups[0].label).toBe("May 31 – Jun 6");
+    expect(groups[0].label).toBe("May 31 – Jun 6, 2026");
   });
 
   it("formats label correctly when week crosses a year boundary", () => {
     const entries = [entry(1, "2026-01-01")]; // Jan 1 2026 = Thursday → week: Dec 28 – Jan 3
     const groups = groupByWeek(entries);
-    expect(groups[0].label).toBe("Dec 28 – Jan 3");
+    expect(groups[0].label).toBe("Dec 28 – Jan 3, 2026");
   });
 });
 

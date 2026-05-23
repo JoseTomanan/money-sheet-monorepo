@@ -6,7 +6,7 @@ export interface WeekGroup {
   entries: Entry[];
 }
 
-function weekStartOf(dateStr: string): string {
+export function weekStartOf(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   date.setUTCDate(date.getUTCDate() - date.getUTCDay()); // rewind to Sunday
@@ -15,7 +15,7 @@ function weekStartOf(dateStr: string): string {
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function weekLabel(startStr: string): string {
+export function weekLabel(startStr: string): string {
   const [y, m, d] = startStr.split('-').map(Number);
   const start = new Date(Date.UTC(y, m - 1, d));
   const end = new Date(start);
@@ -26,7 +26,8 @@ function weekLabel(startStr: string): string {
   const sd = start.getUTCDate();
   const ed = end.getUTCDate();
 
-  return sm === em ? `${sm} ${sd} – ${ed}` : `${sm} ${sd} – ${em} ${ed}`;
+  const ey = end.getUTCFullYear();
+  return sm === em ? `${sm} ${sd} – ${ed}, ${ey}` : `${sm} ${sd} – ${em} ${ed}, ${ey}`;
 }
 
 export interface DatePosition {
