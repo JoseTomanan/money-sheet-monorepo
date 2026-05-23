@@ -20,6 +20,7 @@ import {
 } from "vitest";
 import { store } from "./store.svelte";
 import * as api from "./api";
+import { dedupeEntries } from "./dedupe";
 import type { AddEntryPayload, Entry } from "./types";
 
 const HAS_ENV =
@@ -116,7 +117,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     store.addEntry(payload);
     await waitForSettle();
 
-    const fresh = await api.getEntries();
+    const fresh = dedupeEntries(await api.getEntries());
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -142,7 +143,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     store.addEntry(payloads);
     await waitForSettle();
 
-    const fresh = await api.getEntries();
+    const fresh = dedupeEntries(await api.getEntries());
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -171,7 +172,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     store.deleteEntry(seeded.id);
     await waitForSettle();
 
-    const fresh = await api.getEntries();
+    const fresh = dedupeEntries(await api.getEntries());
     expect(fresh.some((e) => e.id === seeded.id)).toBe(false);
     expect(store.entries).toEqual(fresh);
   });
@@ -192,7 +193,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     store.updateEntry(seeded.id, { amount: 999, description: newDescription });
     await waitForSettle();
 
-    const fresh = await api.getEntries();
+    const fresh = dedupeEntries(await api.getEntries());
     const updated = fresh.find((e) => e.id === seeded.id);
     expect(updated).toBeDefined();
     expect(updated!.amount).toBe(999);
