@@ -81,9 +81,10 @@
     {#each CATEGORY_ORDER as key}
       {@const c = CATEGORIES[key]}
       {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip" style="background: {c.pastel}; border: 1px solid {c.color}4D;">
+      <div class="cat-chip">
         <div class="cat-chip-header">
-          <span class="cat-name" style="color: {c.color};">{c.label}</span>
+          <span class="cat-dot" style="background: {c.color}cc;"></span>
+          <span class="cat-name">{c.label}</span>
         </div>
         <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
           {peso(budget)}
@@ -202,19 +203,29 @@
     gap: 8px;
     padding: 2px 0 2px 16px;
   }
+  .category-scroll::after {
+    content: '';
+    flex-shrink: 0;
+    width: 8px;
+  }
   .cat-chip {
     flex-shrink: 0;
     padding: 10px 14px;
     border-radius: var(--radius-md);
     min-width: 96px;
-  }
-  .cat-chip:last-child {
-    margin-right: 16px;
+    background: var(--card);
+    box-shadow: var(--shadow-card);
   }
   .cat-chip-header {
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+  .cat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
   .cat-name {
     font-family: var(--font-display);
