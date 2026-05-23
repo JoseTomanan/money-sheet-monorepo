@@ -3,6 +3,9 @@
 ## Entry
 A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API.
 
+## Split Entry
+A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). `^^` has no query semantics and is never interpreted by the app.
+
 ## Category
 One of seven top-level budget buckets: **HOUSING, FOOD, TRANSIT, HEALTH, FINANCE, LIFESTYLE, MISC**. Always written in ALL CAPS. A Category is the coarsest grouping; Budgets are computed per Category.
 
