@@ -123,7 +123,9 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     expect(newIds).toHaveLength(1);
     expect(store.entries).toEqual(fresh);
-    expect(store.entries.some((e) => e.description === payload.description)).toBe(true);
+    const added = store.entries.find((e) => e.description === payload.description);
+    expect(added).toBeDefined();
+    expect(added!.mainCategory).not.toBe('');
   });
 
   it("store.addEntry (split / array): store.entries equals fresh GAS read after settle", { timeout: 45_000 }, async () => {
