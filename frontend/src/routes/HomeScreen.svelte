@@ -3,6 +3,7 @@
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth } from '../lib/format';
   import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
+  import { dateRunPositions } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
@@ -31,6 +32,7 @@
   );
 
   const todayEntries = $derived(allSorted.slice(-2));
+  const todayPositions = $derived(dateRunPositions(todayEntries));
 
   const latestLabel = $derived(
     latestDate
@@ -116,7 +118,7 @@
           <div
             class="today-row"
             class:dim
-            style="border-top: {i > 0 ? '1px solid var(--border)' : 'none'};"
+            style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
           >
             <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
             <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />

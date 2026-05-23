@@ -5,7 +5,7 @@
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
-  import { groupByWeek } from '../lib/groupEntries';
+  import { groupByWeek, groupEntriesByDate } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
 
@@ -110,39 +110,44 @@
       {#each weekGroups as group (group.key)}
         <div class="week-group">
           <div class="week-label">{group.label}</div>
-          {#each group.entries as entry (entry.id)}
-            {@const dim = entry.amount === 0}
-            {@const pending = store.pendingIds.has(entry.id)}
-            {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
-            <div
-              class="entry-card"
-              class:dim
-              class:pending
-              onclick={() => !pending && onopenedit(entry)}
-              role="button"
-              tabindex="0"
-              onkeydown={(e) => !pending && e.key === 'Enter' && onopenedit(entry)}
-            >
-              {#if pending}
-                <div class="entry-pending-overlay">
-                  <div class="entry-spinner"></div>
+          {#each groupEntriesByDate(group.entries) as dateGroup (dateGroup[0].date)}
+            <div class="date-group">
+              {#each dateGroup as entry, j (entry.id)}
+                {@const dim = entry.amount === 0}
+                {@const pending = store.pendingIds.has(entry.id)}
+                {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
+                <div
+                  class="entry-card"
+                  class:dim
+                  class:pending
+                  class:not-first={j > 0}
+                  onclick={() => !pending && onopenedit(entry)}
+                  role="button"
+                  tabindex="0"
+                  onkeydown={(e) => !pending && e.key === 'Enter' && onopenedit(entry)}
+                >
+                  {#if pending}
+                    <div class="entry-pending-overlay">
+                      <div class="entry-spinner"></div>
+                    </div>
+                  {/if}
+
+                  <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+
+                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
+
+                  <div class="entry-amount-wrap">
+                    <Money
+                      value={entry.amount}
+                      size={14}
+                      weight={500}
+                      negColor={false}
+                      positive={entry.direction === 'I'}
+                      {dim}
+                    />
+                  </div>
                 </div>
-              {/if}
-
-              <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
-
-              <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
-
-              <div class="entry-amount-wrap">
-                <Money
-                  value={entry.amount}
-                  size={14}
-                  weight={500}
-                  negColor={false}
-                  positive={entry.direction === 'I'}
-                  {dim}
-                />
-              </div>
+              {/each}
             </div>
           {/each}
         </div>
@@ -321,6 +326,12 @@
     margin-bottom: 16px;
   }
 
+  .date-group {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
   .week-label {
     font-family: var(--font-display);
     font-size: 11px;
@@ -351,14 +362,13 @@
     gap: 10px;
     padding: 12px 12px 12px 14px;
     background: var(--card);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
+    border-radius: 0;
     cursor: pointer;
-    transition: box-shadow 120ms;
   }
-  .entry-card:hover {
-    box-shadow: 0 2px 4px rgba(20,18,14,0.06), 0 8px 20px rgba(20,18,14,0.10);
+  .entry-card.not-first {
+    border-top: 1px solid var(--border);
   }
+  .entry-card:hover { background: color-mix(in srgb, var(--card) 92%, var(--foreground)); }
   .entry-card.dim { opacity: 0.55; }
   .entry-card.pending { pointer-events: none; cursor: default; }
 
