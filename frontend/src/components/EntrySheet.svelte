@@ -44,6 +44,8 @@
   let activeDrag  = $state<DragState | null>(null);
   let dragOffset  = $state(0);
 
+  let tagScrollerEl: HTMLElement | undefined = $state();
+
   $effect(() => {
     if (open) {
       date        = entry?.date ?? today;
@@ -57,6 +59,14 @@
       activeDrag  = null;
       dragOffset  = 0;
       animTimer = setTimeout(() => { animOpen = true; }, 10);
+      if (entry) {
+        tick().then(() => {
+          const active = tagScrollerEl?.querySelector('.tag-active') as HTMLElement | null;
+          if (tagScrollerEl && active) {
+            tagScrollerEl.scrollLeft = active.offsetLeft - tagScrollerEl.clientWidth / 2 + active.clientWidth / 2;
+          }
+        });
+      }
     } else {
       animOpen = false;
       if (animTimer) { clearTimeout(animTimer); animTimer = null; }
@@ -255,7 +265,7 @@
       <!-- single-mode tag picker -->
       {#if !splitMode}
         <div class="tag-section-label">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
-        <div class="tag-scroller">
+        <div class="tag-scroller" bind:this={tagScrollerEl}>
           {#each tagOptions as opt}
             {@const catStyle = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
             <button
