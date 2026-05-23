@@ -112,15 +112,23 @@
           <div class="week-label">{group.label}</div>
           {#each group.entries as entry (entry.id)}
             {@const dim = entry.amount === 0}
+            {@const pending = store.pendingIds.has(entry.id)}
             {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
             <div
               class="entry-card"
               class:dim
-              onclick={() => onopenedit(entry)}
+              class:pending
+              onclick={() => !pending && onopenedit(entry)}
               role="button"
               tabindex="0"
-              onkeydown={(e) => e.key === 'Enter' && onopenedit(entry)}
+              onkeydown={(e) => !pending && e.key === 'Enter' && onopenedit(entry)}
             >
+              {#if pending}
+                <div class="entry-pending-overlay">
+                  <div class="entry-spinner"></div>
+                </div>
+              {/if}
+
               <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
 
               <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
@@ -337,6 +345,7 @@
   }
 
   .entry-card {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -351,6 +360,27 @@
     box-shadow: 0 2px 4px rgba(20,18,14,0.06), 0 8px 20px rgba(20,18,14,0.10);
   }
   .entry-card.dim { opacity: 0.55; }
+  .entry-card.pending { pointer-events: none; cursor: default; }
+
+  .entry-pending-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-md);
+    z-index: 1;
+  }
+  .entry-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .entry-date-lead {
     font-family: var(--font-mono);

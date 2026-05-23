@@ -19,7 +19,23 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 let masterLoading = $state(false);
 let toastMsg = $state<string | null>(null);
+let pendingIds = $state(new Set<number>());
 
+
+const MUTATION_TIMEOUT_MS = 15_000;
+
+// Svelte 5 requires full reassignment to trigger reactivity on Set state.
+function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
+function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
+
+function withTimeout<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out.')), MUTATION_TIMEOUT_MS)
+    ),
+  ]);
+}
 
 function showToast(err: unknown): void {
   toastMsg = err instanceof Error ? err.message : 'Something went wrong';
@@ -79,14 +95,17 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
     ...payload,
   };
   entries = [...entries, optimistic];
+  addPending(tempId);
   masterLoading = true;
-  void api.addEntry(payload)
+  void withTimeout(api.addEntry(payload))
     .then((real) => {
       entries = entries.map((e) => (e.id === tempId ? real : e));
-      void refreshAll(true);
+      removePending(tempId);
+      return refreshAll(true).then(() => { removePending(real.id); });
     })
     .catch((err) => {
       entries = entries.filter((e) => e.id !== tempId);
+      removePending(tempId);
       showToast(err);
     })
     .finally(() => {
@@ -102,29 +121,36 @@ function updateEntry(id: number, patch: UpdateEntryPatch): void {
       ? { ...e, ...patch, mainCategory: patch.tag ? getMainCategory(patch.tag, categories) : e.mainCategory }
       : e
   );
+  addPending(id);
   masterLoading = true;
-  void api.updateEntry(id, patch)
+  void withTimeout(api.updateEntry(id, patch))
     .then(() => { void refreshAll(true); })
     .catch((err) => {
       entries = entries.map((e) => (e.id === id ? prev : e));
       showToast(err);
     })
-    .finally(() => { masterLoading = false; });
+    .finally(() => {
+      removePending(id);
+      masterLoading = false;
+    });
 }
 
 function deleteEntry(id: number): void {
-  const prev = entries.find((e) => e.id === id);
-  const idx = entries.findIndex((e) => e.id === id);
-  if (!prev) return;
-  entries = entries.filter((e) => e.id !== id);
+  if (!entries.some((e) => e.id === id)) return;
+  addPending(id);
   masterLoading = true;
-  void api.deleteEntry(id)
-    .then(() => { void refreshAll(true); })
+  void withTimeout(api.deleteEntry(id))
+    .then(() => {
+      entries = entries.filter((e) => e.id !== id);
+      void refreshAll(true);
+    })
     .catch((err) => {
-      entries = [...entries.slice(0, idx), prev, ...entries.slice(idx)];
       showToast(err);
     })
-    .finally(() => { masterLoading = false; });
+    .finally(() => {
+      removePending(id);
+      masterLoading = false;
+    });
 }
 
 export const store = {
@@ -136,6 +162,7 @@ export const store = {
   get error() { return error; },
   get masterLoading() { return masterLoading; },
   get toastMsg() { return toastMsg; },
+  get pendingIds() { return pendingIds; },
   init,
   refreshAll,
   addEntry,
