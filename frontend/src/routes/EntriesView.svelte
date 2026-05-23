@@ -48,7 +48,7 @@
 <div class="entries-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
-    <div class="month-label">All Time</div>
+    <div class="page-eyebrow">All Time</div>
     <div class="page-title">
       Entries
       <span class="entry-count">{filtered.length}</span>
@@ -157,21 +157,7 @@
   .page-header {
     padding: 20px 20px 8px;
   }
-  .month-label {
-    font-family: var(--font-display);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
   .page-title {
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--foreground);
-    margin-top: 2px;
-    letter-spacing: -0.5px;
     display: flex;
     align-items: baseline;
     gap: 10px;
@@ -382,19 +368,5 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .entry-date-lead {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 400;
-    font-variant-numeric: tabular-nums;
-    color: var(--muted-foreground);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .entry-amount-wrap {
-    flex-shrink: 0;
-    margin-left: auto;
-  }
 
 </style>

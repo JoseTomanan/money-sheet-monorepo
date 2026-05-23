@@ -49,19 +49,19 @@
   <!-- On Hand hero card -->
   <div class="hero-card card">
     <div class="card-label">ON HAND</div>
-    <div class="hero-amount" class:shimmer={store.masterLoading}>
+    <div class="hero-amount mono-amount" class:shimmer={store.masterLoading}>
       {peso(store.master.onHand)}
     </div>
     <div class="hero-divider"></div>
     <div class="hero-stats">
       <div class="hero-stat">
         <div class="stat-label">This Month</div>
-        <div class="stat-value">{peso(thisMonthTotal)}</div>
+        <div class="stat-value mono-amount">{peso(thisMonthTotal)}</div>
       </div>
       <div class="hero-stat-divider"></div>
       <div class="hero-stat">
         <div class="stat-label">All Total</div>
-        <div class="stat-value">{peso(allTotal)}</div>
+        <div class="stat-value mono-amount">{peso(allTotal)}</div>
       </div>
     </div>
   </div>
@@ -141,8 +141,6 @@
     padding: 20px 22px;
   }
   .hero-amount {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
     font-size: 44px;
     font-weight: 500;
     color: var(--foreground);
@@ -173,8 +171,6 @@
     font-weight: 600;
   }
   .stat-value {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
     margin-top: 4px;
     font-size: 17px;
     color: var(--foreground);
@@ -233,9 +229,6 @@
     font-weight: 500;
   }
 
-  .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-
   .today-teaser {
     display: block;
     width: 100%;
@@ -279,18 +272,5 @@
     color: var(--muted-foreground);
     font-size: 14px;
     font-family: var(--font-sans);
-  }
-  .entry-date-lead {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 400;
-    font-variant-numeric: tabular-nums;
-    color: var(--muted-foreground);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .entry-amount-wrap {
-    flex-shrink: 0;
-    margin-left: auto;
   }
 </style>

@@ -74,6 +74,7 @@ npm run build    # outputs to dist/
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
 - All data fetching is client-side via `fetch()` to the GAS web app URL
 - GAS URL and API secret stored as Vite env vars (`VITE_GAS_URL`, `VITE_API_SECRET`)
+- **CSS rule**: Visual/typographic properties (fonts, colors, shadows, border-radius) belong in `app.css`. Component `<style>` blocks are for layout/spacing overrides that are genuinely instance-specific (margin, padding, flex arrangement).
 
 ## Deployment
 
