@@ -106,9 +106,7 @@
   <!-- Entry list -->
   <div class="entry-list">
     {#if filtered.length === 0}
-      <div class="date-group">
-        <button class="entry-card add-entry-card" onclick={onadd}>+ ADD ENTRY</button>
-      </div>
+      <button class="entry-card add-entry-card standalone" onclick={onadd}>+ ADD ENTRY</button>
     {:else}
       {#each weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
@@ -153,10 +151,10 @@
                   </div>
                 </div>
               {/each}
-              {#if isLatestChunk}
-                <button class="entry-card add-entry-card not-first" onclick={onadd}>+ ADD ENTRY</button>
-              {/if}
             </div>
+            {#if isLatestChunk}
+              <button class="entry-card add-entry-card standalone" onclick={onadd}>+ ADD ENTRY</button>
+            {/if}
           {/each}
         </div>
       {/each}
@@ -357,6 +355,11 @@
     width: 100%;
     border: 0;
     justify-content: center;
+    background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  }
+  .add-entry-card.standalone {
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 2px rgba(13, 148, 136, 0.08), 0 4px 12px rgba(13, 148, 136, 0.16);
   }
 
   .entry-pending-overlay {

@@ -11,7 +11,7 @@ export interface CategoryStyle {
 export const CATEGORIES: Record<string, CategoryStyle> = {
   HOUSING:   { color: '#2a5899', soft: 'rgba(58, 123, 200, 0.14)',  pastel: '#dce8f8', label: 'Housing',
                subcategories: ['Rent', 'Utilities', 'Maintenance'] },
-  FOOD:      { color: '#1e6b3d', soft: 'rgba(47, 138, 85, 0.14)',   pastel: '#d2eedc', label: 'Food',
+  FOOD:      { color: '#186e34', soft: 'rgba(26, 138, 63, 0.14)',   pastel: '#cdebd6', label: 'Food',
                subcategories: ['Groceries', 'Dining'] },
   TRANSIT:   { color: '#9a2e1c', soft: 'rgba(193, 74, 50, 0.14)',   pastel: '#f8ddd9', label: 'Transit',
                subcategories: ['Commute Fare', 'Auto Maintenance', 'Fuel', 'Parking'] },
