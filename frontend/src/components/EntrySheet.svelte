@@ -13,6 +13,7 @@
     type SplitState,
   } from '../lib/splitEntry';
   import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '../lib/dragGesture';
+  import SplitLegCarousel from './SplitLegCarousel.svelte';
 
   interface Props {
     open: boolean;
@@ -81,7 +82,7 @@
 
   function handleSave() {
     if (splitMode) {
-      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description }) });
+      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description, direction }) });
     } else {
       const amt = parseFloat(amount) || 0;
       const payload: AddEntryPayload = { date, tag, description, direction, amount: amt };
@@ -184,10 +185,10 @@
         >Incoming</button>
       </div>
 
-      <!-- split toggle — only for new Incoming entries -->
-      {#if direction === 'I' && !entry}
+      <!-- split toggle — only for new entries -->
+      {#if !entry}
         <div class="split-toggle-row">
-          <span class="split-toggle-label">Split across categories</span>
+          <span class="split-toggle-label">{direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
           <button
             class="split-toggle-btn"
             class:split-active={splitMode}
@@ -204,52 +205,13 @@
       {/if}
 
       {#if splitMode}
-        <!-- leg list -->
-        {#each split.legs as leg, i}
-          <div class="split-leg">
-            <div class="leg-header">
-              <span class="leg-label">Leg {i + 1}</span>
-              <button
-                class="leg-remove"
-                disabled={split.legs.length <= 2}
-                onclick={() => { split = removeLeg(split, i); }}
-              >Remove</button>
-            </div>
-            <div class="leg-amount-row">
-              <span class="leg-peso">₱</span>
-              <input
-                type="text"
-                inputmode="decimal"
-                class="leg-amount-input"
-                value={leg.amount}
-                oninput={(e) => {
-                  split = updateLeg(split, i, {
-                    amount: (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, ''),
-                  });
-                }}
-                placeholder="0.00"
-              />
-            </div>
-            <div class="tag-scroller leg-tags">
-              {#each tagOptions as opt}
-                {@const catStyle = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
-                <button
-                  class="tag-pill"
-                  class:tag-active={leg.tag === opt.value}
-                  style="
-                    background: {leg.tag === opt.value ? catStyle.color : catStyle.soft};
-                    color: {leg.tag === opt.value ? '#fff' : catStyle.color};
-                  "
-                  onclick={() => { split = updateLeg(split, i, { tag: opt.value }); }}
-                >
-                  <span class="tag-dot" style="background: {leg.tag === opt.value ? '#fff' : catStyle.color}"></span>
-                  {opt.value}
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/each}
-        <button class="add-leg-btn" onclick={() => { split = addLeg(split); }}>+ Add leg</button>
+        <SplitLegCarousel
+          {split}
+          {tagOptions}
+          onupdate={(i, patch) => { split = updateLeg(split, i, patch); }}
+          onremove={(i) => { split = removeLeg(split, i); }}
+          onadd={() => { split = addLeg(split); }}
+        />
       {:else}
         <!-- single amount input -->
         <div class="amount-card">
@@ -457,83 +419,6 @@
     background: rgba(47, 138, 85, 0.12);
     color: #2f8a55;
     border-color: rgba(47, 138, 85, 0.25);
-  }
-
-  .split-leg {
-    margin: 10px 16px 0;
-    padding: 12px 16px;
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    border: 1px solid var(--border);
-  }
-  .leg-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-  .leg-label {
-    font-size: 10px;
-    font-family: var(--font-sans);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .leg-remove {
-    background: none;
-    border: 0;
-    font-family: var(--font-sans);
-    font-size: 12px;
-    color: var(--destructive);
-    cursor: pointer;
-    padding: 0;
-  }
-  .leg-remove:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-  .leg-amount-row {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    margin-bottom: 10px;
-  }
-  .leg-peso {
-    font-family: var(--font-mono);
-    font-size: 20px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-  }
-  .leg-amount-input {
-    background: transparent;
-    border: 0;
-    outline: none;
-    font-family: var(--font-mono);
-    font-size: 28px;
-    font-weight: 500;
-    color: var(--foreground);
-    letter-spacing: -0.8px;
-    width: 100%;
-  }
-  .leg-amount-input::placeholder { color: var(--muted-foreground); }
-  .leg-tags {
-    padding: 0;
-  }
-
-  .add-leg-btn {
-    display: block;
-    margin: 10px 16px 0;
-    width: calc(100% - 32px);
-    padding: 10px 0;
-    border-radius: var(--radius-md);
-    border: 1px dashed var(--border);
-    background: transparent;
-    color: var(--accent);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
   }
 
   .amount-card {
