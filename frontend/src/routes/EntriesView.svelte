@@ -5,7 +5,7 @@
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
-  import { groupByWeek, groupEntriesByDate } from '../lib/groupEntries';
+  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
 
@@ -26,6 +26,12 @@
   let filterDir  = $state<'all' | 'I' | 'O'>('all');
   let filterCat  = $state('');
 
+  function currentWeekKey() {
+    return weekStartOf(new Date().toISOString().slice(0, 10));
+  }
+
+  let selectedWeek = $state(currentWeekKey());
+
   const categoryNames = $derived(Object.keys(store.categories).sort());
 
   const filtered = $derived(
@@ -33,12 +39,23 @@
       .filter((e) => {
         if (filterDir !== 'all' && e.direction !== filterDir) return false;
         if (filterCat && e.mainCategory !== filterCat) return false;
+        if (weekStartOf(e.date) !== selectedWeek) return false;
         return true;
       })
       .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
   );
 
   const weekGroups = $derived(groupByWeek(filtered));
+
+  const selectableWeeks = $derived(() => {
+    const cur = currentWeekKey();
+    const fromEntries = groupByWeek(
+      store.entries.filter(e => filterDir === 'all' || e.direction === filterDir)
+    ).map(g => ({ key: g.key, label: g.label }));
+    const hasCur = fromEntries.some(w => w.key === cur);
+    const all = hasCur ? fromEntries : [...fromEntries, { key: cur, label: weekLabel(cur) }];
+    return all.sort((a, b) => a.key.localeCompare(b.key));
+  });
 
   const catCounts = $derived(
     countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
@@ -49,7 +66,11 @@
 <div class="entries-view" style="padding-bottom: 72px;">
   <!-- Page header -->
   <div class="page-header">
-    <div class="page-eyebrow">All Time</div>
+    <select class="page-eyebrow" bind:value={selectedWeek}>
+      {#each selectableWeeks() as week (week.key)}
+        <option value={week.key}>{week.label}</option>
+      {/each}
+    </select>
     <div class="page-title">
       Entries
       <span class="entry-count">{filtered.length}</span>
