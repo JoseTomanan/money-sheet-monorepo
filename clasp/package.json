@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc && node -e \"require('fs').copyFileSync('src/appsscript.json','dist/appsscript.json')\"",
-    "push": "npm run build && npx @google/clasp push"
+    "build": "tsc && sed -i.bak -E 's/^export (function|const|let|var) /\\1 /' dist/lib/*.js && rm dist/lib/*.bak && node -e \"require('fs').copyFileSync('src/appsscript.json','dist/appsscript.json')\"",
+    "push": "npm run build && npx @google/clasp push",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "devDependencies": {
     "@types/google-apps-script": "^1.0.83",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^4.1.7"
   }
 }
