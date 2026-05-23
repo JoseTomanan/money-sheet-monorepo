@@ -67,7 +67,9 @@ function addEntry(payload: AddEntryPayload): Entry {
 
     sh.getRange(targetRow, COL.DATE).setValue(payload.date);
     sh.getRange(targetRow, COL.TAG).setValue(payload.tag);
-    // COL.MAIN_CAT (D) is formula-driven — GAS never writes it
+    sh.getRange(targetRow, COL.MAIN_CAT).setFormula(
+      `=IFERROR(VLOOKUP(C${targetRow},Categories!$B:$C,2,FALSE),IF(COUNTIF(Categories!$C:$C,C${targetRow})>0,C${targetRow},""))`
+    );
     sh.getRange(targetRow, COL.DESC).setValue(payload.description);
     sh.getRange(targetRow, COL.DIR).setValue(payload.direction);
     sh.getRange(targetRow, COL.AMOUNT).setValue(payload.amount);
