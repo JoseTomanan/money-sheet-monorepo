@@ -357,6 +357,10 @@
     width: 100%;
     border: 0;
     justify-content: center;
+    background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  }
+  .add-entry-card.not-first {
+    border-top: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border));
   }
 
   .entry-pending-overlay {
