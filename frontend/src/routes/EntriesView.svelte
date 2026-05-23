@@ -354,7 +354,7 @@
   .entry-card.not-first {
     border-top: 1px solid var(--border);
   }
-  .entry-card:hover { background: color-mix(in srgb, var(--card) 92%, var(--foreground)); }
+  .entry-card:hover { background: color-mix(in srgb, var(--card) 96%, var(--foreground)); }
   .entry-card.dim { opacity: 0.55; }
   .entry-card.pending { pointer-events: none; cursor: default; }
 
