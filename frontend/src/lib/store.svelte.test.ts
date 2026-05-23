@@ -29,6 +29,27 @@ function makePayload(overrides: Partial<CachePayload> = {}): CachePayload {
   };
 }
 
+const dupEntries: Entry[] = [
+  {
+    id: 30,
+    date: "2026-01-10",
+    tag: "Groceries",
+    mainCategory: "Food",
+    description: "first",
+    direction: "O",
+    amount: 50,
+  },
+  {
+    id: 30,
+    date: "2026-01-11",
+    tag: "Groceries",
+    mainCategory: "Food",
+    description: "duplicate",
+    direction: "O",
+    amount: 75,
+  },
+];
+
 function makeFetchMock() {
   return vi.fn().mockImplementation((url: string) => {
     const qs = typeof url === "string" && url.includes("?") ? url.split("?")[1] : "";
@@ -108,6 +129,28 @@ describe("store", () => {
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
     });
+
+    it("dedupes entries with duplicate IDs, keeping first occurrence", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const qs = typeof url === "string" && url.includes("?") ? url.split("?")[1] : "";
+          const action = new URLSearchParams(qs).get("action");
+          let body: Record<string, unknown>;
+          switch (action) {
+            case "getEntries": body = { entries: dupEntries }; break;
+            case "getMaster": body = { master: freshMaster }; break;
+            case "getCategories": body = { categories: freshCategories }; break;
+            case "getSubcategoryBreakdown": body = { breakdown: freshBreakdown }; break;
+            default: body = { error: `unknown action: ${action}` };
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(body)) });
+        })
+      );
+      await store.refreshAll();
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].description).toBe("first");
+    });
   });
 
   describe("init (stale-while-revalidate)", () => {
@@ -145,6 +188,14 @@ describe("store", () => {
       await vi.waitFor(() => {
         expect(store.entries).toEqual(freshEntries);
       });
+    });
+
+    it("dedupes entries hydrated from a corrupt cache", async () => {
+      writeCache(makePayload({ entries: dupEntries }));
+      const initPromise = store.init();
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].description).toBe("first");
+      await initPromise;
     });
   });
 });
