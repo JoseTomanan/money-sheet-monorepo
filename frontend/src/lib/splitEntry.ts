@@ -38,10 +38,10 @@ export function toAddEntryPayloads(
   state: SplitState,
   shared: { date: string; description: string; direction: Direction }
 ): AddEntryPayload[] {
-  return state.legs.map((leg) => ({
+  return state.legs.map((leg, i) => ({
     date: shared.date,
     tag: leg.tag,
-    description: shared.description,
+    description: i === 0 ? shared.description : "^^",
     direction: shared.direction,
     amount: parseFloat(leg.amount),
   }));
