@@ -47,13 +47,13 @@ describe("toAddEntryPayloads", () => {
     expect(payloads[1]).toEqual({
       date: "2026-05-21",
       tag: "HOUSING",
-      description: "payday",
+      description: "^^",
       direction: "I",
       amount: 1500.5,
     });
   });
 
-  it("emits one payload per leg with direction O for Outgoing split", () => {
+  it("emits one payload per leg with direction O; subsequent legs use ^^ description", () => {
     const state = updateLeg(
       updateLeg(initSplitState(), 0, { tag: "Dining", amount: "250" }),
       1, { tag: "Fuel", amount: "800" }
@@ -74,10 +74,29 @@ describe("toAddEntryPayloads", () => {
     expect(payloads[1]).toEqual({
       date: "2026-05-22",
       tag: "Fuel",
-      description: "weekly expenses",
+      description: "^^",
       direction: "O",
       amount: 800,
     });
+  });
+
+  it("uses ^^ for all legs after the first in a 3-leg Outgoing split", () => {
+    const state = addLeg(
+      updateLeg(
+        updateLeg(initSplitState(), 0, { tag: "Dining", amount: "200" }),
+        1, { tag: "Fuel", amount: "500" }
+      )
+    );
+    const three = updateLeg(state, 2, { tag: "Grooming", amount: "150" });
+    const payloads = toAddEntryPayloads(three, {
+      date: "2026-05-23",
+      description: "May expenses",
+      direction: "O",
+    });
+    expect(payloads).toHaveLength(3);
+    expect(payloads[0].description).toBe("May expenses");
+    expect(payloads[1].description).toBe("^^");
+    expect(payloads[2].description).toBe("^^");
   });
 });
 
