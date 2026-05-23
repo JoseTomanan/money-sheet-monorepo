@@ -29,6 +29,32 @@ function weekLabel(startStr: string): string {
   return sm === em ? `${sm} ${sd} – ${ed}` : `${sm} ${sd} – ${em} ${ed}`;
 }
 
+export interface DatePosition {
+  isFirstOfDate: boolean;
+  isLastOfDate: boolean;
+}
+
+export function dateRunPositions(entries: Entry[]): DatePosition[] {
+  return entries.map((entry, i) => ({
+    isFirstOfDate: i === 0 || entries[i - 1].date !== entry.date,
+    isLastOfDate:  i === entries.length - 1 || entries[i + 1].date !== entry.date,
+  }));
+}
+
+/** Groups consecutive same-date entries into sub-arrays. Input order is preserved. */
+export function groupEntriesByDate(entries: Entry[]): Entry[][] {
+  const groups: Entry[][] = [];
+  for (const entry of entries) {
+    const last = groups[groups.length - 1];
+    if (last && last[0].date === entry.date) {
+      last.push(entry);
+    } else {
+      groups.push([entry]);
+    }
+  }
+  return groups;
+}
+
 export function groupByWeek(entries: Entry[]): WeekGroup[] {
   const map = new Map<string, Entry[]>();
   for (const entry of entries) {
