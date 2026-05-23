@@ -34,33 +34,61 @@ interface AddEntryPayload {
 }
 
 function addEntry(payload: AddEntryPayload): Entry {
-  const sh = getIOSheet();
-  const existing = getEntries();
-  const nextId =
-    existing.length > 0 ? Math.max(...existing.map((e) => e.id)) + 1 : 1;
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(10_000);
+  try {
+    const sh = getIOSheet();
+    const existing = getEntries();
+    const existingIds = new Set(existing.map((e) => e.id));
+    let nextId = existing.length > 0 ? Math.max(...existing.map((e) => e.id)) + 1 : 1;
+    while (existingIds.has(nextId)) nextId++;
 
-  const newRow = sh.getLastRow() + 1;
-  sh.getRange(newRow, COL.DATE).setValue(payload.date);
-  sh.getRange(newRow, COL.TAG).setValue(payload.tag);
-  // COL.MAIN_CAT (D) is formula-driven — GAS never writes it
-  sh.getRange(newRow, COL.DESC).setValue(payload.description);
-  sh.getRange(newRow, COL.DIR).setValue(payload.direction);
-  sh.getRange(newRow, COL.AMOUNT).setValue(payload.amount);
-  sh.getRange(newRow, COL.ID).setValue(nextId);
+    // Date-ordered insertion: scan col B for correct position
+    const lastRow = sh.getLastRow();
+    let targetRow: number;
+    if (lastRow < 2) {
+      targetRow = 2;
+    } else {
+      const colBValues = sh.getRange(2, COL.DATE, lastRow - 1, 1).getValues();
+      const dates: (Date | null)[] = colBValues.map((r) => {
+        const v = r[0];
+        return v instanceof Date ? v : v ? new Date(String(v)) : null;
+      });
+      const newDate = new Date(payload.date);
+      const idx = findInsertionIndex(dates, newDate);
+      const sheetRow = 2 + idx;
+      if (sheetRow <= lastRow) {
+        sh.insertRowBefore(sheetRow);
+        targetRow = sheetRow;
+      } else {
+        targetRow = lastRow + 1;
+      }
+    }
 
-  // Read back mainCategory after formula resolves
-  SpreadsheetApp.flush();
-  const mainCategory = String(sh.getRange(newRow, COL.MAIN_CAT).getValue());
+    sh.getRange(targetRow, COL.DATE).setValue(payload.date);
+    sh.getRange(targetRow, COL.TAG).setValue(payload.tag);
+    // COL.MAIN_CAT (D) is ARRAYFORMULA-driven — GAS never writes it
+    sh.getRange(targetRow, COL.DESC).setValue(payload.description);
+    sh.getRange(targetRow, COL.DIR).setValue(payload.direction);
+    sh.getRange(targetRow, COL.AMOUNT).setValue(payload.amount);
+    sh.getRange(targetRow, COL.ID).setValue(nextId);
 
-  return {
-    id: nextId,
-    date: payload.date,
-    tag: payload.tag,
-    mainCategory,
-    description: payload.description,
-    direction: payload.direction,
-    amount: payload.amount,
-  };
+    // Read back mainCategory after formula resolves
+    SpreadsheetApp.flush();
+    const mainCategory = String(sh.getRange(targetRow, COL.MAIN_CAT).getValue());
+
+    return {
+      id: nextId,
+      date: payload.date,
+      tag: payload.tag,
+      mainCategory,
+      description: payload.description,
+      direction: payload.direction,
+      amount: payload.amount,
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 interface UpdateEntryPatch {

@@ -29,6 +29,27 @@ function makePayload(overrides: Partial<CachePayload> = {}): CachePayload {
   };
 }
 
+const dupEntries: Entry[] = [
+  {
+    id: 30,
+    date: "2026-01-10",
+    tag: "Groceries",
+    mainCategory: "Food",
+    description: "first",
+    direction: "O",
+    amount: 50,
+  },
+  {
+    id: 30,
+    date: "2026-01-11",
+    tag: "Groceries",
+    mainCategory: "Food",
+    description: "duplicate",
+    direction: "O",
+    amount: 75,
+  },
+];
+
 function makeFetchMock() {
   return vi.fn().mockImplementation((url: string) => {
     const qs = typeof url === "string" && url.includes("?") ? url.split("?")[1] : "";
@@ -55,6 +76,167 @@ function makeFetchMock() {
     return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(body)) });
   });
 }
+
+describe("pendingIds", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("starts empty", () => {
+    expect(store.pendingIds.size).toBe(0);
+  });
+
+  it("addEntry: a pending id exists while the api call is in-flight", async () => {
+    let resolveFetch!: (v: unknown) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=getEntries") ||
+            (url as string).includes("action=getMaster") ||
+            (url as string).includes("action=getCategories") ||
+            (url as string).includes("action=getSubcategoryBreakdown")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return new Promise((res) => { resolveFetch = res; });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    // one pending id (the tempId) while fetch is in-flight
+    expect(store.pendingIds.size).toBe(1);
+    // settle
+    resolveFetch({ text: () => Promise.resolve(JSON.stringify({ entry: { id: 42, date: "2026-01-01", tag: "Food", mainCategory: "Food", description: "test", direction: "O", amount: 50 } })) });
+    await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
+  });
+
+  it("updateEntry: id in pendingIds during call; cleared on success", async () => {
+    // seed the store with an existing entry
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+    // freshEntries[0].id === 1
+
+    let resolvePost!: (v: unknown) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return new Promise((res) => { resolvePost = res; });
+      })
+    );
+    store.updateEntry(1, { description: "updated" });
+    expect(store.pendingIds.has(1)).toBe(true);
+    resolvePost({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+  });
+
+  it("updateEntry: pendingIds cleared on failure + entry reverted", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+    expect(store.entries.find((e) => e.id === 1)?.description).toBe("fresh");
+  });
+
+  it("deleteEntry: entry stays visible while pending; removed on success", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+
+    let resolvePost!: (v: unknown) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          // refresh returns no entries (simulates deletion confirmed)
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return new Promise((res) => { resolvePost = res; });
+      })
+    );
+    store.deleteEntry(1);
+    // entry must still be visible while the API call is in-flight
+    expect(store.entries.some((e) => e.id === 1)).toBe(true);
+    expect(store.pendingIds.has(1)).toBe(true);
+    // resolve the delete
+    resolvePost({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+  });
+
+  it("deleteEntry: entry stays + pendingIds cleared on failure", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.deleteEntry(1);
+    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+    expect(store.entries.some((e) => e.id === 1)).toBe(true);
+  });
+
+  it("15s timeout: addEntry rolls back and shows timeout toast", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        // never resolves — simulates a hung request
+        return new Promise(() => {});
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    expect(store.entries.length).toBe(1); // optimistic add
+    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.waitFor(() => {
+      expect(store.entries.length).toBe(0);
+      expect(store.pendingIds.size).toBe(0);
+      expect(store.toastMsg).toBe("Request timed out.");
+    });
+    vi.useRealTimers();
+  });
+
+  it("addEntry: pendingIds cleared on api failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
+  });
+});
 
 describe("store", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
@@ -108,6 +290,28 @@ describe("store", () => {
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
     });
+
+    it("dedupes entries with duplicate IDs, keeping first occurrence", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const qs = typeof url === "string" && url.includes("?") ? url.split("?")[1] : "";
+          const action = new URLSearchParams(qs).get("action");
+          let body: Record<string, unknown>;
+          switch (action) {
+            case "getEntries": body = { entries: dupEntries }; break;
+            case "getMaster": body = { master: freshMaster }; break;
+            case "getCategories": body = { categories: freshCategories }; break;
+            case "getSubcategoryBreakdown": body = { breakdown: freshBreakdown }; break;
+            default: body = { error: `unknown action: ${action}` };
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(body)) });
+        })
+      );
+      await store.refreshAll();
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].description).toBe("first");
+    });
   });
 
   describe("init (stale-while-revalidate)", () => {
@@ -145,6 +349,14 @@ describe("store", () => {
       await vi.waitFor(() => {
         expect(store.entries).toEqual(freshEntries);
       });
+    });
+
+    it("dedupes entries hydrated from a corrupt cache", async () => {
+      writeCache(makePayload({ entries: dupEntries }));
+      const initPromise = store.init();
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].description).toBe("first");
+      await initPromise;
     });
   });
 });
