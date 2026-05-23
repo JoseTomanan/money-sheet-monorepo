@@ -50,7 +50,7 @@
   <div class="onhand-card card">
     <div class="onhand-left">
       <div class="card-label">On Hand</div>
-      <div class="onhand-amount" class:shimmer={store.masterLoading} style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
+      <div class="onhand-amount mono-amount" class:shimmer={store.masterLoading}>
         {peso(store.master.onHand)}
       </div>
     </div>
@@ -93,7 +93,7 @@
   <SectionHeader>
     {#snippet children()}By Category{/snippet}
   </SectionHeader>
-  <div class="cat-list">
+  <div class="cat-list card">
     {#each categoryData.sort((a, b) => b.spent - a.spent) as d, i}
       <div
         class="cat-row"
@@ -102,7 +102,7 @@
         <div class="cat-row-main">
           <span class="cat-dot" style="background: {d.c.color}cc;"></span>
           <span class="cat-label">{d.c.label}</span>
-          <span class="cat-pct" style="font-family: var(--font-mono); font-variant-numeric: tabular-nums;">
+          <span class="cat-pct mono-amount">
             {d.pct.toFixed(1)}%
           </span>
           <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
@@ -179,9 +179,6 @@
 
   .cat-list {
     margin: 0 16px;
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .cat-row {
@@ -233,6 +230,4 @@
     color: var(--muted-foreground);
   }
 
-  .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 </style>
