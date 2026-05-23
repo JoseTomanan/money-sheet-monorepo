@@ -97,6 +97,17 @@
     color: var(--accent);
   }
 
+  .tab-icon {
+    border-radius: var(--radius-pill);
+    padding: 4px 14px;
+    background: transparent;
+    transition: background 150ms;
+  }
+
+  .tab-btn.active .tab-icon {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
   .tab-label {
     font-family: var(--font-display);
     font-size: 10px;

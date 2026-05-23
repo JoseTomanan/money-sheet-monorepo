@@ -397,9 +397,9 @@
     border-color: rgba(193, 74, 50, 0.25);
   }
   .active-in {
-    background: rgba(47, 138, 85, 0.12);
-    color: #2f8a55;
-    border-color: rgba(47, 138, 85, 0.25);
+    background: color-mix(in srgb, var(--positive) 12%, transparent);
+    color: var(--positive);
+    border-color: color-mix(in srgb, var(--positive) 25%, transparent);
   }
 
   .split-toggle-row {
@@ -426,9 +426,9 @@
     transition: background 150ms, color 150ms;
   }
   .split-toggle-btn.split-active {
-    background: rgba(47, 138, 85, 0.12);
-    color: #2f8a55;
-    border-color: rgba(47, 138, 85, 0.25);
+    background: color-mix(in srgb, var(--positive) 12%, transparent);
+    color: var(--positive);
+    border-color: color-mix(in srgb, var(--positive) 25%, transparent);
   }
 
   .amount-card {
