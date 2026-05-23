@@ -1,6 +1,7 @@
 import * as api from './api';
 import { readCache, writeCache } from './cache';
 import { getMainCategory } from './domain';
+import { dedupeEntries } from './dedupe';
 import type {
   Entry,
   MasterRow,
@@ -37,7 +38,7 @@ async function refreshAll(silent = false): Promise<void> {
       api.getCategories(),
       api.getSubcategoryBreakdown(),
     ]);
-    entries = e;
+    entries = dedupeEntries(e);
     master = m;
     categories = c;
     breakdown = b;
@@ -52,7 +53,7 @@ async function refreshAll(silent = false): Promise<void> {
 async function init(): Promise<void> {
   const cache = readCache();
   if (cache) {
-    entries = cache.entries;
+    entries = dedupeEntries(cache.entries);
     master = cache.master;
     categories = cache.categories;
     breakdown = cache.breakdown;

@@ -34,10 +34,14 @@ interface AddEntryPayload {
 }
 
 function addEntry(payload: AddEntryPayload): Entry {
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(10_000);
+  try {
   const sh = getIOSheet();
   const existing = getEntries();
-  const nextId =
-    existing.length > 0 ? Math.max(...existing.map((e) => e.id)) + 1 : 1;
+  const existingIds = new Set(existing.map((e) => e.id));
+  let nextId = existing.length > 0 ? Math.max(...existing.map((e) => e.id)) + 1 : 1;
+  while (existingIds.has(nextId)) nextId++;
 
   const newRow = sh.getLastRow() + 1;
   sh.getRange(newRow, COL.DATE).setValue(payload.date);
@@ -61,6 +65,9 @@ function addEntry(payload: AddEntryPayload): Entry {
     direction: payload.direction,
     amount: payload.amount,
   };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 interface UpdateEntryPatch {
