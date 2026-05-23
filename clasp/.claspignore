@@ -3,3 +3,5 @@ package.json
 package-lock.json
 tsconfig.json
 .clasp.json
+**/*.test.ts
+**/*.test.js
