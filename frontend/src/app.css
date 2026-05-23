@@ -149,6 +149,13 @@ html, body {
   flex-shrink: 0;
   margin-left: auto;
 }
+.add-entry-card {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
 
 /* ── Loading shimmer ───────────────────────────────────────────── */
 .shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }

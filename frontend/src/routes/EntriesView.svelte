@@ -11,11 +11,12 @@
 
   interface Props {
     onopenedit: (entry: Entry) => void;
+    onadd: () => void;
     scrollEl: HTMLElement | null;
     scrollTop: number;
   }
 
-  let { onopenedit, scrollEl, scrollTop }: Props = $props();
+  let { onopenedit, onadd, scrollEl, scrollTop }: Props = $props();
 
   onMount(async () => {
     await tick();
@@ -103,14 +104,18 @@
   </div>
 
   <!-- Entry list -->
-  <div class="entry-list" class:empty-state={filtered.length === 0}>
+  <div class="entry-list">
     {#if filtered.length === 0}
-      <div class="empty">No entries found.</div>
+      <div class="date-group">
+        <button class="entry-card add-entry-card" onclick={onadd}>+ ADD ENTRY</button>
+      </div>
     {:else}
-      {#each weekGroups as group (group.key)}
+      {#each weekGroups as group, wi (group.key)}
+        {@const dateGroups = groupEntriesByDate(group.entries)}
         <div class="week-group">
           <div class="week-label">{group.label}</div>
-          {#each groupEntriesByDate(group.entries) as dateGroup (dateGroup[0].date)}
+          {#each dateGroups as dateGroup, di (dateGroup[0].date)}
+            {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
             <div class="date-group">
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
@@ -148,6 +153,9 @@
                   </div>
                 </div>
               {/each}
+              {#if isLatestChunk}
+                <button class="entry-card add-entry-card not-first" onclick={onadd}>+ ADD ENTRY</button>
+              {/if}
             </div>
           {/each}
         </div>
@@ -327,19 +335,6 @@
     color: var(--muted-foreground);
     padding: 4px 2px 2px;
   }
-  .entry-list.empty-state {
-    flex: 1;
-    min-height: calc(100dvh - 220px);
-    justify-content: center;
-    align-items: center;
-  }
-  .empty {
-    padding: 32px;
-    text-align: center;
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    font-size: 14px;
-  }
 
   .entry-card {
     position: relative;
@@ -357,6 +352,12 @@
   .entry-card:hover { background: color-mix(in srgb, var(--card) 96%, var(--foreground)); }
   .entry-card.dim { opacity: 0.55; }
   .entry-card.pending { pointer-events: none; cursor: default; }
+
+  .add-entry-card {
+    width: 100%;
+    border: 0;
+    justify-content: center;
+  }
 
   .entry-pending-overlay {
     position: absolute;

@@ -66,7 +66,7 @@
     {:else if tab === 'home'}
       <HomeScreen onnavigate={(t) => (tab = t)} />
     {:else if tab === 'entries'}
-      <EntriesView onopenedit={openEdit} scrollEl={scrollArea} {scrollTop} />
+      <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} />
     {:else}
       <BudgetsView />
     {/if}
