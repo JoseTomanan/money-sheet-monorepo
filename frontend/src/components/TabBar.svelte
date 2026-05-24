@@ -115,4 +115,10 @@
     letter-spacing: 0.2px;
     margin-top: 2px;
   }
+
+  @media (min-width: 768px) {
+    .tab-bar-pill {
+      max-width: 100%;
+    }
+  }
 </style>
