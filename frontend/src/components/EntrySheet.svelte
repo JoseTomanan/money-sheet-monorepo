@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { CATEGORIES } from '../lib/theme';
   import { getTagOptions } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
@@ -73,16 +74,6 @@
     }
   });
 
-  // Reset tag + split state when direction changes
-  let prevDirection = $state<Direction>('O');
-  $effect(() => {
-    if (direction !== prevDirection) {
-      prevDirection = direction;
-      tag       = '';
-      splitMode = false;
-      split     = initSplitState();
-    }
-  });
 
   const tagOptions = $derived(getTagOptions(direction, categories));
 
@@ -186,12 +177,12 @@
         <button
           class="dir-btn"
           class:active-out={direction === 'O'}
-          onclick={() => (direction = 'O')}
+          onclick={() => { if (direction !== 'O') { direction = 'O'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Outgoing</button>
         <button
           class="dir-btn"
           class:active-in={direction === 'I'}
-          onclick={() => (direction = 'I')}
+          onclick={() => { if (direction !== 'I') { direction = 'I'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Incoming</button>
       </div>
 
