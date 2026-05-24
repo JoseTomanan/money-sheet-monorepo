@@ -100,13 +100,15 @@ describe("EntriesView add-entry card", () => {
     expect(getByText("Beta")).toBeInTheDocument();
   });
 
-  it("places the add card in the last date-group", () => {
+  it("places the add card immediately after the last date-group", () => {
     mockStore.entries = [makeEntry(1, "2026-05-17"), makeEntry(2, "2026-05-20")];
     const { container, getByRole } = render(EntriesView, baseProps());
     const addCard = getByRole("button", { name: /ADD ENTRY/ });
     const allDateGroups = container.querySelectorAll(".date-group");
     const lastGroup = allDateGroups[allDateGroups.length - 1];
-    expect(lastGroup.contains(addCard)).toBe(true);
+    // add card is a sibling after the last date-group (not inside it —
+    // date-group has overflow:hidden which would clip the card's border-radius)
+    expect(lastGroup.nextElementSibling).toBe(addCard);
   });
 
   it("calls onadd when + ADD ENTRY is clicked", async () => {
