@@ -184,6 +184,17 @@
   .cat-row {
     padding: 14px 16px;
   }
+
+  @media (min-width: 768px) {
+    .cat-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+    .cat-row {
+      border-bottom: 1px solid var(--border);
+    }
+  }
   .cat-row-main {
     display: flex;
     align-items: center;
@@ -222,12 +233,5 @@
     transition: width 600ms cubic-bezier(.2,.7,.2,1);
   }
 
-  .cat-budget-label {
-    margin-top: 5px;
-    margin-left: 20px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    color: var(--muted-foreground);
-  }
 
 </style>
