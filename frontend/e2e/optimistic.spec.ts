@@ -19,7 +19,7 @@ test("adding an entry shows it immediately without a loading spinner", async ({ 
   const desc = `opt-add-${Date.now()}`;
 
   await switchTab(page, "Entries");
-  await page.getByRole("button", { name: "Add entry" }).click();
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
   await page.locator(".sheet.open").waitFor({ state: "visible" });
 
   await page.locator(".amount-input").fill("50");
@@ -51,7 +51,7 @@ test("deleting an entry removes it immediately without a loading spinner", async
   const desc = `opt-del-${Date.now()}`;
 
   await switchTab(page, "Entries");
-  await page.getByRole("button", { name: "Add entry" }).click();
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
   await page.locator(".sheet.open").waitFor({ state: "visible" });
   await page.locator(".amount-input").fill("1");
   await page.locator(".field-input").first().fill(desc);
