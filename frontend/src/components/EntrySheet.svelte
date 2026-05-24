@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { CATEGORIES } from '../lib/theme';
   import { getTagOptions } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
@@ -44,6 +45,8 @@
   let activeDrag  = $state<DragState | null>(null);
   let dragOffset  = $state(0);
 
+  let tagScrollerEl: HTMLElement | undefined = $state();
+
   $effect(() => {
     if (open) {
       date        = entry?.date ?? today;
@@ -57,22 +60,20 @@
       activeDrag  = null;
       dragOffset  = 0;
       animTimer = setTimeout(() => { animOpen = true; }, 10);
+      if (entry) {
+        tick().then(() => {
+          const active = tagScrollerEl?.querySelector('.tag-active') as HTMLElement | null;
+          if (tagScrollerEl && active) {
+            tagScrollerEl.scrollLeft = active.offsetLeft - tagScrollerEl.clientWidth / 2 + active.clientWidth / 2;
+          }
+        });
+      }
     } else {
       animOpen = false;
       if (animTimer) { clearTimeout(animTimer); animTimer = null; }
     }
   });
 
-  // Reset tag + split state when direction changes
-  let prevDirection = $state<Direction>('O');
-  $effect(() => {
-    if (direction !== prevDirection) {
-      prevDirection = direction;
-      tag       = '';
-      splitMode = false;
-      split     = initSplitState();
-    }
-  });
 
   const tagOptions = $derived(getTagOptions(direction, categories));
 
@@ -176,12 +177,12 @@
         <button
           class="dir-btn"
           class:active-out={direction === 'O'}
-          onclick={() => (direction = 'O')}
+          onclick={() => { if (direction !== 'O') { direction = 'O'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Outgoing</button>
         <button
           class="dir-btn"
           class:active-in={direction === 'I'}
-          onclick={() => (direction = 'I')}
+          onclick={() => { if (direction !== 'I') { direction = 'I'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Incoming</button>
       </div>
 
@@ -255,7 +256,7 @@
       <!-- single-mode tag picker -->
       {#if !splitMode}
         <div class="tag-section-label">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
-        <div class="tag-scroller">
+        <div class="tag-scroller" bind:this={tagScrollerEl}>
           {#each tagOptions as opt}
             {@const catStyle = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
             <button
