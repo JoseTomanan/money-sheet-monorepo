@@ -17,7 +17,7 @@ async function addEntryViaUi(
 ) {
   const direction = opts.direction ?? "Outgoing";
   await switchTab(page, "Entries");
-  await page.getByRole("button", { name: "Add entry" }).click();
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
   await page.locator(".sheet.open").waitFor({ state: "visible" });
 
   // Direction

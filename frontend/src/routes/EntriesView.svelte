@@ -82,6 +82,7 @@
     </div>
   </div>
 
+  <div class="entries-body">
   <!-- Filter bar: segmented control + category chips -->
   <div class="filter-bar">
     <div class="segmented" role="radiogroup" aria-label="Direction">
@@ -186,6 +187,7 @@
       {/each}
     {/if}
   </div>
+  </div>
 </div>
 
 <style>
@@ -215,15 +217,27 @@
     overflow: hidden;
   }
   @media (min-width: 768px) {
-    .filter-bar {
-      flex-direction: row;
-      align-items: center;
-      gap: 12px;
-      position: sticky;
-      top: 0;
-      background: var(--background);
-      z-index: 5;
+    .entries-body {
+      display: flex;
+      align-items: flex-start;
     }
+    .filter-bar {
+      flex: 0 0 200px;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 10px;
+      border-bottom: none;
+      border-right: 1px solid var(--border);
+      position: static;
+      overflow: visible;
+      align-self: stretch;
+    }
+    .entry-list {
+      flex: 1;
+      margin-left: 8px;
+      min-width: 0;
+    }
+    .scroll-shadow { display: none; }
   }
 
   .segmented {
@@ -259,15 +273,6 @@
   .filter-sep {
     display: none;
   }
-  @media (min-width: 768px) {
-    .filter-sep {
-      display: block;
-      width: 1px;
-      height: 16px;
-      background: var(--border);
-      flex-shrink: 0;
-    }
-  }
 
   .cat-row {
     display: flex;
@@ -277,7 +282,14 @@
     min-width: 0;
   }
   @media (min-width: 768px) {
-    .cat-row { flex: 1; }
+    .cat-row {
+      flex-direction: column;
+      overflow-x: visible;
+      gap: 2px;
+    }
+    .cat-chip-btn {
+      justify-content: flex-start;
+    }
   }
 
   .cat-chip-btn {

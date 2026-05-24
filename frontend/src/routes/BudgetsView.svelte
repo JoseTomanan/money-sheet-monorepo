@@ -69,11 +69,11 @@
       {#each categoryData as d}
         <div
           class="dist-segment"
+          class:dist-segment--zero={d.spent === 0}
           title="{d.c.label}: {peso(d.spent)}"
           style="
-            flex: {d.spent || 0.01};
+            {d.spent > 0 ? `flex: ${d.spent};` : ''}
             background: {d.c.color};
-            opacity: {d.spent > 0 ? 1 : 0.15};
           "
         ></div>
       {/each}
@@ -145,6 +145,9 @@
 
   .dist-bar-wrap {
     margin: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
   .dist-bar {
     display: flex;
@@ -155,11 +158,15 @@
   .dist-segment {
     transition: flex 500ms cubic-bezier(.2,.7,.2,1);
   }
+  .dist-segment--zero {
+    flex: none;
+    width: 2px;
+    opacity: 1;
+  }
   .dist-legend {
     display: flex;
     flex-wrap: wrap;
     gap: 8px 14px;
-    margin-top: 10px;
   }
   .legend-item {
     display: flex;
@@ -183,6 +190,17 @@
   }
   .cat-row {
     padding: 14px 16px;
+  }
+
+  @media (min-width: 768px) {
+    .cat-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+    .cat-row {
+      border-bottom: 1px solid var(--border);
+    }
   }
   .cat-row-main {
     display: flex;
@@ -222,12 +240,5 @@
     transition: width 600ms cubic-bezier(.2,.7,.2,1);
   }
 
-  .cat-budget-label {
-    margin-top: 5px;
-    margin-left: 20px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    color: var(--muted-foreground);
-  }
 
 </style>

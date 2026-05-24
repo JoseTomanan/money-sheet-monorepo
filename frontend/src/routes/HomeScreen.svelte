@@ -48,96 +48,113 @@
     <div class="page-title">On Hand</div>
   </div>
 
-  <!-- On Hand hero card -->
-  <div class="hero-card card">
-    <div class="card-label">ON HAND</div>
-    <div class="hero-amount mono-amount" class:shimmer={store.masterLoading}>
-      {peso(store.master.onHand)}
-    </div>
-    <div class="hero-divider"></div>
-    <div class="hero-stats">
-      <div class="hero-stat">
-        <div class="stat-label">This Month</div>
-        <div class="stat-value mono-amount">{peso(thisMonthTotal)}</div>
-      </div>
-      <div class="hero-stat-divider"></div>
-      <div class="hero-stat">
-        <div class="stat-label">All Total</div>
-        <div class="stat-value mono-amount">{peso(allTotal)}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- By Category pills -->
-  <SectionHeader>
-    {#snippet children()}By Category{/snippet}
-    {#snippet right()}
-      <button class="see-all" onclick={() => onnavigate('summary')}>See all →</button>
-    {/snippet}
-  </SectionHeader>
-
-  <div class="category-scroll-wrap">
-  <div class="category-scroll">
-    {#each CATEGORY_ORDER as key}
-      {@const c = CATEGORIES[key]}
-      {@const budget = store.master.budgets[key] ?? 0}
-      <div class="cat-chip">
-        <div class="cat-chip-header">
-          <span class="cat-dot" style="background: {c.color}cc;"></span>
-          <span class="cat-name">{c.label}</span>
+  <div class="home-cols">
+    <!-- Left: hero + latest -->
+    <div class="home-left">
+      <!-- On Hand hero card -->
+      <div class="hero-card card">
+        <div class="card-label">ON HAND</div>
+        <div class="hero-amount mono-amount" class:shimmer={store.masterLoading}>
+          {peso(store.master.onHand)}
         </div>
-        <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
-          {peso(budget)}
+        <div class="hero-divider"></div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="stat-label">This Month</div>
+            <div class="stat-value mono-amount">{peso(thisMonthTotal)}</div>
+          </div>
+          <div class="hero-stat-divider"></div>
+          <div class="hero-stat">
+            <div class="stat-label">All Total</div>
+            <div class="stat-value mono-amount">{peso(allTotal)}</div>
+          </div>
         </div>
       </div>
-    {/each}
-  </div>
-  </div>
 
-  <!-- Latest-day outgoing -->
-  <SectionHeader>
-    {#snippet children()}Latest · {latestLabel}{/snippet}
-    {#snippet right()}
-      <button class="see-all" onclick={() => onnavigate('entries')}>All entries →</button>
-    {/snippet}
-  </SectionHeader>
+      <!-- Latest-day outgoing -->
+      <SectionHeader>
+        {#snippet children()}Latest · {latestLabel}{/snippet}
+        {#snippet right()}
+          <button class="see-all" onclick={() => onnavigate('entries')}>All entries →</button>
+        {/snippet}
+      </SectionHeader>
 
-  <button class="today-teaser" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-    <div class="today-section">
-    <!-- Blurred teaser card — no real content, just a shape -->
-    <div class="teaser-wrap" aria-hidden="true">
-      <div class="teaser-card"></div>
+      <button class="today-teaser" onclick={() => onnavigate('entries')} aria-label="Go to entries">
+        <div class="today-section">
+        <!-- Blurred teaser card — no real content, just a shape -->
+        <div class="teaser-wrap" aria-hidden="true">
+          <div class="teaser-card"></div>
+        </div>
+
+        {#if todayEntries.length === 0}
+          <div class="empty">No entries yet.</div>
+        {:else}
+          <div class="today-card">
+            {#each todayEntries as entry, i (entry.id)}
+              {@const dim = entry.amount === 0}
+              {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
+              <div
+                class="today-row"
+                class:dim
+                style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
+              >
+                <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
+                <div class="entry-amount-wrap">
+                  <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+        </div>
+      </button>
     </div>
 
-    {#if todayEntries.length === 0}
-      <div class="empty">No entries yet.</div>
-    {:else}
-      <div class="today-card">
-        {#each todayEntries as entry, i (entry.id)}
-          {@const dim = entry.amount === 0}
-          {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
-          <div
-            class="today-row"
-            class:dim
-            style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
-          >
-            <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
-            <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
-            <div class="entry-amount-wrap">
-              <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
+    <!-- Right: category chips -->
+    <div class="home-right">
+      <SectionHeader>
+        {#snippet children()}By Category{/snippet}
+        {#snippet right()}
+          <button class="see-all" onclick={() => onnavigate('summary')}>See all →</button>
+        {/snippet}
+      </SectionHeader>
+
+      <div class="category-scroll-wrap">
+      <div class="category-scroll">
+        {#each CATEGORY_ORDER as key}
+          {@const c = CATEGORIES[key]}
+          {@const budget = store.master.budgets[key] ?? 0}
+          <div class="cat-chip">
+            <div class="cat-chip-header">
+              <span class="cat-dot" style="background: {c.color}cc;"></span>
+              <span class="cat-name">{c.label}</span>
+            </div>
+            <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
+              {peso(budget)}
             </div>
           </div>
         {/each}
       </div>
-    {/if}
+      </div>
     </div>
-  </button>
+  </div>
 </div>
 
 <style>
   .home { padding: 0; }
 
-
+  @media (min-width: 768px) {
+    .home-cols {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      align-items: start;
+    }
+    .home-right {
+      border-left: 1px solid var(--border);
+      min-height: 100%;
+    }
+  }
 
   .hero-card {
     margin: 14px 16px 0;
@@ -215,6 +232,21 @@
     min-width: 96px;
     background: var(--card);
     box-shadow: var(--shadow-card);
+  }
+
+  @media (min-width: 768px) {
+    .category-scroll-wrap {
+      overflow-x: visible;
+      padding: 0 0 8px;
+      margin-bottom: 0;
+    }
+    .category-scroll {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      padding: 2px 16px;
+    }
+    .category-scroll::after { display: none; }
+    .cat-chip { flex-shrink: unset; }
   }
   .cat-chip-header {
     display: flex;
