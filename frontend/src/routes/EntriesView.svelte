@@ -140,7 +140,7 @@
   <div class="entry-list mt-2 mx-4 flex flex-col gap-0 md:flex-1 md:ml-2 md:min-w-0">
     {#if filtered.length === 0}
       <button
-        class="entry-card add-entry-card standalone font-display font-bold text-[13px] tracking-[0.5px] text-accent"
+        class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
         onclick={onadd}
       >+ ADD ENTRY</button>
     {:else}
@@ -192,7 +192,7 @@
             </div>
             {#if isLatestChunk}
               <button
-                class="entry-card add-entry-card standalone font-display font-bold text-[13px] tracking-[0.5px] text-accent"
+                class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
                 onclick={onadd}
               >+ ADD ENTRY</button>
             {/if}
