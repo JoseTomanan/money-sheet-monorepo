@@ -74,7 +74,7 @@ npm run build    # outputs to dist/
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
 - All data fetching is client-side via `fetch()` to the GAS web app URL
 - GAS URL and API secret stored as Vite env vars (`VITE_GAS_URL`, `VITE_API_SECRET`)
-- **CSS rule**: Visual/typographic properties (fonts, colors, shadows, border-radius) belong in `app.css`. Component `<style>` blocks are for layout/spacing overrides that are genuinely instance-specific (margin, padding, flex arrangement).
+- **CSS rule**: Use Tailwind for everything — raw CSS is only permitted where Tailwind utilities genuinely cannot express the style (keyframe animations, `color-mix()` expressions, `::-webkit-scrollbar` pseudo-element rules, or multi-property transitions with different durations). Component `<style>` blocks should be empty or near-empty. `app.css` contains only `@font-face` declarations, `:root` design tokens, global resets, and unavoidable `@keyframes`.
 
 ## Deployment
 
