@@ -86,7 +86,9 @@ function insertSeparatorIfMissing(
   // Insert separator row before first entry of this week
   sh.insertRowBefore(firstEntrySheetRow);
   sh.getRange(firstEntrySheetRow, COL.DATE).setValue(weekSunday);
-  sh.getRange(firstEntrySheetRow, COL.DESC).setValue(formatWeekLabel(weekSunday, MANILA_TZ));
+  const labelRange = sh.getRange(firstEntrySheetRow, COL.DESC);
+  labelRange.setValue(formatWeekLabel(weekSunday, MANILA_TZ));
+  labelRange.setFontStyle("italic");
   // Leave TAG, MAIN_CAT, DIR, AMOUNT, ID blank — col H blank is what marks it as a separator
 }
 

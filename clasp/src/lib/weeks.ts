@@ -32,9 +32,9 @@ export function formatWeekLabel(sunday: Date, tz: string): string {
   const satDay = fmt(saturday, { day: "numeric" });
 
   if (sunMonth === satMonth) {
-    return `${sunMonth} ${sunDay}–${satDay}`;
+    return `${sunMonth} ${sunDay}-${satDay}`.toUpperCase();
   }
-  return `${sunMonth} ${sunDay} – ${satMonth} ${satDay}`;
+  return `${sunMonth} ${sunDay} - ${satMonth} ${satDay}`.toUpperCase();
 }
 
 export function weekTier(weekStart: Date, currentWeekStart: Date): "current" | "recent" | "old" {

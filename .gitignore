@@ -13,5 +13,8 @@
 # Playwright MCP snapshots
 .playwright-mcp/
 
+# Playwright test output
+test-results/
+
 # Ad-hoc verification screenshots
 *.png
