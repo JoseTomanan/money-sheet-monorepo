@@ -69,13 +69,13 @@ describe("weekTier", () => {
 });
 
 describe("formatWeekLabel", () => {
-  it("same-month week: May 11–17", () => {
+  it("same-month week: MAY 11-17", () => {
     const sunday = new Date("2025-05-11T00:00:00+08:00");
-    expect(formatWeekLabel(sunday, TZ)).toBe("May 11–17");
+    expect(formatWeekLabel(sunday, TZ)).toBe("MAY 11-17");
   });
 
-  it("cross-month week: Apr 27 – May 3", () => {
+  it("cross-month week: APR 27 - MAY 3", () => {
     const sunday = new Date("2025-04-27T00:00:00+08:00");
-    expect(formatWeekLabel(sunday, TZ)).toBe("Apr 27 – May 3");
+    expect(formatWeekLabel(sunday, TZ)).toBe("APR 27 - MAY 3");
   });
 });
