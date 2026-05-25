@@ -43,30 +43,34 @@
 
 <div class="home p-0" style="padding-bottom: 72px;">
   <!-- Month header -->
-  <div class="page-header">
-    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
-    <div class="page-title">On Hand</div>
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">On Hand</div>
   </div>
 
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
-        <div class="card-label">ON HAND</div>
-        <div class="hero-amount mono-amount text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1" class:shimmer={store.masterLoading}>
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+        <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
+        <div
+          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
+          class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+          class:opacity-40={store.masterLoading}
+        >
           {peso(store.master.onHand)}
         </div>
         <div class="hero-divider h-px bg-border mt-[18px] mb-4"></div>
         <div class="hero-stats flex gap-[22px] items-center">
           <div class="hero-stat">
             <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">This Month</div>
-            <div class="stat-value mono-amount mt-1 text-[17px] text-foreground font-medium">{peso(thisMonthTotal)}</div>
+            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(thisMonthTotal)}</div>
           </div>
           <div class="hero-stat-divider w-px h-7 bg-border"></div>
           <div class="hero-stat">
             <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">All Total</div>
-            <div class="stat-value mono-amount mt-1 text-[17px] text-foreground font-medium">{peso(allTotal)}</div>
+            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(allTotal)}</div>
           </div>
         </div>
       </div>
@@ -98,9 +102,9 @@
                 class:opacity-[0.55]={dim}
                 style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
               >
-                <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+                <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
                 <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
-                <div class="entry-amount-wrap">
+                <div class="entry-amount-wrap shrink-0 ml-auto">
                   <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
                 </div>
               </div>
@@ -130,7 +134,12 @@
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.color}cc;"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
-            <div class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
+            <div
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium"
+              class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+              class:opacity-40={store.masterLoading}
+              style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};"
+            >
               {peso(budget)}
             </div>
           </div>

@@ -65,18 +65,21 @@
 
 <div class="entries-view p-0" style="padding-bottom: 72px;">
   <!-- Page header -->
-  <div class="page-header">
-    <div class="week-selector">
-      <select class="page-eyebrow" bind:value={selectedWeek}>
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="week-selector flex items-center gap-[3px] cursor-pointer">
+      <select
+        class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground appearance-none bg-transparent border-0 p-0 cursor-pointer outline-none"
+        bind:value={selectedWeek}
+      >
         {#each selectableWeeks() as week (week.key)}
           <option value={week.key}>{week.label}</option>
         {/each}
       </select>
-      <svg class="week-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg class="week-caret text-muted-foreground pointer-events-none shrink-0 opacity-70" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="6 9 12 15 18 9"/>
       </svg>
     </div>
-    <div class="page-title flex items-baseline gap-[10px]">
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex items-baseline gap-[10px]">
       Entries
       <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filtered.length}</span>
     </div>
@@ -136,7 +139,10 @@
   <!-- Entry list -->
   <div class="entry-list mt-2 mx-4 flex flex-col gap-0 md:flex-1 md:ml-2 md:min-w-0">
     {#if filtered.length === 0}
-      <button class="entry-card add-entry-card standalone" onclick={onadd}>+ ADD ENTRY</button>
+      <button
+        class="entry-card add-entry-card standalone font-display font-bold text-[13px] tracking-[0.5px] text-accent"
+        onclick={onadd}
+      >+ ADD ENTRY</button>
     {:else}
       {#each weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
@@ -167,11 +173,11 @@
                     </div>
                   {/if}
 
-                  <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+                  <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
                   <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
 
-                  <div class="entry-amount-wrap">
+                  <div class="entry-amount-wrap shrink-0 ml-auto">
                     <Money
                       value={entry.amount}
                       size={14}
@@ -185,7 +191,10 @@
               {/each}
             </div>
             {#if isLatestChunk}
-              <button class="entry-card add-entry-card standalone" onclick={onadd}>+ ADD ENTRY</button>
+              <button
+                class="entry-card add-entry-card standalone font-display font-bold text-[13px] tracking-[0.5px] text-accent"
+                onclick={onadd}
+              >+ ADD ENTRY</button>
             {/if}
           {/each}
         </div>

@@ -41,21 +41,25 @@
 
 <div class="summary-view p-0" style="padding-bottom: 72px;">
   <!-- Page header -->
-  <div class="page-header">
-    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
-    <div class="page-title">Summary</div>
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
   </div>
 
   <!-- On Hand card -->
-  <div class="onhand-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
+  <div class="onhand-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
     <div class="onhand-left">
-      <div class="card-label">On Hand</div>
-      <div class="onhand-amount mono-amount mt-1 text-[26px] font-medium text-foreground tracking-[-0.6px]" class:shimmer={store.masterLoading}>
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">On Hand</div>
+      <div
+        class="onhand-amount font-mono tabular-nums mt-1 text-[26px] font-medium text-foreground tracking-[-0.6px]"
+        class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+        class:opacity-40={store.masterLoading}
+      >
         {peso(store.master.onHand)}
       </div>
     </div>
     <div class="onhand-right text-right mt-1">
-      <div class="card-label">Total Spent</div>
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Total Spent</div>
       <Money value={spendTotal} size={17} weight={500} negColor={false} dim />
     </div>
   </div>
@@ -93,7 +97,7 @@
   <SectionHeader>
     {#snippet children()}By Category{/snippet}
   </SectionHeader>
-  <div class="cat-list card mx-4 overflow-hidden md:grid md:grid-cols-2">
+  <div class="cat-list bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden md:grid md:grid-cols-2">
     {#each categoryData.sort((a, b) => b.spent - a.spent) as d, i}
       <div
         class="cat-row py-[14px] px-4 md:border-b md:border-border"
@@ -102,7 +106,7 @@
         <div class="cat-row-main flex items-center gap-[10px]">
           <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.color}cc;"></span>
           <span class="cat-label flex-1 font-sans text-sm font-medium text-foreground">{d.c.label}</span>
-          <span class="cat-pct mono-amount text-[11px] text-muted-foreground min-w-[38px] text-right">
+          <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
           </span>
           <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
