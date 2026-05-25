@@ -7,31 +7,9 @@
   let { children, right }: Props = $props();
 </script>
 
-<div class="section-header">
+<div class="section-header flex items-center justify-between px-5 pt-[14px] pb-2 font-sans text-[11px] font-semibold tracking-[0.8px] uppercase text-muted-foreground">
   <span class="label">{@render children?.()}</span>
   {#if right}
-    <span class="right">{@render right()}</span>
+    <span class="right normal-case tracking-normal text-[13px] font-medium text-accent">{@render right()}</span>
   {/if}
 </div>
-
-<style>
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px 8px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .right {
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
-  }
-</style>

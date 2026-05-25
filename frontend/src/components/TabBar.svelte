@@ -15,16 +15,21 @@
   ];
 </script>
 
-<div class="tab-bar-outer">
-  <div class="tab-bar-pill">
+<div class="tab-bar-outer fixed bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
+  <div class="tab-bar-pill flex items-center justify-around w-full max-w-[var(--app-max-width)] md:max-w-full h-[60px] px-2 pb-[env(safe-area-inset-bottom,0px)] bg-white/[0.92] backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto">
     {#each tabs as tab}
       <button
-        class="tab-btn"
-        class:active={active === tab.id}
+        class="tab-btn flex-1 flex flex-col items-center justify-center gap-[2px] py-[6px] bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150"
+        class:text-accent={active === tab.id}
+        class:text-muted-foreground={active !== tab.id}
         onclick={() => onchange(tab.id)}
         aria-current={active === tab.id ? 'page' : undefined}
       >
-        <span class="tab-icon" aria-hidden="true">
+        <span
+          class="tab-icon rounded-[var(--radius-pill)] px-[14px] py-1 bg-transparent transition-colors duration-150"
+          class:active-icon={active === tab.id}
+          aria-hidden="true"
+        >
           {#if tab.id === 'home'}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z"/>
@@ -43,82 +48,14 @@
             </svg>
           {/if}
         </span>
-        <span class="tab-label">{tab.label}</span>
+        <span class="tab-label font-display text-[10px] font-semibold tracking-[0.2px] mt-[2px]">{tab.label}</span>
       </button>
     {/each}
   </div>
 </div>
 
 <style>
-  .tab-bar-outer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 90;
-    pointer-events: none;
-    display: flex;
-    justify-content: center;
-  }
-
-  .tab-bar-pill {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    width: 100%;
-    max-width: var(--app-max-width);
-    height: 60px;
-    padding: 0 8px env(safe-area-inset-bottom, 0px);
-    border-radius: 0;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: var(--shadow-tabbar);
-    pointer-events: all;
-  }
-
-  .tab-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    padding: 6px 0;
-    background: none;
-    border: 0;
-    cursor: pointer;
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    transition: color 150ms;
-  }
-
-  .tab-btn.active {
-    color: var(--accent);
-  }
-
-  .tab-icon {
-    border-radius: var(--radius-pill);
-    padding: 4px 14px;
-    background: transparent;
-    transition: background 150ms;
-  }
-
-  .tab-btn.active .tab-icon {
+  .active-icon {
     background: color-mix(in srgb, var(--accent) 14%, transparent);
-  }
-
-  .tab-label {
-    font-family: var(--font-display);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    margin-top: 2px;
-  }
-
-  @media (min-width: 768px) {
-    .tab-bar-pill {
-      max-width: 100%;
-    }
   }
 </style>
