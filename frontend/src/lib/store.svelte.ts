@@ -19,6 +19,7 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 let masterLoading = $state(false);
 let toastMsg = $state<string | null>(null);
+let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let pendingIds = $state(new Set<number>());
 
 
@@ -37,9 +38,31 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
   ]);
 }
 
-function showToast(err: unknown): void {
-  toastMsg = err instanceof Error ? err.message : 'Something went wrong';
-  setTimeout(() => { toastMsg = null; }, 3000);
+function showToast(msgOrErr: unknown, action?: { label: string; run: () => void }): void {
+  toastMsg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
+  toastAction = action ?? null;
+  if (!action) {
+    setTimeout(() => { toastMsg = null; }, 3000);
+  }
+}
+
+function submitLegs(legs: AddEntryPayload[]): void {
+  masterLoading = true;
+  void Promise.allSettled(legs.map((p) => withTimeout(api.addEntry(p))))
+    .then((results) => {
+      const failed = legs.filter((_, i) => results[i].status === 'rejected');
+      const ok = legs.length - failed.length;
+      if (failed.length === 0) {
+        toastMsg = null;
+        toastAction = null;
+      } else if (ok === 0) {
+        showToast("Couldn't save entries", { label: 'Retry', run: () => submitLegs(failed) });
+      } else {
+        showToast(`Saved ${ok} of ${legs.length} entries`, { label: 'Retry', run: () => submitLegs(failed) });
+      }
+      return refreshAll(true);
+    })
+    .finally(() => { masterLoading = false; });
 }
 
 async function refreshAll(silent = false): Promise<void> {
@@ -81,11 +104,7 @@ async function init(): Promise<void> {
 
 function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
   if (Array.isArray(payload)) {
-    masterLoading = true;
-    void Promise.all(payload.map((p) => api.addEntry(p)))
-      .then(() => { void refreshAll(true); })
-      .catch((err) => { showToast(err); })
-      .finally(() => { masterLoading = false; });
+    submitLegs(payload);
     return;
   }
   const tempId = -(Date.now());
@@ -162,11 +181,12 @@ export const store = {
   get error() { return error; },
   get masterLoading() { return masterLoading; },
   get toastMsg() { return toastMsg; },
+  get toastAction() { return toastAction; },
   get pendingIds() { return pendingIds; },
   init,
   refreshAll,
   addEntry,
   updateEntry,
   deleteEntry,
-  dismissToast: () => { toastMsg = null; },
+  dismissToast: () => { toastMsg = null; toastAction = null; },
 };
