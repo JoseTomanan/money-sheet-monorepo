@@ -89,9 +89,22 @@
 
   {#if store.toastMsg}
     <div
-      class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)] py-3 px-4 rounded-[var(--radius-md)] bg-foreground text-background font-sans text-[13px] font-medium z-[300] cursor-pointer animate-[toast-in_200ms_ease-out]"
+      class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)] py-3 px-4 rounded-[var(--radius-md)] bg-foreground text-background font-sans text-[13px] font-medium z-[300] animate-[toast-in_200ms_ease-out] flex items-center gap-3"
       role="alert"
-    >{store.toastMsg}</div>
+    >
+      <span class="flex-1">{store.toastMsg}</span>
+      {#if store.toastAction}
+        <button
+          class="shrink-0 font-semibold underline underline-offset-2 bg-transparent border-0 text-background text-[13px] cursor-pointer p-0"
+          onclick={() => store.toastAction!.run()}
+        >{store.toastAction.label}</button>
+      {/if}
+      <button
+        class="shrink-0 bg-transparent border-0 text-background cursor-pointer p-0 opacity-60 leading-none"
+        aria-label="Dismiss"
+        onclick={store.dismissToast}
+      >×</button>
+    </div>
   {/if}
 
   <TabBar active={tab} onchange={(t) => (tab = t)} />
