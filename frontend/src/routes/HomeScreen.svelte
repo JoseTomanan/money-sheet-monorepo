@@ -41,32 +41,36 @@
   );
 </script>
 
-<div class="home" style="padding-bottom: 72px;">
+<div class="home p-0" style="padding-bottom: 72px;">
   <!-- Month header -->
-  <div class="page-header">
-    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
-    <div class="page-title">On Hand</div>
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">On Hand</div>
   </div>
 
-  <div class="home-cols">
+  <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card card">
-        <div class="card-label">ON HAND</div>
-        <div class="hero-amount mono-amount" class:shimmer={store.masterLoading}>
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+        <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
+        <div
+          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
+          class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+          class:opacity-40={store.masterLoading}
+        >
           {peso(store.master.onHand)}
         </div>
-        <div class="hero-divider"></div>
-        <div class="hero-stats">
+        <div class="hero-divider h-px bg-border mt-[18px] mb-4"></div>
+        <div class="hero-stats flex gap-[22px] items-center">
           <div class="hero-stat">
-            <div class="stat-label">This Month</div>
-            <div class="stat-value mono-amount">{peso(thisMonthTotal)}</div>
+            <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">This Month</div>
+            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(thisMonthTotal)}</div>
           </div>
-          <div class="hero-stat-divider"></div>
+          <div class="hero-stat-divider w-px h-7 bg-border"></div>
           <div class="hero-stat">
-            <div class="stat-label">All Total</div>
-            <div class="stat-value mono-amount">{peso(allTotal)}</div>
+            <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">All Total</div>
+            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(allTotal)}</div>
           </div>
         </div>
       </div>
@@ -75,32 +79,32 @@
       <SectionHeader>
         {#snippet children()}Latest · {latestLabel}{/snippet}
         {#snippet right()}
-          <button class="see-all" onclick={() => onnavigate('entries')}>All entries →</button>
+          <button class="see-all bg-transparent border-0 p-0 cursor-pointer font-sans text-[13px] font-medium text-accent" onclick={() => onnavigate('entries')}>All entries →</button>
         {/snippet}
       </SectionHeader>
 
-      <button class="today-teaser" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section">
+      <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
+        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]">
         <!-- Blurred teaser card — no real content, just a shape -->
-        <div class="teaser-wrap" aria-hidden="true">
-          <div class="teaser-card"></div>
+        <div class="teaser-wrap h-[10px] overflow-hidden" aria-hidden="true">
+          <div class="teaser-card h-12 bg-card rounded-none border-b border-border translate-y-[calc(-100%+10px)]"></div>
         </div>
 
         {#if todayEntries.length === 0}
-          <div class="empty">No entries yet.</div>
+          <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
-          <div class="today-card">
+          <div class="today-card rounded-b-[var(--radius-lg)] rounded-t-none bg-card overflow-hidden">
             {#each todayEntries as entry, i (entry.id)}
               {@const dim = entry.amount === 0}
               {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
               <div
-                class="today-row"
-                class:dim
+                class="today-row flex items-center gap-[10px] py-3 pr-3 pl-[14px]"
+                class:opacity-[0.55]={dim}
                 style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
               >
-                <span class="entry-date-lead">{fmtDateShort(entry.date)}</span>
+                <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
                 <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
-                <div class="entry-amount-wrap">
+                <div class="entry-amount-wrap shrink-0 ml-auto">
                   <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
                 </div>
               </div>
@@ -112,25 +116,30 @@
     </div>
 
     <!-- Right: category chips -->
-    <div class="home-right">
+    <div class="home-right md:border-l md:border-border md:min-h-full">
       <SectionHeader>
         {#snippet children()}By Category{/snippet}
         {#snippet right()}
-          <button class="see-all" onclick={() => onnavigate('summary')}>See all →</button>
+          <button class="see-all bg-transparent border-0 p-0 cursor-pointer font-sans text-[13px] font-medium text-accent" onclick={() => onnavigate('summary')}>See all →</button>
         {/snippet}
       </SectionHeader>
 
-      <div class="category-scroll-wrap">
-      <div class="category-scroll">
+      <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] md:overflow-x-visible md:pb-2 md:mb-0">
+      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(90px,1fr))] md:px-4 md:py-[2px]">
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip">
-            <div class="cat-chip-header">
-              <span class="cat-dot" style="background: {c.color}cc;"></span>
-              <span class="cat-name">{c.label}</span>
+          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] bg-card shadow-[var(--shadow-card)] md:shrink">
+            <div class="cat-chip-header flex items-center gap-[6px]">
+              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.color}cc;"></span>
+              <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
-            <div class="cat-amount" class:shimmer={store.masterLoading} style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};">
+            <div
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium"
+              class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+              class:opacity-40={store.masterLoading}
+              style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};"
+            >
               {peso(budget)}
             </div>
           </div>
@@ -142,180 +151,12 @@
 </div>
 
 <style>
-  .home { padding: 0; }
-
-  @media (min-width: 768px) {
-    .home-cols {
-      display: grid;
-      grid-template-columns: 3fr 2fr;
-      align-items: start;
-    }
-    .home-right {
-      border-left: 1px solid var(--border);
-      min-height: 100%;
-    }
-  }
-
-  .hero-card {
-    margin: 14px 16px 0;
-    padding: 20px 22px;
-  }
-  .hero-amount {
-    font-size: 44px;
-    font-weight: 500;
-    color: var(--foreground);
-    letter-spacing: -1.2px;
-    margin-top: 4px;
-  }
-  .hero-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 18px 0 16px;
-  }
-  .hero-stats {
-    display: flex;
-    gap: 22px;
-    align-items: center;
-  }
-  .hero-stat-divider {
-    width: 1px;
-    height: 28px;
-    background: var(--border);
-  }
-  .stat-label {
-    font-family: var(--font-display);
-    font-size: 10px;
-    color: var(--muted-foreground);
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-  .stat-value {
-    margin-top: 4px;
-    font-size: 17px;
-    color: var(--foreground);
-    font-weight: 500;
-  }
-
-  .see-all {
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
-  }
-
-  .category-scroll-wrap {
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 0 0 10px;
-    margin-bottom: -10px;
-  }
-  .category-scroll-wrap::-webkit-scrollbar { display: none; }
-  .category-scroll {
-    display: flex;
-    gap: 8px;
-    padding: 2px 0 2px 16px;
-  }
   .category-scroll::after {
     content: '';
     flex-shrink: 0;
     width: 8px;
   }
-  .cat-chip {
-    flex-shrink: 0;
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    min-width: 96px;
-    background: var(--card);
-    box-shadow: var(--shadow-card);
-  }
-
   @media (min-width: 768px) {
-    .category-scroll-wrap {
-      overflow-x: visible;
-      padding: 0 0 8px;
-      margin-bottom: 0;
-    }
-    .category-scroll {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-      padding: 2px 16px;
-    }
     .category-scroll::after { display: none; }
-    .cat-chip { flex-shrink: unset; }
-  }
-  .cat-chip-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .cat-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .cat-name {
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: var(--muted-foreground);
-  }
-  .cat-amount {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    margin-top: 4px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .today-teaser {
-    display: block;
-    width: 100%;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    text-align: left;
-  }
-  .today-section {
-    margin: 0 16px;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-  }
-  .teaser-wrap {
-    height: 10px;
-    overflow: hidden;
-  }
-  .teaser-card {
-    height: 48px;
-    background: var(--card);
-    border-radius: 0;
-    border-bottom: 1px solid var(--border);
-    transform: translateY(calc(-100% + 10px));
-  }
-  .today-card {
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    background: var(--card);
-    overflow: hidden;
-  }
-  .today-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 12px 12px 14px;
-  }
-  .today-row.dim { opacity: 0.55; }
-  .empty {
-    padding: 20px;
-    text-align: center;
-    color: var(--muted-foreground);
-    font-size: 14px;
-    font-family: var(--font-sans);
   }
 </style>

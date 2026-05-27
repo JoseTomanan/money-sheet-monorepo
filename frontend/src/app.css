@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background:        var(--background);
+  --color-foreground:        var(--foreground);
+  --color-card:              var(--card);
+  --color-card-foreground:   var(--card-foreground);
+  --color-muted:             var(--muted);
+  --color-muted-foreground:  var(--muted-foreground);
+  --color-border:            var(--border);
+  --color-accent:            var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive:       var(--destructive);
+  --color-positive:          var(--positive);
+  --font-display:            var(--font-display);
+}
+
 @font-face {
   font-family: 'Manrope';
   src: url('./fonts/Manrope-VariableFont_wght.woff2') format('woff2');
@@ -93,91 +108,5 @@ html, body {
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; }
 
-/* ── Shared card ───────────────────────────────────────────────── */
-.card {
-  background: var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-}
-.card-label {
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-
-/* ── Shared page-header layout ─────────────────────────────────── */
-.page-header {
-  padding: 20px 20px 4px;
-}
-.page-eyebrow {
-  font-family: var(--font-display);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--muted-foreground);
-}
-.week-selector {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-}
-select.page-eyebrow {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  outline: none;
-}
-.week-caret {
-  color: var(--muted-foreground);
-  pointer-events: none;
-  flex-shrink: 0;
-  opacity: 0.7;
-}
-.page-title {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--foreground);
-  margin-top: 2px;
-  letter-spacing: -0.5px;
-}
-
-/* ── Mono numeric display ──────────────────────────────────────── */
-.mono-amount {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Entry row primitives ──────────────────────────────────────── */
-.entry-date-lead {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted-foreground);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.entry-amount-wrap {
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.add-entry-card {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  color: var(--accent);
-}
-
-/* ── Loading shimmer ───────────────────────────────────────────── */
-.shimmer { opacity: 0.4; animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+/* shimmer keyframe — used via animate-[shimmer_1s_ease-in-out_infinite] */
+@keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }

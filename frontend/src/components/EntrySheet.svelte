@@ -134,11 +134,11 @@
 </script>
 
 {#if open}
-  <div class="sheet-root">
+  <div class="sheet-root fixed inset-0 z-[200]">
     <!-- backdrop -->
     <div
-      class="backdrop"
-      class:visible={animOpen}
+      class="backdrop absolute inset-0 bg-[rgba(26,24,20,0.4)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+      class:opacity-100={animOpen}
       role="button"
       tabindex="-1"
       aria-label="Close"
@@ -148,13 +148,13 @@
 
     <!-- sheet -->
     <div
-      class="sheet"
+      class="sheet absolute bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] max-h-[90dvh] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8 overflow-y-auto"
       class:open={animOpen}
       style="transform: {animOpen ? sheetTransform : 'translateX(-50%) translateY(100%)'}; transition: {sheetTransition};"
     >
       <!-- handle -->
       <div
-        class="handle-row"
+        class="handle-row flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
         role="separator"
         aria-label="Drag to resize or dismiss"
         onpointerdown={onHandlePointerDown}
@@ -162,25 +162,25 @@
         onpointerup={onHandlePointerUp}
         onpointercancel={onHandlePointerUp}
       >
-        <div class="handle"></div>
+        <div class="handle w-9 h-1 rounded-[2px] bg-border pointer-events-none"></div>
       </div>
 
       <!-- header -->
-      <div class="sheet-header">
-        <button class="header-btn cancel" onclick={onclose}>Cancel</button>
-        <span class="sheet-title">{title}</span>
-        <button class="header-btn save" onclick={handleSave} disabled={saveDisabled}>Save</button>
+      <div class="sheet-header flex items-center justify-between px-5 pt-2 pb-[6px]">
+        <button class="header-btn cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
+        <span class="sheet-title font-display text-base font-semibold text-foreground tracking-[-0.2px]">{title}</span>
+        <button class="header-btn save bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed" onclick={handleSave} disabled={saveDisabled}>Save</button>
       </div>
 
       <!-- direction toggle -->
-      <div class="direction-row">
+      <div class="direction-row flex gap-2 px-4 pt-[10px] pb-1">
         <button
-          class="dir-btn"
+          class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
           class:active-out={direction === 'O'}
           onclick={() => { if (direction !== 'O') { direction = 'O'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Outgoing</button>
         <button
-          class="dir-btn"
+          class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
           class:active-in={direction === 'I'}
           onclick={() => { if (direction !== 'I') { direction = 'I'; tag = ''; splitMode = false; split = initSplitState(); } }}
         >Incoming</button>
@@ -188,10 +188,10 @@
 
       <!-- split toggle — only for new entries -->
       {#if !entry}
-        <div class="split-toggle-row">
-          <span class="split-toggle-label">{direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
+        <div class="split-toggle-row flex items-center justify-between px-5 pt-[10px] pb-[2px]">
+          <span class="split-toggle-label text-[13px] font-sans text-muted-foreground">{direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
           <button
-            class="split-toggle-btn"
+            class="split-toggle-btn py-[5px] px-[14px] rounded-[var(--radius-pill)] border border-border bg-muted text-muted-foreground font-sans text-[13px] font-medium cursor-pointer transition-[background,color] duration-150"
             class:split-active={splitMode}
             onclick={() => {
               splitMode = !splitMode;
@@ -215,14 +215,14 @@
         />
       {:else}
         <!-- single amount input -->
-        <div class="amount-card">
-          <div class="amount-label">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
-          <div class="amount-row">
-            <span class="peso-prefix">₱</span>
+        <div class="amount-card mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
+          <div class="amount-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
+          <div class="amount-row flex justify-center items-baseline gap-1">
+            <span class="peso-prefix font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">₱</span>
             <input
               type="text"
               inputmode="decimal"
-              class="amount-input"
+              class="amount-input w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
               bind:value={amount}
               oninput={(e) => {
                 amount = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '');
@@ -234,33 +234,33 @@
       {/if}
 
       <!-- description -->
-      <div class="field-card">
-        <div class="field-label">Description</div>
+      <div class="field-card mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+        <div class="field-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
         <input
           type="text"
-          class="field-input"
+          class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
           bind:value={description}
           placeholder={direction === 'I' ? 'e.g. weekly allowance' : 'e.g. lunch at canteen'}
         />
       </div>
 
       <!-- date -->
-      <div class="field-card">
-        <div class="field-label">Date</div>
-        <div class="date-row">
-          <span class="date-display">{fmtDate(date)} · {dayOfWeek(date)}</span>
-          <input type="date" class="date-input" bind:value={date} />
+      <div class="field-card mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+        <div class="field-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Date</div>
+        <div class="date-row flex items-center justify-between">
+          <span class="date-display font-mono text-[15px] text-foreground tabular-nums">{fmtDate(date)} · {dayOfWeek(date)}</span>
+          <input type="date" class="date-input text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={date} />
         </div>
       </div>
 
       <!-- single-mode tag picker -->
       {#if !splitMode}
-        <div class="tag-section-label">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
-        <div class="tag-scroller" bind:this={tagScrollerEl}>
+        <div class="tag-section-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
+        <div class="tag-scroller flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible" bind:this={tagScrollerEl}>
           {#each tagOptions as opt}
             {@const catStyle = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
             <button
-              class="tag-pill"
+              class="tag-pill shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap"
               class:tag-active={tag === opt.value}
               style="
                 background: {tag === opt.value ? catStyle.color : catStyle.soft};
@@ -268,7 +268,7 @@
               "
               onclick={() => (tag = opt.value)}
             >
-              <span class="tag-dot" style="background: {tag === opt.value ? '#fff' : catStyle.color}"></span>
+              <span class="tag-dot size-[6px] rounded-full shrink-0" style="background: {tag === opt.value ? '#fff' : catStyle.color}"></span>
               {opt.value}
             </button>
           {/each}
@@ -278,7 +278,7 @@
       {#if entry && ondelete}
         <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
           <button
-            class="delete-btn"
+            class="delete-btn block mx-4 mt-5 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[rgba(193,74,50,0.3)] bg-[rgba(193,74,50,0.08)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
             onclick={() => { ondelete!(entry!.id); onclose(); }}
           >Delete entry</button>
         </div>
@@ -288,100 +288,6 @@
 {/if}
 
 <style>
-  .sheet-root {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-  }
-
-  .backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(26, 24, 20, 0.4);
-    opacity: 0;
-    transition: opacity 280ms cubic-bezier(.2,.7,.2,1);
-  }
-  .backdrop.visible { opacity: 1; }
-
-  .sheet {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%) translateY(100%);
-    width: 100%;
-    max-width: var(--app-max-width);
-    max-height: 90dvh;
-    background: var(--background);
-    border-top-left-radius: 28px;
-    border-top-right-radius: 28px;
-    box-shadow: var(--shadow-sheet);
-    padding-bottom: 32px;
-    overflow-y: auto;
-  }
-
-  .handle-row {
-    display: flex;
-    justify-content: center;
-    padding: 14px 0 10px;
-    touch-action: none;
-    cursor: grab;
-    user-select: none;
-  }
-  .handle-row:active { cursor: grabbing; }
-  .handle {
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--border);
-    pointer-events: none;
-  }
-
-  .sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 20px 6px;
-  }
-  .header-btn {
-    background: none;
-    border: 0;
-    cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 15px;
-    padding: 0;
-  }
-  .cancel { color: var(--muted-foreground); }
-  .save {
-    color: var(--accent);
-    font-weight: 600;
-  }
-  .save:disabled { opacity: 0.4; cursor: not-allowed; }
-  .sheet-title {
-    font-family: var(--font-display);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--foreground);
-    letter-spacing: -0.2px;
-  }
-
-  .direction-row {
-    display: flex;
-    gap: 8px;
-    padding: 10px 16px 4px;
-  }
-  .dir-btn {
-    flex: 1;
-    padding: 10px 0;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-    background: var(--muted);
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 150ms, color 150ms;
-  }
   .active-out {
     background: rgba(193, 74, 50, 0.12);
     color: #c14a32;
@@ -392,175 +298,11 @@
     color: var(--positive);
     border-color: color-mix(in srgb, var(--positive) 25%, transparent);
   }
-
-  .split-toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 20px 2px;
-  }
-  .split-toggle-label {
-    font-size: 13px;
-    font-family: var(--font-sans);
-    color: var(--muted-foreground);
-  }
-  .split-toggle-btn {
-    padding: 5px 14px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    background: var(--muted);
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 150ms, color 150ms;
-  }
   .split-toggle-btn.split-active {
     background: color-mix(in srgb, var(--positive) 12%, transparent);
     color: var(--positive);
     border-color: color-mix(in srgb, var(--positive) 25%, transparent);
   }
-
-  .amount-card {
-    margin: 10px 16px 0;
-    padding: 20px 22px;
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    box-shadow: var(--shadow-card);
-    text-align: center;
-  }
-  .amount-label {
-    font-size: 10px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-    margin-bottom: 8px;
-  }
-  .amount-row {
-    display: flex;
-    justify-content: center;
-    align-items: baseline;
-    gap: 4px;
-  }
-  .peso-prefix {
-    font-family: var(--font-mono);
-    font-size: 32px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    letter-spacing: -0.5px;
-  }
-  .amount-input {
-    width: 200px;
-    background: transparent;
-    border: 0;
-    outline: none;
-    font-family: var(--font-mono);
-    font-size: 44px;
-    font-weight: 500;
-    color: var(--foreground);
-    letter-spacing: -1.2px;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-  }
-  .amount-input::placeholder { color: var(--muted-foreground); }
-
-  .field-card {
-    margin: 10px 16px 0;
-    padding: 12px 18px;
-    border-radius: var(--radius-md);
-    background: var(--card);
-    box-shadow: var(--shadow-card);
-  }
-  .field-label {
-    font-size: 10px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-    margin-bottom: 4px;
-  }
-  .field-input {
-    width: 100%;
-    background: transparent;
-    border: 0;
-    outline: none;
-    font-family: var(--font-sans);
-    font-size: 15px;
-    color: var(--foreground);
-  }
-  .field-input::placeholder { color: var(--muted-foreground); }
-
-  .date-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .date-display {
-    font-family: var(--font-mono);
-    font-size: 15px;
-    color: var(--foreground);
-    font-variant-numeric: tabular-nums;
-  }
-  .date-input {
-    font-size: 13px;
-    color: var(--accent);
-    font-family: var(--font-sans);
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-    outline: none;
-    text-align: right;
-    min-width: 0;
-  }
-
-  .tag-section-label {
-    padding: 14px 20px 6px;
-    font-size: 10px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted-foreground);
-  }
-  .tag-scroller {
-    display: flex;
-    gap: 8px;
-    padding: 4px 16px 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  @media (min-width: 768px) {
-    .tag-scroller {
-      flex-wrap: wrap;
-      overflow-x: unset;
-    }
-  }
-  .tag-pill {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-radius: var(--radius-pill);
-    border: 0;
-    font-family: var(--font-sans);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 150ms, color 150ms;
-    white-space: nowrap;
-  }
-  .tag-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
   .delete-wrap {
     max-height: 0;
     overflow: hidden;
@@ -572,20 +314,5 @@
     max-height: 80px;
     opacity: 1;
     pointer-events: auto;
-  }
-
-  .delete-btn {
-    display: block;
-    margin: 20px 16px 0;
-    width: calc(100% - 32px);
-    padding: 13px 0;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(193, 74, 50, 0.3);
-    background: rgba(193, 74, 50, 0.08);
-    color: var(--destructive);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
   }
 </style>

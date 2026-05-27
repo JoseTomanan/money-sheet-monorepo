@@ -39,23 +39,27 @@
   });
 </script>
 
-<div class="summary-view" style="padding-bottom: 72px;">
+<div class="summary-view p-0" style="padding-bottom: 72px;">
   <!-- Page header -->
-  <div class="page-header">
-    <div class="page-eyebrow">{monthLabel.toUpperCase()}</div>
-    <div class="page-title">Summary</div>
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
   </div>
 
   <!-- On Hand card -->
-  <div class="onhand-card card">
+  <div class="onhand-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
     <div class="onhand-left">
-      <div class="card-label">On Hand</div>
-      <div class="onhand-amount mono-amount" class:shimmer={store.masterLoading}>
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">On Hand</div>
+      <div
+        class="onhand-amount font-mono tabular-nums mt-1 text-[26px] font-medium text-foreground tracking-[-0.6px]"
+        class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+        class:opacity-40={store.masterLoading}
+      >
         {peso(store.master.onHand)}
       </div>
     </div>
-    <div class="onhand-right">
-      <div class="card-label">Total Spent</div>
+    <div class="onhand-right text-right mt-1">
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Total Spent</div>
       <Money value={spendTotal} size={17} weight={500} negColor={false} dim />
     </div>
   </div>
@@ -64,11 +68,11 @@
   <SectionHeader>
     {#snippet children()}Distribution{/snippet}
   </SectionHeader>
-  <div class="dist-bar-wrap">
-    <div class="dist-bar">
+  <div class="dist-bar-wrap mx-4 flex flex-col gap-2">
+    <div class="dist-bar flex h-5 bg-muted gap-[2px]">
       {#each categoryData as d}
         <div
-          class="dist-segment"
+          class="dist-segment transition-[flex] duration-[500ms] ease-[cubic-bezier(.2,.7,.2,1)]"
           class:dist-segment--zero={d.spent === 0}
           title="{d.c.label}: {peso(d.spent)}"
           style="
@@ -79,10 +83,10 @@
       {/each}
     </div>
     <!-- legend dots -->
-    <div class="dist-legend">
+    <div class="dist-legend flex flex-wrap gap-x-[14px] gap-y-2">
       {#each categoryData.filter(d => d.spent > 0) as d}
-        <span class="legend-item">
-          <span class="legend-dot" style="background: {d.c.color};"></span>
+        <span class="legend-item flex items-center gap-[5px] font-sans text-[11px] text-muted-foreground font-medium">
+          <span class="legend-dot size-[6px] rounded-full shrink-0" style="background: {d.c.color};"></span>
           {d.c.label} {d.pct.toFixed(1)}%
         </span>
       {/each}
@@ -93,24 +97,24 @@
   <SectionHeader>
     {#snippet children()}By Category{/snippet}
   </SectionHeader>
-  <div class="cat-list card">
+  <div class="cat-list bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden md:grid md:grid-cols-2">
     {#each categoryData.sort((a, b) => b.spent - a.spent) as d, i}
       <div
-        class="cat-row"
+        class="cat-row py-[14px] px-4 md:border-b md:border-border"
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
       >
-        <div class="cat-row-main">
-          <span class="cat-dot" style="background: {d.c.color}cc;"></span>
-          <span class="cat-label">{d.c.label}</span>
-          <span class="cat-pct mono-amount">
+        <div class="cat-row-main flex items-center gap-[10px]">
+          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.color}cc;"></span>
+          <span class="cat-label flex-1 font-sans text-sm font-medium text-foreground">{d.c.label}</span>
+          <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
           </span>
           <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
         </div>
         <!-- animated bar -->
-        <div class="cat-bar-track" style="background: {d.c.pastel};">
+        <div class="cat-bar-track mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {d.c.pastel};">
           <div
-            class="cat-bar-fill"
+            class="cat-bar-fill h-full rounded-[2px] transition-[width] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"
             style="width: {$barWidths[d.key] ?? 0}%; background: {d.c.color}cc;"
           ></div>
         </div>
@@ -120,125 +124,9 @@
 </div>
 
 <style>
-  .summary-view { padding: 0; }
-
-
-
-  .onhand-card {
-    margin: 14px 16px 0;
-    padding: 20px 22px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .onhand-amount {
-    margin-top: 4px;
-    font-size: 26px;
-    font-weight: 500;
-    color: var(--foreground);
-    letter-spacing: -0.6px;
-  }
-  .onhand-right {
-    text-align: right;
-    margin-top: 4px;
-  }
-
-  .dist-bar-wrap {
-    margin: 0 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .dist-bar {
-    display: flex;
-    height: 20px;
-    background: var(--muted);
-    gap: 2px;
-  }
-  .dist-segment {
-    transition: flex 500ms cubic-bezier(.2,.7,.2,1);
-  }
   .dist-segment--zero {
     flex: none;
     width: 2px;
     opacity: 1;
   }
-  .dist-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    color: var(--muted-foreground);
-    font-weight: 500;
-  }
-  .legend-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .cat-list {
-    margin: 0 16px;
-    overflow: hidden;
-  }
-  .cat-row {
-    padding: 14px 16px;
-  }
-
-  @media (min-width: 768px) {
-    .cat-list {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      overflow: hidden;
-    }
-    .cat-row {
-      border-bottom: 1px solid var(--border);
-    }
-  }
-  .cat-row-main {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .cat-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .cat-label {
-    flex: 1;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--foreground);
-  }
-  .cat-pct {
-    font-size: 11px;
-    color: var(--muted-foreground);
-    min-width: 38px;
-    text-align: right;
-  }
-
-  .cat-bar-track {
-    margin-top: 8px;
-    margin-left: 20px;
-    height: 4px;
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .cat-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 600ms cubic-bezier(.2,.7,.2,1);
-  }
-
-
 </style>
