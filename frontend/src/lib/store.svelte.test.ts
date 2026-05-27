@@ -82,6 +82,7 @@ describe("pendingIds", () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     vi.resetModules();
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
@@ -243,6 +244,7 @@ describe("store", () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     vi.resetModules();
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
@@ -398,6 +400,7 @@ describe("addEntry — split (array) path", () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     vi.resetModules();
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) =>
       Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) }),

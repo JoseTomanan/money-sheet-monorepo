@@ -20,6 +20,7 @@ import {
 } from "vitest";
 import { store } from "./store.svelte";
 import * as api from "./api";
+import { setConnection } from "./connection.svelte";
 import { dedupeEntries } from "./dedupe";
 import type { AddEntryPayload, Entry } from "./types";
 
@@ -70,6 +71,10 @@ function diffNewIds(before: Entry[], after: Entry[]): number[] {
 
 describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
   beforeAll(async () => {
+    setConnection({
+      gasUrl: import.meta.env.VITE_GAS_URL as string,
+      apiSecret: import.meta.env.VITE_API_SECRET as string,
+    });
     await store.refreshAll(false);
   }, 30_000);
 

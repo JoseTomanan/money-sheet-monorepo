@@ -1,4 +1,5 @@
 import * as api from './api';
+import { ConnectionError } from './api';
 import { readCache, writeCache } from './cache';
 import { getMainCategory } from './domain';
 import { dedupeEntries } from './dedupe';
@@ -17,9 +18,11 @@ let categories = $state<CategoryMap>({});
 let breakdown = $state<SubcategoryBreakdown>({});
 let loading = $state(false);
 let error = $state<string | null>(null);
+let errorIsConnection = $state(false);
 let masterLoading = $state(false);
 let toastMsg = $state<string | null>(null);
 let toastAction = $state<{ label: string; run: () => void } | null>(null);
+let toastIsConnection = $state(false);
 let pendingIds = $state(new Set<number>());
 
 
@@ -41,8 +44,9 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
 function showToast(msgOrErr: unknown, action?: { label: string; run: () => void }): void {
   toastMsg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
   toastAction = action ?? null;
+  toastIsConnection = msgOrErr instanceof ConnectionError;
   if (!action) {
-    setTimeout(() => { toastMsg = null; }, 3000);
+    setTimeout(() => { toastMsg = null; toastIsConnection = false; }, 3000);
   }
 }
 
@@ -69,6 +73,7 @@ async function refreshAll(silent = false): Promise<void> {
   if (!silent) {
     loading = true;
     error = null;
+    errorIsConnection = false;
   }
   try {
     const [e, m, c, b] = await Promise.all([
@@ -83,7 +88,10 @@ async function refreshAll(silent = false): Promise<void> {
     breakdown = b;
     writeCache({ entries, master, categories, breakdown });
   } catch (err) {
-    if (!silent) error = err instanceof Error ? err.message : String(err);
+    if (!silent) {
+      error = err instanceof Error ? err.message : String(err);
+      errorIsConnection = err instanceof ConnectionError;
+    }
   } finally {
     if (!silent) loading = false;
   }
@@ -179,14 +187,16 @@ export const store = {
   get breakdown() { return breakdown; },
   get loading() { return loading; },
   get error() { return error; },
+  get errorIsConnection() { return errorIsConnection; },
   get masterLoading() { return masterLoading; },
   get toastMsg() { return toastMsg; },
   get toastAction() { return toastAction; },
+  get toastIsConnection() { return toastIsConnection; },
   get pendingIds() { return pendingIds; },
   init,
   refreshAll,
   addEntry,
   updateEntry,
   deleteEntry,
-  dismissToast: () => { toastMsg = null; toastAction = null; },
+  dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; },
 };

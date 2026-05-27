@@ -1,5 +1,10 @@
 export type Direction = "I" | "O";
 
+export interface Connection {
+  gasUrl: string;
+  apiSecret: string;
+}
+
 export interface Entry {
   id: number;
   date: string;

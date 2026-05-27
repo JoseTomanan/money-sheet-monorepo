@@ -8,31 +8,58 @@ import type {
 } from "./types";
 import * as mock from "./mock";
 import { normalizeDate } from "./format";
+import { connection } from "./connection.svelte";
 
-const GAS_URL = import.meta.env.VITE_GAS_URL as string;
-const API_SECRET = import.meta.env.VITE_API_SECRET as string;
+export class ConnectionError extends Error {}
+export class ConnectionMissingError extends ConnectionError {}
 
 async function gasGet<T>(action: string): Promise<T> {
-  const res = await fetch(`${GAS_URL}?action=${action}&t=${Date.now()}`, {
-    mode: "cors",
-    redirect: "follow",
-    cache: "no-store",
-  });
-  const json = JSON.parse(await res.text()) as Record<string, unknown>;
+  const conn = connection.current;
+  if (!conn) throw new ConnectionMissingError("No Connection configured.");
+  let res: Response;
+  try {
+    res = await fetch(`${conn.gasUrl}?action=${action}&t=${Date.now()}`, {
+      mode: "cors",
+      redirect: "follow",
+      cache: "no-store",
+    });
+  } catch (e) {
+    throw new ConnectionError(e instanceof Error ? e.message : String(e));
+  }
+  let json: Record<string, unknown>;
+  try {
+    json = JSON.parse(await res.text()) as Record<string, unknown>;
+  } catch {
+    throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
+  }
+  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
   if (json.error) throw new Error(String(json.error));
   return json as T;
 }
 
 async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(GAS_URL, {
-    method: "POST",
-    mode: "cors",
-    redirect: "follow",
-    // text/plain avoids CORS preflight on GAS web apps
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ ...body, secret: API_SECRET }),
-  });
-  const json = JSON.parse(await res.text()) as Record<string, unknown>;
+  const conn = connection.current;
+  if (!conn) throw new ConnectionMissingError("No Connection configured.");
+  let res: Response;
+  try {
+    res = await fetch(conn.gasUrl, {
+      method: "POST",
+      mode: "cors",
+      redirect: "follow",
+      // text/plain avoids CORS preflight on GAS web apps
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ ...body, secret: conn.apiSecret }),
+    });
+  } catch (e) {
+    throw new ConnectionError(e instanceof Error ? e.message : String(e));
+  }
+  let json: Record<string, unknown>;
+  try {
+    json = JSON.parse(await res.text()) as Record<string, unknown>;
+  } catch {
+    throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
+  }
+  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
   if (json.error) throw new Error(String(json.error));
   return json as T;
 }
