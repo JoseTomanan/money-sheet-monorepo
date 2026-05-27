@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { writeCache } from "./cache";
 import type { CachePayload } from "./cache";
-import type { Entry } from "./types";
+import type { Entry, AddEntryPayload } from "./types";
 
 const freshEntries: Entry[] = [
   {
@@ -358,5 +358,152 @@ describe("store", () => {
       expect(store.entries[0].description).toBe("first");
       await initPromise;
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helpers shared by the split-path describe block
+// ---------------------------------------------------------------------------
+
+function gasGetBody(url: string): Record<string, unknown> {
+  const qs = url.includes("?") ? url.split("?")[1] : "";
+  const action = new URLSearchParams(qs).get("action");
+  switch (action) {
+    case "getEntries": return { entries: freshEntries };
+    case "getMaster": return { master: freshMaster };
+    case "getCategories": return { categories: freshCategories };
+    case "getSubcategoryBreakdown": return { breakdown: freshBreakdown };
+    default: return {};
+  }
+}
+
+/** Returns a fetch stub where POSTs at the given indices fail with { error }. */
+function makePostMock(failAtIndices: number[] = []) {
+  let postIdx = 0;
+  return vi.fn().mockImplementation((url: string) => {
+    if (typeof url === "string" && url.includes("action=")) {
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+    }
+    const i = postIdx++;
+    if (failAtIndices.includes(i)) {
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "server error" })) });
+    }
+    const entry = { id: 100 + i, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 + i };
+    return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+  });
+}
+
+describe("addEntry — split (array) path", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) }),
+    ));
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("partial failure: toast shows 'Saved N of M', toastAction set, refreshAll runs", async () => {
+    vi.stubGlobal("fetch", makePostMock([1])); // 2nd POST fails
+    const payloads: AddEntryPayload[] = [
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+      { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
+    ];
+    store.addEntry(payloads);
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 2 of 3 entries"));
+    expect(store.toastAction?.label).toBe("Retry");
+    expect(store.entries).toEqual(freshEntries); // refreshAll ran despite partial failure
+  });
+
+  it("Retry re-submits only failed legs; clears toast on full success", async () => {
+    vi.stubGlobal("fetch", makePostMock([1])); // 2nd of 2 fails
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+    ]);
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
+    vi.stubGlobal("fetch", makePostMock([])); // next round: all succeed
+    store.toastAction!.run();
+    await vi.waitFor(() => expect(store.toastMsg).toBeNull());
+    expect(store.toastAction).toBeNull();
+  });
+
+  it("all legs fail: 'Couldn't save entries' + toastAction set", async () => {
+    vi.stubGlobal("fetch", makePostMock([0, 1, 2]));
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+      { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
+    ]);
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Couldn't save entries"));
+    expect(store.toastAction?.label).toBe("Retry");
+  });
+
+  it("full success: no toast, entries refreshed", async () => {
+    vi.stubGlobal("fetch", makePostMock([]));
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+    ]);
+    await vi.waitFor(() => expect(store.entries).toEqual(freshEntries));
+    expect(store.toastMsg).toBeNull();
+    expect(store.toastAction).toBeNull();
+  });
+
+  it("actionable toast persists past 3s auto-dismiss window", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", makePostMock([0])); // 1st fails → partial
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+    ]);
+    await vi.advanceTimersByTimeAsync(500); // flush the allSettled chain
+    expect(store.toastMsg).toBe("Saved 1 of 2 entries");
+    await vi.advanceTimersByTimeAsync(3_000); // plain toast would have cleared
+    expect(store.toastMsg).toBe("Saved 1 of 2 entries"); // still persists
+  });
+
+  it("hung leg counted as failed after 15s withTimeout", async () => {
+    vi.useFakeTimers();
+    let postIdx = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      const i = postIdx++;
+      if (i === 0) return new Promise<never>(() => {}); // hangs forever
+      const entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "split", direction: "O", amount: 20 };
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+    }));
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+    ]);
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(store.toastMsg).toBeNull(); // still waiting for hung leg
+    await vi.advanceTimersByTimeAsync(1); // fires 15s timeout
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
+  });
+
+  it("repeated partial retry: toast updates count on each failed retry", async () => {
+    vi.stubGlobal("fetch", makePostMock([0])); // 1st of 2 fails → "Saved 1 of 2"
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
+    ]);
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
+    vi.stubGlobal("fetch", makePostMock([0])); // retry also fails → "Couldn't save entries"
+    store.toastAction!.run();
+    await vi.waitFor(() => expect(store.toastMsg).toBe("Couldn't save entries"));
+    expect(store.toastAction).not.toBeNull();
   });
 });
