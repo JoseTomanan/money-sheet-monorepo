@@ -1,0 +1,83 @@
+<script lang="ts">
+  import { connection, setConnection } from '../lib/connection.svelte';
+
+  interface Props {
+    onsaved: () => void;
+  }
+
+  let { onsaved }: Props = $props();
+
+  let gasUrl    = $state(connection.current?.gasUrl    ?? '');
+  let apiSecret = $state(connection.current?.apiSecret ?? '');
+  let showSecret = $state(false);
+
+  let saveDisabled = $derived(gasUrl.trim() === '' || apiSecret.trim() === '');
+
+  function handleSave() {
+    setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
+    onsaved();
+  }
+</script>
+
+<div class="settings-content px-4 pt-4 pb-8">
+  <h2 class="settings-title font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-5">Connection Settings</h2>
+
+  <div class="field-card mt-0 py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+    <label
+      for="settings-gas-url"
+      class="field-label block text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1"
+    >GAS URL</label>
+    <input
+      id="settings-gas-url"
+      type="text"
+      bind:value={gasUrl}
+      placeholder="https://script.google.com/macros/s/…/exec"
+      class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck={false}
+    />
+  </div>
+
+  <div class="field-card mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)] flex items-center gap-2">
+    <div class="flex-1 min-w-0">
+      <label
+        for="settings-api-secret"
+        class="field-label block text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1"
+      >API Secret</label>
+      <input
+        id="settings-api-secret"
+        type={showSecret ? 'text' : 'password'}
+        bind:value={apiSecret}
+        placeholder="your-api-secret"
+        class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
+        autocomplete="current-password"
+      />
+    </div>
+    <button
+      type="button"
+      class="shrink-0 bg-transparent border-0 cursor-pointer p-1 text-muted-foreground font-sans text-[12px] font-medium"
+      onclick={() => (showSecret = !showSecret)}
+      aria-label={showSecret ? 'Hide' : 'Show'}
+    >
+      {#if showSecret}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      {:else}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      {/if}
+    </button>
+  </div>
+
+  <button
+    class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent text-white font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
+    onclick={handleSave}
+    disabled={saveDisabled}
+  >Save</button>
+</div>
