@@ -507,3 +507,96 @@ describe("addEntry — split (array) path", () => {
     expect(store.toastAction).not.toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// errorIsConnection and toastIsConnection
+// ---------------------------------------------------------------------------
+
+describe("store — errorIsConnection and toastIsConnection", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    // seed connection so api.ts can reach the (mocked) GAS URL after GREEN
+    localStorage.setItem(
+      "ms_connection",
+      JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }),
+    );
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("errorIsConnection is true when refreshAll catches a network/connection failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    await store.refreshAll(false);
+    expect(store.errorIsConnection).toBe(true);
+  });
+
+  it("errorIsConnection is false when refreshAll catches a generic API error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      text: () => Promise.resolve(JSON.stringify({ error: "server blew up" })),
+    }));
+    await store.refreshAll(false);
+    expect(store.errorIsConnection).toBe(false);
+  });
+
+  it("errorIsConnection resets to false at the start of each non-silent refreshAll", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
+    await store.refreshAll(false);
+    expect(store.errorIsConnection).toBe(true);
+
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll(false);
+    expect(store.errorIsConnection).toBe(false);
+    expect(store.error).toBeNull();
+  });
+
+  it("toastIsConnection is true when a mutation fails with a connection-class error", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+      }
+      return Promise.reject(new Error("Network error"));
+    }));
+    store.updateEntry(1, { description: "changed" });
+    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
+    expect(store.toastIsConnection).toBe(true);
+  });
+
+  it("toastIsConnection is false when a mutation fails with a generic API error", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
+    }));
+    store.updateEntry(1, { description: "changed" });
+    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
+    expect(store.toastIsConnection).toBe(false);
+  });
+
+  it("dismissToast resets toastIsConnection to false", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    await store.refreshAll();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+      }
+      return Promise.reject(new Error("down"));
+    }));
+    store.updateEntry(1, { description: "x" });
+    await vi.waitFor(() => expect(store.toastIsConnection).toBe(true));
+    store.dismissToast();
+    expect(store.toastIsConnection).toBe(false);
+  });
+});
