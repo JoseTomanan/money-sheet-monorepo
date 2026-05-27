@@ -12,7 +12,7 @@ Expose GAS as a web app (`doGet` for reads, `doPost` for all mutations). Write o
 
 ## Consequences
 
-- No OAuth flow needed; the frontend stores the secret locally (e.g., env var at build time or localStorage).
-- Suitable for personal single-user use — not appropriate if multiple users or untrusted clients are involved.
-- Changing the secret requires updating Script Properties in GAS and redeploying the frontend config.
-- Full OAuth / Google Sign-In is explicitly deferred; this decision should be revisited if the app is shared with others.
+- No OAuth flow needed; the frontend stores the secret in localStorage, entered at runtime via the Settings screen — no build-time env vars required.
+- Supports multiple independent users sharing one deployed URL; each device configures its own Connection pointing at its own spreadsheet.
+- Changing the secret requires updating Script Properties in GAS and re-entering the secret in the Settings screen.
+- Full OAuth / Google Sign-In is explicitly deferred; this decision should be revisited if stronger authentication is needed.

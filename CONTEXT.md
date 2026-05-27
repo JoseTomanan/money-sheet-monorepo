@@ -43,6 +43,9 @@ The net balance for a Category. Computed as: sum of all Incoming Entries whose T
 ## ON HAND
 The sum of all Category Budgets. Represents total money currently available across all categories. Displayed in the MASTER sheet. Derived entirely from spreadsheet formulas; GAS never writes to it.
 
+## Connection
+The user-provided configuration required to reach their spreadsheet: a GAS web app URL and an API secret. Stored in the browser's localStorage, scoped to the device. Without a Connection, the app cannot make any API calls. A user configures their Connection once per device via the Settings screen; it can be changed at any time. Structurally: `{ gasUrl: string, apiSecret: string }`.
+
 ## Sheets
 
 ### INCOMING/OUTGOING sheet
