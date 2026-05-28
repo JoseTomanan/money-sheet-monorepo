@@ -64,6 +64,30 @@
 </script>
 
 <div class="entries-view p-0" style="padding-bottom: 72px;">
+{#if store.loading}
+  <!-- Skeleton -->
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+  </div>
+  <div class="flex gap-2 px-4 py-3">
+    {#each [0, 1, 2] as _}
+      <div class="h-[30px] w-[72px] rounded-[var(--radius-pill)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    {/each}
+  </div>
+  <div class="mx-4 mb-3">
+    <div class="h-[32px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+  </div>
+  <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
+    {#each [0, 1, 2, 3, 4, 5] as _}
+      <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
+        <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+        <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+      </div>
+    {/each}
+  </div>
+{:else}
   <!-- Page header -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="week-selector flex items-center gap-[3px] cursor-pointer">
@@ -202,6 +226,7 @@
     {/if}
   </div>
   </div>
+{/if}
 </div>
 
 <style>

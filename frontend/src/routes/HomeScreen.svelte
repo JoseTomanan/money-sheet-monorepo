@@ -42,6 +42,55 @@
 </script>
 
 <div class="home p-0" style="padding-bottom: 72px;">
+{#if store.loading}
+  <!-- Skeleton -->
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+  </div>
+  <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+    <div class="home-left">
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+        <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
+        <div class="hero-divider h-px bg-border mt-[18px] mb-4"></div>
+        <div class="flex gap-[22px] items-center">
+          <div>
+            <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="h-[17px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+          </div>
+          <div class="w-px h-7 bg-border"></div>
+          <div>
+            <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="h-[17px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+          </div>
+        </div>
+      </div>
+      <div class="px-5 pt-5 pb-2">
+        <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      </div>
+      <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
+        {#each [0, 1] as _}
+          <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
+            <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+            <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+          </div>
+        {/each}
+      </div>
+    </div>
+    <div class="home-right md:border-l md:border-border md:min-h-full">
+      <div class="px-5 pt-5 pb-2">
+        <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      </div>
+      <div class="flex gap-2 pl-4 py-[2px]">
+        {#each [0, 1, 2, 3, 4] as _}
+          <div class="h-[60px] w-[96px] shrink-0 rounded-[var(--radius-md)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        {/each}
+      </div>
+    </div>
+  </div>
+{:else}
   <!-- Month header -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
@@ -148,6 +197,7 @@
       </div>
     </div>
   </div>
+{/if}
 </div>
 
 <style>

@@ -40,6 +40,38 @@
 </script>
 
 <div class="summary-view p-0" style="padding-bottom: 72px;">
+{#if store.loading}
+  <!-- Skeleton -->
+  <div class="page-header px-5 pt-5 pb-1">
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+  </div>
+  <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
+    <div>
+      <div class="h-[8px] w-[50px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-[26px] w-[130px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
+    </div>
+    <div class="text-right">
+      <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-[17px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
+    </div>
+  </div>
+  <div class="px-5 pt-5 pb-2">
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+  </div>
+  <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden">
+    {#each [0, 1, 2, 3, 4] as _}
+      <div class="py-[14px] px-4 border-b border-border last:border-0">
+        <div class="flex items-center gap-[10px]">
+          <div class="size-[10px] rounded-full bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+          <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+          <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        </div>
+        <div class="mt-2 ml-5 h-1 rounded-[2px] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      </div>
+    {/each}
+  </div>
+{:else}
   <!-- Page header -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
@@ -121,6 +153,7 @@
       </div>
     {/each}
   </div>
+{/if}
 </div>
 
 <style>
