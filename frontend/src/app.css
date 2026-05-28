@@ -12,6 +12,14 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive:       var(--destructive);
   --color-positive:          var(--positive);
+  --color-primary:           var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:         var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-popover:           var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-input:             var(--input);
+  --color-ring:              var(--ring);
   --font-display:            var(--font-display);
 }
 
@@ -67,6 +75,17 @@
   --accent-foreground: #ffffff;
   --destructive:       #c14a32;
   --positive:          #1a8a3f;
+
+  /* shadcn-svelte token aliases — map onto our palette */
+  --primary:              var(--accent);
+  --primary-foreground:   var(--accent-foreground);
+  --secondary:            var(--muted);
+  --secondary-foreground: var(--foreground);
+  --popover:              var(--card);
+  --popover-foreground:   var(--card-foreground);
+  --input:                var(--border);
+  --ring:                 var(--accent);
+  --radius:               var(--radius-md);
 
   --font-sans:    'Inter', -apple-system, system-ui, sans-serif;
   --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
