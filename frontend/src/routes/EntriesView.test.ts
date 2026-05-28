@@ -4,9 +4,11 @@ import type { Entry } from "../lib/types";
 import EntriesView from "./EntriesView.svelte";
 
 const mockStore = vi.hoisted(() => ({
+  loading: false,
   entries: [] as Entry[],
   categories: {} as Record<string, unknown>,
   pendingIds: new Set<number>(),
+  masterLoading: false,
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
@@ -132,5 +134,34 @@ describe("EntriesView add-entry card", () => {
     const { getByRole } = render(EntriesView, props);
     await fireEvent.click(getByRole("button", { name: /ADD ENTRY/ }));
     expect(props.onadd).toHaveBeenCalledOnce();
+  });
+});
+
+describe("EntriesView skeleton loading", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-24"));
+    mockStore.loading = true;
+    mockStore.entries = [];
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    mockStore.loading = false;
+  });
+
+  it("when loading, does not render 'Loading' text", () => {
+    const { queryByText } = render(EntriesView, baseProps());
+    expect(queryByText(/loading/i)).not.toBeInTheDocument();
+  });
+
+  it("when loading, renders shimmer elements", () => {
+    const { container } = render(EntriesView, baseProps());
+    expect(container.querySelectorAll('[class*="shimmer"]').length).toBeGreaterThan(0);
+  });
+
+  it("when not loading, renders no shimmer elements", () => {
+    mockStore.loading = false;
+    const { container } = render(EntriesView, baseProps());
+    expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
   });
 });
