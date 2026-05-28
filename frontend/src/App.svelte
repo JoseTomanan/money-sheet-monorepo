@@ -60,6 +60,13 @@
   <SettingsGate onsaved={() => store.refreshAll()} />
 {:else}
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-background">
+    {#if store.syncing}
+      <span
+        class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
+        aria-label="Syncing data"
+      ></span>
+    {/if}
+
     <!-- Gear button: fixed top-right -->
     <button
       class="gear-btn fixed top-3 z-50 p-2 rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)]"

@@ -24,6 +24,7 @@ let toastMsg = $state<string | null>(null);
 let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let toastIsConnection = $state(false);
 let pendingIds = $state(new Set<number>());
+let syncing = $state(false);
 
 
 const MUTATION_TIMEOUT_MS = 15_000;
@@ -104,7 +105,12 @@ async function init(): Promise<void> {
     master = cache.master;
     categories = cache.categories;
     breakdown = cache.breakdown;
-    void refreshAll(true);
+    syncing = true;
+    masterLoading = true;
+    void refreshAll(true).finally(() => {
+      syncing = false;
+      masterLoading = false;
+    });
   } else {
     await refreshAll(false);
   }
@@ -151,7 +157,7 @@ function updateEntry(id: number, patch: UpdateEntryPatch): void {
   addPending(id);
   masterLoading = true;
   void withTimeout(api.updateEntry(id, patch))
-    .then(() => { void refreshAll(true); })
+    .then(() => refreshAll(true))
     .catch((err) => {
       entries = entries.map((e) => (e.id === id ? prev : e));
       showToast(err);
@@ -169,7 +175,7 @@ function deleteEntry(id: number): void {
   void withTimeout(api.deleteEntry(id))
     .then(() => {
       entries = entries.filter((e) => e.id !== id);
-      void refreshAll(true);
+      return refreshAll(true);
     })
     .catch((err) => {
       showToast(err);
@@ -193,6 +199,7 @@ export const store = {
   get toastAction() { return toastAction; },
   get toastIsConnection() { return toastIsConnection; },
   get pendingIds() { return pendingIds; },
+  get syncing() { return syncing; },
   init,
   refreshAll,
   addEntry,
