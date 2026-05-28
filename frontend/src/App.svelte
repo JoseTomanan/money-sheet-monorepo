@@ -8,6 +8,7 @@
   import Fab from './components/Fab.svelte';
   import EntrySheet from './components/EntrySheet.svelte';
   import Settings from './components/Settings.svelte';
+  import SettingsGate from './components/SettingsGate.svelte';
   import HomeScreen from './routes/HomeScreen.svelte';
   import EntriesView from './routes/EntriesView.svelte';
   import BudgetsView from './routes/BudgetsView.svelte';
@@ -55,14 +56,7 @@
 </script>
 
 {#if connection.current == null}
-  <!-- First-launch gate: full-screen Settings, no backdrop, no close -->
-  <div class="gate min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-background flex flex-col justify-center">
-    <div class="gate-header px-4 pt-8 pb-2">
-      <h1 class="font-display text-xl font-bold text-foreground tracking-[-0.3px]">Welcome to Money Sheet</h1>
-      <p class="font-sans text-[13px] text-muted-foreground mt-1">Enter your Google Apps Script URL and API secret to get started.</p>
-    </div>
-    <Settings onsaved={() => store.refreshAll()} />
-  </div>
+  <SettingsGate onsaved={() => store.refreshAll()} />
 {:else}
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-background">
     <!-- Gear button: fixed top-right -->
@@ -79,12 +73,7 @@
 
     <!-- Scrollable content area -->
     <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip" bind:this={scrollArea} onscroll={handleScroll}>
-      {#if store.loading}
-        <div class="state-center flex flex-col items-center justify-center min-h-[60dvh] gap-3">
-          <div class="loading-spinner size-7 rounded-full border-[2.5px] border-border border-t-accent animate-[spin_0.7s_linear_infinite]"></div>
-          <p class="state-text font-sans text-sm text-muted-foreground m-0">Loading…</p>
-        </div>
-      {:else if store.error}
+      {#if store.error}
         <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[rgba(193,74,50,0.06)] border border-[rgba(193,74,50,0.2)]">
           <p class="error-title font-sans text-[15px] font-semibold text-destructive mb-1">Could not load data</p>
           <p class="error-body font-sans text-[13px] text-muted-foreground mb-[14px]">{store.error}</p>
