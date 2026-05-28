@@ -1,3 +1,4 @@
+<!-- App-specific floating action button; no direct shadcn equivalent. -->
 <script lang="ts">
   interface Props {
     onclick: () => void;

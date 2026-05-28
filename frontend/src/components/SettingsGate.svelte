@@ -1,3 +1,4 @@
+<!-- First-launch non-dismissible gate dialog; could map to shadcn Dialog but is out of scope for issue #39 (Sheet + Badge only). -->
 <script lang="ts">
   import Settings from './Settings.svelte';
 

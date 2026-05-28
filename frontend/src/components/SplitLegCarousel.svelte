@@ -1,3 +1,4 @@
+<!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
   import { CATEGORIES } from '../lib/theme';
   import type { SplitState, Leg } from '../lib/splitEntry';

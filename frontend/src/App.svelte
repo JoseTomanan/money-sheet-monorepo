@@ -9,6 +9,7 @@
   import EntrySheet from './components/EntrySheet.svelte';
   import Settings from './components/Settings.svelte';
   import SettingsGate from './components/SettingsGate.svelte';
+  import * as Sheet from '$lib/components/ui/sheet';
   import HomeScreen from './routes/HomeScreen.svelte';
   import EntriesView from './routes/EntriesView.svelte';
   import BudgetsView from './routes/BudgetsView.svelte';
@@ -145,30 +146,20 @@
       ondelete={(id) => { store.deleteEntry(id); sheetOpen = false; }}
     />
 
-    <!-- Settings overlay (bottom-sheet) -->
-    {#if settingsOpen}
-      <div
-        class="settings-backdrop fixed inset-0 bg-black/40 z-[400]"
-        role="button"
-        tabindex="-1"
-        aria-label="Close settings"
-        onclick={() => (settingsOpen = false)}
-        onkeydown={(e) => e.key === 'Escape' && (settingsOpen = false)}
-      ></div>
-      <div class="settings-sheet fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[var(--app-max-width)] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] z-[401]">
-        <div class="handle-row flex justify-center pt-[14px] pb-[10px]">
-          <div class="handle w-9 h-1 rounded-[2px] bg-border"></div>
-        </div>
-        <div class="sheet-header flex items-center justify-between px-5 pt-2 pb-[6px]">
-          <span class="sheet-title font-display text-base font-semibold text-foreground tracking-[-0.2px]">Settings</span>
-          <button
-            class="header-btn bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
-            onclick={() => (settingsOpen = false)}
-          >Done</button>
-        </div>
-        <Settings onsaved={() => { settingsOpen = false; store.refreshAll(); }} />
+    <!-- Settings overlay (shadcn Sheet, side=bottom) -->
+    <Sheet.Root open={settingsOpen} onOpenChange={(v) => (settingsOpen = v)}>
+      <div class="flex justify-center pt-[14px] pb-[10px]">
+        <div class="w-9 h-1 rounded-[2px] bg-border"></div>
       </div>
-    {/if}
+      <Sheet.Header>
+        <Sheet.Title>Settings</Sheet.Title>
+        <button
+          class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
+          onclick={() => (settingsOpen = false)}
+        >Done</button>
+      </Sheet.Header>
+      <Settings onsaved={() => { settingsOpen = false; store.refreshAll(); }} />
+    </Sheet.Root>
   </div>
 {/if}
 

@@ -1,3 +1,4 @@
+<!-- Custom bottom-sheet with drag-to-resize/dismiss gestures (see lib/dragGesture.ts); shadcn Sheet does not expose snap points, so the bespoke implementation is retained. -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { CATEGORIES } from '../lib/theme';
