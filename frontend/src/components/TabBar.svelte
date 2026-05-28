@@ -1,3 +1,4 @@
+<!-- Custom mobile bottom tab bar; shadcn has no native tab-bar primitive. -->
 <script lang="ts">
   export type TabId = 'home' | 'entries' | 'summary';
 

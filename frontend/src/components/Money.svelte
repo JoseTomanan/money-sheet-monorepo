@@ -1,3 +1,4 @@
+<!-- Currency display primitive; no shadcn equivalent. -->
 <script lang="ts">
   import { peso } from '../lib/format';
 

@@ -1,3 +1,4 @@
+<!-- Custom description band with category-color accent; no shadcn equivalent. -->
 <script lang="ts">
   interface Props {
     description: string;
