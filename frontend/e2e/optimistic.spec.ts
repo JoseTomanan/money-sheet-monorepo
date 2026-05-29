@@ -9,6 +9,25 @@ async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
   await page.locator(".tab-bar-pill").getByRole("button", { name: label }).click();
 }
 
+async function addEntryViaUi(
+  page: Page,
+  opts: { description: string; amount: string; tag: string; direction?: "Outgoing" | "Incoming" }
+) {
+  const direction = opts.direction ?? "Outgoing";
+  await switchTab(page, "Entries");
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
+  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  if (direction === "Incoming") {
+    await page.locator("button.dir-btn", { hasText: "Incoming" }).click();
+  }
+  await page.locator(".amount-input").fill(opts.amount);
+  await page.locator(".field-input").first().fill(opts.description);
+  await page.locator(".tag-pill", { hasText: opts.tag }).first().click();
+  await page.locator("button.header-btn.save").click();
+  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await waitForAppReady(page);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await waitForAppReady(page);
@@ -34,6 +53,9 @@ test("adding an entry shows it immediately without a loading spinner", async ({ 
 
 // AC: editing an entry — reflects new value immediately, no spinner
 test("editing an entry updates it immediately without a loading spinner", async ({ page }) => {
+  const desc = `opt-edit-${Date.now()}`;
+  await addEntryViaUi(page, { description: desc, amount: "50", tag: "Dining" });
+
   await switchTab(page, "Entries");
   await page.locator(".entry-desc").first().click();
   await page.locator(".sheet.open").waitFor({ state: "visible" });
@@ -43,7 +65,7 @@ test("editing an entry updates it immediately without a loading spinner", async 
   await page.locator(".sheet.open").waitFor({ state: "detached" });
 
   await expect(page.locator(".loading-spinner")).not.toBeVisible();
-  await expect(page.locator(".entry-card").first()).toContainText("₱999.00");
+  await expect(page.locator(".entry-card", { hasText: desc })).toContainText("₱999.00");
 });
 
 // AC: deleting an entry — gone immediately, no spinner
@@ -61,8 +83,11 @@ test("deleting an entry removes it immediately without a loading spinner", async
 
   const card = page.locator(".entry-card", { hasText: desc });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Delete entry" }).dispatchEvent("click");
-  await card.locator(".confirm-btn").dispatchEvent("click");
+  // Delete is inside the EntrySheet — open it then dispatchEvent to bypass pointer-events
+  await card.locator(".entry-desc").dispatchEvent("click");
+  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator(".delete-btn").dispatchEvent("click");
+  await page.locator(".sheet.open").waitFor({ state: "detached" });
 
   await expect(page.locator(".entry-card", { hasText: desc })).not.toBeVisible();
   await expect(page.locator(".loading-spinner")).not.toBeVisible();
