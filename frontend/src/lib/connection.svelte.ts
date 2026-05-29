@@ -22,3 +22,20 @@ export function setConnection(c: Connection): void {
   localStorage.setItem(LS_KEY, JSON.stringify(c));
   current = c;
 }
+
+export function importFromUrl(): void {
+  const params = new URLSearchParams(window.location.search);
+  const gasUrl = params.get('gasUrl');
+  const apiSecret = params.get('apiSecret');
+  if (gasUrl && apiSecret) {
+    setConnection({ gasUrl, apiSecret });
+    history.replaceState(null, '', window.location.pathname + window.location.hash);
+  }
+}
+
+export function generateSetupUrl(): string {
+  const conn = current;
+  if (!conn) return '';
+  const params = new URLSearchParams({ gasUrl: conn.gasUrl, apiSecret: conn.apiSecret });
+  return `${window.location.origin}${window.location.pathname}?${params}`;
+}

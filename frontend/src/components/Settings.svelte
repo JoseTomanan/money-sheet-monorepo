@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { connection, setConnection } from '../lib/connection.svelte';
+  import { connection, setConnection, generateSetupUrl } from '../lib/connection.svelte';
 
   interface Props {
     onsaved: () => void;
@@ -10,8 +10,17 @@
   let gasUrl    = $state(connection.current?.gasUrl    ?? '');
   let apiSecret = $state(connection.current?.apiSecret ?? '');
   let showSecret = $state(false);
+  let copyLabel = $state('Copy setup link');
 
   let saveDisabled = $derived(gasUrl.trim() === '' || apiSecret.trim() === '');
+
+  async function handleCopySetupLink() {
+    const url = generateSetupUrl();
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    copyLabel = 'Copied!';
+    setTimeout(() => { copyLabel = 'Copy setup link'; }, 2000);
+  }
 
   function handleSave() {
     setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
@@ -80,4 +89,12 @@
     onclick={handleSave}
     disabled={saveDisabled}
   >Save</button>
+
+  {#if connection.current}
+    <button
+      class="copy-link-btn w-full mt-2 py-[11px] rounded-[var(--radius-md)] border border-border bg-transparent text-muted-foreground font-sans text-[14px] font-medium cursor-pointer transition-[color,border-color] duration-150 hover:text-foreground hover:border-foreground/30"
+      onclick={handleCopySetupLink}
+      type="button"
+    >{copyLabel}</button>
+  {/if}
 </div>
