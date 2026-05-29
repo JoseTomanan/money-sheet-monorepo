@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
-  base: "/",
+  base: "/money-sheet-monorepo/",
   server: {
     port: 1111,
     strictPort: true,
