@@ -2,7 +2,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { CATEGORIES } from '../lib/theme';
-  import { getTagOptions } from '../lib/domain';
+  import { getTagOptions, isValidTag } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
   import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction, EntryMutation } from '../lib/types';
   import {
@@ -97,7 +97,9 @@
     onclose();
   }
 
-  const saveDisabled = $derived(splitMode ? !isSplitValid(split) : (!tag || !amount));
+  const saveDisabled = $derived(
+    splitMode ? !isSplitValid(split) : (!tag || !amount || !isValidTag(tag, direction, categories))
+  );
   const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
 
   const sheetTransform = $derived(

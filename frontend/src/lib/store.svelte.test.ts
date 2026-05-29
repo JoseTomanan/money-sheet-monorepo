@@ -363,6 +363,56 @@ describe("store", () => {
   });
 });
 
+describe("refreshAll timeout", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.useFakeTimers();
+    vi.resetModules();
+    // stub fetch AFTER resetModules so the freshly imported module picks it up
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => new Promise(() => {/* never resolves */})));
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("cold start: sets error and clears loading after 15 s with no response", async () => {
+    const initPromise = store.init();
+    await vi.advanceTimersByTimeAsync(15_000);
+    await initPromise;
+    expect(store.loading).toBe(false);
+    expect(store.error).toMatch(/timed out/i);
+  });
+
+  it("cold start: happy path resolves without error within timeout window", async () => {
+    vi.stubGlobal("fetch", makeFetchMock());
+    vi.useRealTimers();
+    vi.resetModules();
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.init();
+    expect(store.error).toBeNull();
+    expect(store.entries).toEqual(freshEntries);
+    expect(store.master).toEqual(freshMaster);
+    expect(store.categories).toEqual(freshCategories);
+    expect(store.breakdown).toEqual(freshBreakdown);
+  });
+
+  it("silent refresh: timeout does not set loading or error", async () => {
+    const p = store.refreshAll(true);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await p;
+    expect(store.loading).toBe(false);
+    expect(store.error).toBeNull();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Helpers shared by the split-path describe block
 // ---------------------------------------------------------------------------

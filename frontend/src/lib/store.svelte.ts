@@ -27,7 +27,7 @@ let pendingIds = $state(new Set<number>());
 let syncing = $state(false);
 
 
-const MUTATION_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
 function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
@@ -37,7 +37,7 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out.')), MUTATION_TIMEOUT_MS)
+      setTimeout(() => reject(new Error('Request timed out.')), REQUEST_TIMEOUT_MS)
     ),
   ]);
 }
@@ -77,12 +77,12 @@ async function refreshAll(silent = false): Promise<void> {
     errorIsConnection = false;
   }
   try {
-    const [e, m, c, b] = await Promise.all([
+    const [e, m, c, b] = await withTimeout(Promise.all([
       api.getEntries(),
       api.getMaster(),
       api.getCategories(),
       api.getSubcategoryBreakdown(),
-    ]);
+    ]));
     entries = dedupeEntries(e);
     master = m;
     categories = c;
