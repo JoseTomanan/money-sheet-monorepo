@@ -27,6 +27,10 @@ function baseProps(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function getWeekTrigger(container: HTMLElement) {
+  return container.querySelector("[data-week-trigger]") as HTMLElement;
+}
+
 describe("EntriesView week selector", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -34,46 +38,71 @@ describe("EntriesView week selector", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("renders a <select> in the page-eyebrow", () => {
+  it("trigger shows the current-week label by default", () => {
     mockStore.entries = [];
     const { container } = render(EntriesView, baseProps());
-    expect(container.querySelector("select.page-eyebrow")).toBeInTheDocument();
+    expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
   });
 
-  it("defaults to the current calendar week", () => {
-    mockStore.entries = [];
-    const { container } = render(EntriesView, baseProps());
-    const sel = container.querySelector("select") as HTMLSelectElement;
-    expect(sel.value).toBe("2026-05-24");
-  });
-
-  it("always includes the current week even if it has no entries", () => {
+  it("opening the popover lists current week and entry week", async () => {
     mockStore.entries = [makeEntry(1, "2026-05-04")]; // week of 2026-05-03
     const { container } = render(EntriesView, baseProps());
-    const opts = [...container.querySelectorAll("select option")].map(o => (o as HTMLOptionElement).value);
-    expect(opts).toContain("2026-05-24"); // current week
-    expect(opts).toContain("2026-05-03"); // entry week
+    await fireEvent.click(getWeekTrigger(container));
+    expect(document.body.querySelector("[data-week-key='2026-05-24']")).toBeInTheDocument();
+    expect(document.body.querySelector("[data-week-key='2026-05-03']")).toBeInTheDocument();
   });
 
-  it("lists no duplicate options when current week has entries", () => {
-    mockStore.entries = [makeEntry(1, "2026-05-24")]; // entry in current week
+  it("always includes the current week even with no entries", async () => {
+    mockStore.entries = [makeEntry(1, "2026-05-04")]; // week of 2026-05-03
     const { container } = render(EntriesView, baseProps());
-    const opts = [...container.querySelectorAll("select option")].map(o => (o as HTMLOptionElement).value);
-    expect(opts.filter(v => v === "2026-05-24")).toHaveLength(1);
+    await fireEvent.click(getWeekTrigger(container));
+    const keys = [...document.body.querySelectorAll("[data-week-row]")].map(r => r.getAttribute("data-week-key"));
+    expect(keys).toContain("2026-05-24");
+    expect(keys).toContain("2026-05-03");
   });
 
-  it("changing the week shows only entries from that week", async () => {
+  it("no duplicate week rows when current week has entries", async () => {
+    mockStore.entries = [makeEntry(1, "2026-05-24")];
+    const { container } = render(EntriesView, baseProps());
+    await fireEvent.click(getWeekTrigger(container));
+    const matching = [...document.body.querySelectorAll("[data-week-key='2026-05-24']")];
+    expect(matching).toHaveLength(1);
+  });
+
+  it("selecting a week from the popover shows only entries from that week", async () => {
     mockStore.entries = [
       makeEntry(1, "2026-05-04"), // week of 2026-05-03
       makeEntry(2, "2026-05-11"), // week of 2026-05-10
     ];
-    const { container, getByText, queryByText } = render(EntriesView, baseProps());
-    const sel = container.querySelector("select") as HTMLSelectElement;
-    // default = current week (May 24) → neither entry visible
+    const { container, queryByText, getByText } = render(EntriesView, baseProps());
+    // default = current week → neither entry visible
     expect(queryByText("Entry 1")).not.toBeInTheDocument();
-    await fireEvent.change(sel, { target: { value: "2026-05-03" } });
+    await fireEvent.click(getWeekTrigger(container));
+    const row = document.body.querySelector("[data-week-key='2026-05-03']") as HTMLElement;
+    await fireEvent.click(row);
     expect(getByText("Entry 1")).toBeInTheDocument();
     expect(queryByText("Entry 2")).not.toBeInTheDocument();
+  });
+
+  it("filterDir change with no entries in selected week falls back to current week", async () => {
+    // Entry 1 is Outgoing in week May 3; Entry 2 is Incoming in current week
+    mockStore.entries = [
+      { ...makeEntry(1, "2026-05-04"), direction: "O" },
+      { ...makeEntry(2, "2026-05-24"), direction: "I" },
+    ];
+    const { container, getByRole } = render(EntriesView, baseProps());
+
+    // Select week 2026-05-03 (has Entry 1 under "all")
+    await fireEvent.click(getWeekTrigger(container));
+    const row = document.body.querySelector("[data-week-key='2026-05-03']") as HTMLElement;
+    await fireEvent.click(row);
+
+    // Now switch direction to "Incoming" — May 3 has no Incoming entries
+    const incomingBtn = getByRole("radio", { name: /incoming/i });
+    await fireEvent.click(incomingBtn);
+
+    // Trigger should snap back to current-week label
+    expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
   });
 });
 

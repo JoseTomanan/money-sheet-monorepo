@@ -8,6 +8,7 @@
   import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
+  import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
 
   interface Props {
     onopenedit: (entry: Entry) => void;
@@ -57,6 +58,11 @@
     return all.sort((a, b) => a.key.localeCompare(b.key));
   });
 
+  $effect(() => {
+    const weeks = selectableWeeks();
+    if (!weeks.some(w => w.key === selectedWeek)) selectedWeek = currentWeekKey();
+  });
+
   const catCounts = $derived(
     countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
   );
@@ -90,19 +96,12 @@
 {:else}
   <!-- Page header -->
   <div class="page-header px-5 pt-5 pb-1">
-    <div class="week-selector flex items-center gap-[3px] cursor-pointer">
-      <select
-        class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground appearance-none bg-transparent border-0 p-0 cursor-pointer outline-none"
-        bind:value={selectedWeek}
-      >
-        {#each selectableWeeks() as week (week.key)}
-          <option value={week.key}>{week.label}</option>
-        {/each}
-      </select>
-      <svg class="week-caret text-muted-foreground pointer-events-none shrink-0 opacity-70" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </div>
+    <WeekPicker
+      weeks={selectableWeeks()}
+      currentWeekKey={currentWeekKey()}
+      value={selectedWeek}
+      onSelect={(k) => (selectedWeek = k)}
+    />
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex items-baseline gap-[10px]">
       Entries
       <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filtered.length}</span>
