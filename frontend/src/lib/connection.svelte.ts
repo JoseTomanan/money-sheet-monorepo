@@ -3,6 +3,7 @@ import type { Connection } from "./types";
 const LS_KEY = "ms_connection";
 
 function readFromStorage(): Connection | null {
+  if (import.meta.env.VITE_MOCK === "true") return { gasUrl: "mock://noop", apiSecret: "mock" };
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
