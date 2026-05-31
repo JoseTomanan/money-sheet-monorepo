@@ -1,4 +1,4 @@
-import type { Direction, CategoryMap } from './types';
+import type { Direction, CategoryMap, Entry, AddEntryPayload } from './types';
 
 export function getTagOptions(
   direction: Direction,
@@ -18,6 +18,10 @@ export function getMainCategory(tag: string, categories: CategoryMap): string {
     if (subs.includes(tag)) return cat;
   }
   return tag;
+}
+
+export function buildEntry(id: number, payload: AddEntryPayload, categories: CategoryMap): Entry {
+  return { id, mainCategory: getMainCategory(payload.tag, categories), ...payload };
 }
 
 export function isValidTag(

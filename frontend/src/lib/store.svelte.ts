@@ -1,7 +1,7 @@
 import * as api from './api';
 import { ConnectionError } from './api';
 import { readCache, writeCache } from './cache';
-import { getMainCategory } from './domain';
+import { getMainCategory, buildEntry } from './domain';
 import { dedupeEntries } from './dedupe';
 import type {
   Entry,
@@ -122,12 +122,7 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
     return;
   }
   const tempId = -(Date.now());
-  const optimistic: Entry = {
-    id: tempId,
-    mainCategory: getMainCategory(payload.tag, categories),
-    ...payload,
-  };
-  entries = [...entries, optimistic];
+  entries = [...entries, buildEntry(tempId, payload, categories)];
   addPending(tempId);
   masterLoading = true;
   void withTimeout(api.addEntry(payload))
