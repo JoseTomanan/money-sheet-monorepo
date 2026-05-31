@@ -102,10 +102,11 @@ test("deleting an entry removes it from the entries list", async ({ page }) => {
   const card = page.locator(".entry-card", { hasText: desc });
   await expect(card).toBeVisible();
 
-  // dispatchEvent bypasses overlay checks — needed when the last card sits under the fixed FAB
-  await card.getByRole("button", { name: "Delete entry" }).dispatchEvent("click");
-  await card.locator(".confirm-btn").dispatchEvent("click");
-  await waitForAppReady(page);
+  // Delete is inside the EntrySheet — open it then dispatchEvent to bypass pointer-events
+  await card.locator(".entry-desc").dispatchEvent("click");
+  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator(".delete-btn").dispatchEvent("click");
+  await page.locator(".sheet.open").waitFor({ state: "detached" });
 
   await expect(page.locator(".entry-card", { hasText: desc })).not.toBeVisible();
 });
