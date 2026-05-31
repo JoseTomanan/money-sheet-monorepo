@@ -27,6 +27,18 @@ export const CATEGORIES: Record<string, CategoryStyle> = {
 
 export const CATEGORY_ORDER = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'] as const;
 
+const FALLBACK_STYLE: CategoryStyle = {
+  color: 'var(--muted-foreground)',
+  soft: 'var(--muted)',
+  pastel: 'var(--muted)',
+  label: '',
+  subcategories: [],
+};
+
+export function resolveCategoryStyle(key: string): CategoryStyle {
+  return CATEGORIES[key] ?? { ...FALLBACK_STYLE, label: key };
+}
+
 export const CATEGORY_MAP: CategoryMap = Object.fromEntries(
   Object.entries(CATEGORIES).map(([k, v]) => [k, v.subcategories])
 );

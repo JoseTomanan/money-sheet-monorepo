@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
-  import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
   import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel } from '../lib/groupEntries';
@@ -178,7 +178,7 @@
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
-                {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
+                {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
                 <div
                   class="entry-card relative flex items-center gap-[10px] py-3 pr-3 pl-[14px] bg-card rounded-none cursor-pointer"
                   class:opacity-[0.55]={dim}

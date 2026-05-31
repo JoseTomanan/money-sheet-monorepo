@@ -1,6 +1,6 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
-  import { CATEGORIES } from '../lib/theme';
+  import { resolveCategoryStyle } from '../lib/theme';
   import type { SplitState, Leg } from '../lib/splitEntry';
 
   interface Props {
@@ -40,7 +40,7 @@
       </div>
       <div class="tag-grid flex flex-wrap gap-[5px]">
         {#each tagOptions as opt}
-          {@const s = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
+          {@const s = resolveCategoryStyle(opt.parentCat)}
           <button
             class="tag-pill shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap"
             class:active={leg.tag === opt.value}
