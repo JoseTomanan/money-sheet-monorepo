@@ -51,23 +51,40 @@ function showToast(msgOrErr: unknown, action?: { label: string; run: () => void 
   }
 }
 
-function submitLegs(legs: AddEntryPayload[]): void {
+async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
+  const now = Date.now();
+  const tempIds = legs.map((_, i) => -(now + i));
+  entries = [...entries, ...legs.map((leg, i) => buildEntry(tempIds[i], leg, categories))];
+  for (const id of tempIds) addPending(id);
   masterLoading = true;
-  void Promise.allSettled(legs.map((p) => withTimeout(api.addEntry(p))))
-    .then((results) => {
-      const failed = legs.filter((_, i) => results[i].status === 'rejected');
-      const ok = legs.length - failed.length;
-      if (failed.length === 0) {
-        toastMsg = null;
-        toastAction = null;
-      } else if (ok === 0) {
-        showToast("Couldn't save entries", { label: 'Retry', run: () => submitLegs(failed) });
+  try {
+    const results = await Promise.allSettled(legs.map((p) => withTimeout(api.addEntry(p))));
+    const failed = legs.filter((_, i) => results[i].status === 'rejected');
+    const ok = legs.length - failed.length;
+
+    for (let i = 0; i < results.length; i++) {
+      const tempId = tempIds[i];
+      removePending(tempId);
+      if (results[i].status === 'fulfilled') {
+        const real = (results[i] as PromiseFulfilledResult<Entry>).value;
+        entries = entries.map((e) => (e.id === tempId ? real : e));
       } else {
-        showToast(`Saved ${ok} of ${legs.length} entries`, { label: 'Retry', run: () => submitLegs(failed) });
+        entries = entries.filter((e) => e.id !== tempId);
       }
-      return refreshAll(true);
-    })
-    .finally(() => { masterLoading = false; });
+    }
+
+    if (failed.length === 0) {
+      toastMsg = null;
+      toastAction = null;
+    } else if (ok === 0) {
+      showToast("Couldn't save entries", { label: 'Retry', run: () => void submitLegs(failed) });
+    } else {
+      showToast(`Saved ${ok} of ${legs.length} entries`, { label: 'Retry', run: () => void submitLegs(failed) });
+    }
+    await refreshAll(true);
+  } finally {
+    masterLoading = false;
+  }
 }
 
 async function refreshAll(silent = false): Promise<void> {
@@ -83,7 +100,7 @@ async function refreshAll(silent = false): Promise<void> {
       api.getCategories(),
       api.getSubcategoryBreakdown(),
     ]));
-    entries = dedupeEntries(e);
+    entries = e;
     master = m;
     categories = c;
     breakdown = b;
@@ -116,32 +133,32 @@ async function init(): Promise<void> {
   }
 }
 
-function addEntry(payload: AddEntryPayload | AddEntryPayload[]): void {
-  if (Array.isArray(payload)) {
-    submitLegs(payload);
-    return;
-  }
+async function addSingle(payload: AddEntryPayload): Promise<void> {
   const tempId = -(Date.now());
   entries = [...entries, buildEntry(tempId, payload, categories)];
   addPending(tempId);
   masterLoading = true;
-  void withTimeout(api.addEntry(payload))
-    .then((real) => {
-      entries = entries.map((e) => (e.id === tempId ? real : e));
-      removePending(tempId);
-      return refreshAll(true).then(() => { removePending(real.id); });
-    })
-    .catch((err) => {
-      entries = entries.filter((e) => e.id !== tempId);
-      removePending(tempId);
-      showToast(err);
-    })
-    .finally(() => {
-      masterLoading = false;
-    });
+  try {
+    const real = await withTimeout(api.addEntry(payload));
+    entries = entries.map((e) => (e.id === tempId ? real : e));
+    removePending(tempId);
+    addPending(real.id);
+    await refreshAll(true);
+    removePending(real.id);
+  } catch (err) {
+    entries = entries.filter((e) => e.id !== tempId);
+    removePending(tempId);
+    showToast(err);
+  } finally {
+    masterLoading = false;
+  }
 }
 
-function updateEntry(id: number, patch: UpdateEntryPatch): void {
+function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<void> {
+  return Array.isArray(payload) ? submitLegs(payload) : addSingle(payload);
+}
+
+async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
   const prev = entries.find((e) => e.id === id);
   if (!prev) return;
   entries = entries.map((e) =>
@@ -151,34 +168,32 @@ function updateEntry(id: number, patch: UpdateEntryPatch): void {
   );
   addPending(id);
   masterLoading = true;
-  void withTimeout(api.updateEntry(id, patch))
-    .then(() => refreshAll(true))
-    .catch((err) => {
-      entries = entries.map((e) => (e.id === id ? prev : e));
-      showToast(err);
-    })
-    .finally(() => {
-      removePending(id);
-      masterLoading = false;
-    });
+  try {
+    await withTimeout(api.updateEntry(id, patch));
+    await refreshAll(true);
+  } catch (err) {
+    entries = entries.map((e) => (e.id === id ? prev : e));
+    showToast(err);
+  } finally {
+    removePending(id);
+    masterLoading = false;
+  }
 }
 
-function deleteEntry(id: number): void {
+async function deleteEntry(id: number): Promise<void> {
   if (!entries.some((e) => e.id === id)) return;
   addPending(id);
   masterLoading = true;
-  void withTimeout(api.deleteEntry(id))
-    .then(() => {
-      entries = entries.filter((e) => e.id !== id);
-      return refreshAll(true);
-    })
-    .catch((err) => {
-      showToast(err);
-    })
-    .finally(() => {
-      removePending(id);
-      masterLoading = false;
-    });
+  try {
+    await withTimeout(api.deleteEntry(id));
+    entries = entries.filter((e) => e.id !== id);
+    await refreshAll(true);
+  } catch (err) {
+    showToast(err);
+  } finally {
+    removePending(id);
+    masterLoading = false;
+  }
 }
 
 export const store = {

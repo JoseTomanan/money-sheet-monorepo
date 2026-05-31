@@ -9,6 +9,7 @@ import type {
 import * as mock from "./mock";
 import { normalizeDate } from "./format";
 import { connection } from "./connection.svelte";
+import { dedupeEntries } from "./dedupe";
 
 export class ConnectionError extends Error {}
 export class ConnectionMissingError extends ConnectionError {}
@@ -67,7 +68,7 @@ async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
 export async function getEntries(): Promise<Entry[]> {
   if (mock.isMockMode) return mock.mockGetEntries();
   const data = await gasGet<{ entries: Entry[] }>("getEntries");
-  return data.entries.map((e) => ({ ...e, date: normalizeDate(e.date) }));
+  return dedupeEntries(data.entries.map((e) => ({ ...e, date: normalizeDate(e.date) })));
 }
 
 export async function getMaster(): Promise<MasterRow> {
