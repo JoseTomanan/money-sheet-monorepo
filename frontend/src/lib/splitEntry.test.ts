@@ -129,6 +129,23 @@ describe("isSplitValid", () => {
     );
     expect(isSplitValid(state)).toBe(true);
   });
+
+  it("is false when any leg has a formula error set, even if amount string looks numeric", () => {
+    // error flag must be checked independently — parseFloat("100") > 0 would pass without the check
+    const state = updateLeg(
+      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100", error: "Invalid formula" }),
+      1, { tag: "HOUSING", amount: "200" }
+    );
+    expect(isSplitValid(state)).toBe(false);
+  });
+
+  it("is true when all legs are valid and error is explicitly cleared (undefined)", () => {
+    const state = updateLeg(
+      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100", error: undefined }),
+      1, { tag: "HOUSING", amount: "200" }
+    );
+    expect(isSplitValid(state)).toBe(true);
+  });
 });
 
 describe("updateLeg", () => {

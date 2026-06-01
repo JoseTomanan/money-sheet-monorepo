@@ -3,6 +3,8 @@ import type { AddEntryPayload, Direction } from "./types";
 export interface Leg {
   tag: string;
   amount: string;
+  /** Set when the amount field contains a formula that failed to evaluate. */
+  error?: string;
 }
 
 export interface SplitState {
@@ -30,7 +32,7 @@ export function updateLeg(state: SplitState, index: number, patch: Partial<Leg>)
 
 export function isSplitValid(state: SplitState): boolean {
   return state.legs.every(
-    (leg) => leg.tag.trim() !== "" && parseFloat(leg.amount) > 0
+    (leg) => leg.tag.trim() !== "" && !leg.error && parseFloat(leg.amount) > 0
   );
 }
 
