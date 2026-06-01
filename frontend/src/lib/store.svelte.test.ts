@@ -201,7 +201,7 @@ describe("pendingIds", () => {
     expect(store.entries.some((e) => e.id === 1)).toBe(true);
   });
 
-  it("15s timeout: addEntry rolls back and shows timeout toast", async () => {
+  it("15s timeout: addEntry keeps entry in list, marks failed, clears pending, no toast", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
@@ -217,14 +217,15 @@ describe("pendingIds", () => {
     expect(store.entries.length).toBe(1); // optimistic add
     await vi.advanceTimersByTimeAsync(15_000);
     await vi.waitFor(() => {
-      expect(store.entries.length).toBe(0);
-      expect(store.pendingIds.size).toBe(0);
-      expect(store.toastMsg).toBe("Request timed out.");
+      expect(store.entries.length).toBe(1);       // entry stays
+      expect(store.pendingIds.size).toBe(0);      // no longer pending
+      expect(store.failedIds.size).toBe(1);       // marked as failed
+      expect(store.toastMsg).toBeNull();           // no toast — card shows the error
     });
     vi.useRealTimers();
   });
 
-  it("addEntry: pendingIds cleared on api failure", async () => {
+  it("addEntry: on api failure, entry stays, pendingIds cleared, failedIds populated", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
@@ -236,6 +237,113 @@ describe("pendingIds", () => {
     );
     store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
     await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
+    expect(store.entries.length).toBe(1);         // entry stays
+    expect(store.failedIds.size).toBe(1);         // marked as failed
+    expect(store.toastMsg).toBeNull();
+  });
+
+  it("retryEntry: clears failedIds, re-pends, replaces temp row on success", async () => {
+    // Stage: add one entry that fails
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
+    const [failedId] = [...store.failedIds];
+
+    // Retry succeeds
+    const realEntry = { id: 77, date: "2026-01-01", tag: "Food", mainCategory: "Food", description: "test", direction: "O", amount: 50 };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
+      })
+    );
+    store.retryEntry(failedId);
+    expect(store.failedIds.size).toBe(0);          // no longer failed
+    expect(store.pendingIds.size).toBe(1);          // back to pending
+    await vi.waitFor(() => {
+      expect(store.failedIds.size).toBe(0);
+      expect(store.pendingIds.size).toBe(0);
+      expect(store.entries.some((e) => e.id === realEntry.id)).toBe(true);
+    });
+  });
+
+  it("retryEntry: second failure re-marks entry as failed with no data loss", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
+    const [failedId] = [...store.failedIds];
+
+    // Retry also fails
+    store.retryEntry(failedId);
+    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
+    expect(store.entries.length).toBe(1);           // entry still present
+    expect(store.pendingIds.size).toBe(0);
+    expect([...store.failedIds][0]).toBe(failedId);
+  });
+
+  it("dismissFailedEntry: removes entry from list and clears failedIds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
+    const [failedId] = [...store.failedIds];
+    store.dismissFailedEntry(failedId);
+    expect(store.entries.length).toBe(0);
+    expect(store.failedIds.size).toBe(0);
+  });
+
+  it("failed entry survives a silent refreshAll that omits it from the server response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if ((url as string).includes("action=")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      })
+    );
+    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
+    const [failedId] = [...store.failedIds];
+
+    // Trigger a silent refresh — server returns no entries (omits our failed one)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+      })
+    );
+    await store.refreshAll(true);
+
+    // Failed entry must still be in the list
+    expect(store.entries.some((e) => e.id === failedId)).toBe(true);
+    expect(store.failedIds.has(failedId)).toBe(true);
   });
 });
 

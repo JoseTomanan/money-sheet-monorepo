@@ -177,6 +177,7 @@
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
+                {@const failed = store.failedIds.has(entry.id)}
                 {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
                 <div
                   class="entry-card relative flex items-center gap-[10px] py-3 pr-3 pl-[14px] bg-card rounded-none cursor-pointer"
@@ -185,10 +186,12 @@
                   class:cursor-default={pending}
                   class:border-t={j > 0}
                   class:border-border={j > 0}
-                  onclick={() => !pending && onopenedit(entry)}
+                  class:border-l-2={failed}
+                  class:border-destructive={failed}
+                  onclick={() => !pending && !failed && onopenedit(entry)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => !pending && e.key === 'Enter' && onopenedit(entry)}
+                  onkeydown={(e) => !pending && !failed && e.key === 'Enter' && onopenedit(entry)}
                 >
                   {#if pending}
                     <div class="entry-pending-overlay absolute inset-0 flex items-center justify-center bg-white/60 rounded-[var(--radius-md)] z-[1]">
@@ -201,14 +204,29 @@
                   <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
 
                   <div class="entry-amount-wrap shrink-0 ml-auto">
-                    <Money
-                      value={entry.amount}
-                      size={14}
-                      weight={500}
-                      negColor={false}
-                      positive={entry.direction === 'I'}
-                      {dim}
-                    />
+                    {#if failed}
+                      <div class="flex items-center gap-1">
+                        <button
+                          class="size-[28px] flex items-center justify-center rounded-[var(--radius-sm)] text-accent hover:bg-muted transition-colors duration-150"
+                          onclick={(e) => { e.stopPropagation(); store.retryEntry(entry.id); }}
+                          aria-label="Retry"
+                        >↺</button>
+                        <button
+                          class="size-[28px] flex items-center justify-center rounded-[var(--radius-sm)] text-muted-foreground hover:bg-muted transition-colors duration-150"
+                          onclick={(e) => { e.stopPropagation(); store.dismissFailedEntry(entry.id); }}
+                          aria-label="Dismiss"
+                        >✕</button>
+                      </div>
+                    {:else}
+                      <Money
+                        value={entry.amount}
+                        size={14}
+                        weight={500}
+                        negColor={false}
+                        positive={entry.direction === 'I'}
+                        {dim}
+                      />
+                    {/if}
                   </div>
                 </div>
               {/each}
@@ -229,8 +247,6 @@
 </div>
 
 <style>
-  .entry-card:hover { background: color-mix(in srgb, var(--card) 96%, var(--foreground)); }
-
   .add-entry-card {
     width: 100%;
     border: 0;

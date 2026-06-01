@@ -24,6 +24,7 @@ let toastMsg = $state<string | null>(null);
 let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let toastIsConnection = $state(false);
 let pendingIds = $state(new Set<number>());
+let failedIds = $state(new Set<number>());
 let syncing = $state(false);
 
 
@@ -32,6 +33,8 @@ const REQUEST_TIMEOUT_MS = 15_000;
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
 function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
+function addFailed(id: number): void { failedIds = new Set([...failedIds, id]); }
+function removeFailed(id: number): void { failedIds = new Set([...failedIds].filter((p) => p !== id)); }
 
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([
@@ -100,7 +103,11 @@ async function refreshAll(silent = false): Promise<void> {
       api.getCategories(),
       api.getSubcategoryBreakdown(),
     ]));
+    const failedEntries = entries.filter((e) => failedIds.has(e.id));
     entries = e;
+    for (const fe of failedEntries) {
+      if (!entries.some((en) => en.id === fe.id)) entries = [...entries, fe];
+    }
     master = m;
     categories = c;
     breakdown = b;
@@ -145,10 +152,10 @@ async function addSingle(payload: AddEntryPayload): Promise<void> {
     addPending(real.id);
     await refreshAll(true);
     removePending(real.id);
-  } catch (err) {
-    entries = entries.filter((e) => e.id !== tempId);
+  } catch {
+    addFailed(tempId);
     removePending(tempId);
-    showToast(err);
+    // entry stays in list; the card shows the error state — no toast needed
   } finally {
     masterLoading = false;
   }
@@ -196,6 +203,39 @@ async function deleteEntry(id: number): Promise<void> {
   }
 }
 
+async function retryEntry(id: number): Promise<void> {
+  const fe = entries.find((e) => e.id === id);
+  if (!fe) return;
+  const payload: AddEntryPayload = {
+    date: fe.date,
+    tag: fe.tag,
+    description: fe.description,
+    direction: fe.direction,
+    amount: fe.amount,
+  };
+  removeFailed(id);
+  addPending(id);
+  masterLoading = true;
+  try {
+    const real = await withTimeout(api.addEntry(payload));
+    entries = entries.map((e) => (e.id === id ? real : e));
+    removePending(id);
+    addPending(real.id);
+    await refreshAll(true);
+    removePending(real.id);
+  } catch {
+    addFailed(id);
+    removePending(id);
+  } finally {
+    masterLoading = false;
+  }
+}
+
+function dismissFailedEntry(id: number): void {
+  entries = entries.filter((e) => e.id !== id);
+  removeFailed(id);
+}
+
 export const store = {
   get entries() { return entries; },
   get master() { return master; },
@@ -209,11 +249,14 @@ export const store = {
   get toastAction() { return toastAction; },
   get toastIsConnection() { return toastIsConnection; },
   get pendingIds() { return pendingIds; },
+  get failedIds() { return failedIds; },
   get syncing() { return syncing; },
   init,
   refreshAll,
   addEntry,
   updateEntry,
   deleteEntry,
+  retryEntry,
+  dismissFailedEntry,
   dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; },
 };

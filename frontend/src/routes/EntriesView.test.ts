@@ -8,7 +8,10 @@ const mockStore = vi.hoisted(() => ({
   entries: [] as Entry[],
   categories: {} as Record<string, unknown>,
   pendingIds: new Set<number>(),
+  failedIds: new Set<number>(),
   masterLoading: false,
+  retryEntry: vi.fn(),
+  dismissFailedEntry: vi.fn(),
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
@@ -192,5 +195,82 @@ describe("EntriesView skeleton loading", () => {
     mockStore.loading = false;
     const { container } = render(EntriesView, baseProps());
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
+  });
+});
+
+describe("EntriesView failed entry state", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-17")); // pin to a week with entries
+    mockStore.loading = false;
+    mockStore.pendingIds = new Set();
+    mockStore.failedIds = new Set();
+    mockStore.retryEntry.mockReset();
+    mockStore.dismissFailedEntry.mockReset();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("failed entry renders Retry and Dismiss buttons in place of the amount", () => {
+    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set([5]);
+    const { getByRole, queryByText } = render(EntriesView, baseProps());
+    expect(getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
+    // amount should NOT be shown for a failed entry
+    expect(queryByText("100")).not.toBeInTheDocument();
+  });
+
+  it("failed entry card has border-destructive class", () => {
+    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set([5]);
+    const { container } = render(EntriesView, baseProps());
+    const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
+    expect(card.classList.contains("border-destructive")).toBe(true);
+  });
+
+  it("clicking Retry calls store.retryEntry with the entry id and does not open edit", async () => {
+    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set([5]);
+    const props = baseProps();
+    const { getByRole } = render(EntriesView, props);
+    await fireEvent.click(getByRole("button", { name: /retry/i }));
+    expect(mockStore.retryEntry).toHaveBeenCalledWith(5);
+    expect(props.onopenedit).not.toHaveBeenCalled();
+  });
+
+  it("clicking Dismiss calls store.dismissFailedEntry with the entry id", async () => {
+    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set([5]);
+    const props = baseProps();
+    const { getByRole } = render(EntriesView, props);
+    await fireEvent.click(getByRole("button", { name: /dismiss/i }));
+    expect(mockStore.dismissFailedEntry).toHaveBeenCalledWith(5);
+  });
+
+  it("clicking the card of a failed entry does NOT call onopenedit", async () => {
+    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set([5]);
+    const props = baseProps();
+    const { container } = render(EntriesView, props);
+    const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
+    await fireEvent.click(card);
+    expect(props.onopenedit).not.toHaveBeenCalled();
+  });
+
+  it("non-failed entry is unaffected: shows amount, opens edit on click", async () => {
+    const entry = makeEntry(7, "2026-05-17", "Normal entry");
+    mockStore.entries = [entry];
+    mockStore.failedIds = new Set();
+    const props = baseProps();
+    const { queryByRole, container } = render(EntriesView, props);
+    expect(queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
+    await fireEvent.click(card);
+    expect(props.onopenedit).toHaveBeenCalledWith(entry);
   });
 });
