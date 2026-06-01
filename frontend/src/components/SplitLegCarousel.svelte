@@ -39,7 +39,7 @@
           }}
           onblur={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            if (!isFormula(v)) return;
+            if (!isFormula(v)) { onupdate(i, { error: undefined }); return; }
             const result = evaluateFormula(v);
             if ('error' in result) {
               onupdate(i, { error: result.error });

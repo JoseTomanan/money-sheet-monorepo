@@ -95,6 +95,24 @@ describe("SplitLegCarousel", () => {
     expect(lastCall[1]).toHaveProperty("error");
   });
 
+  it("on blur with plain number after prior formula error clears the error", async () => {
+    // Regression: updateLeg spreads patches, so { amount: "50" } alone leaves leg.error intact.
+    // onblur must explicitly pass error: undefined when the field is no longer a formula.
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    // First, set a formula error
+    await fireEvent.input(inputs[0], { target: { value: "=10+abc" } });
+    await fireEvent.blur(inputs[0]);
+    const errorCall = props.onupdate.mock.calls.at(-1) as [number, { error: string }];
+    expect(errorCall[1]).toHaveProperty("error");
+    // Then correct to a plain number
+    await fireEvent.input(inputs[0], { target: { value: "50" } });
+    await fireEvent.blur(inputs[0]);
+    const clearCall = props.onupdate.mock.calls.at(-1) as [number, { error: undefined }];
+    expect(clearCall[1]).toEqual({ error: undefined });
+  });
+
   it("on blur with formula resolving to non-positive calls onupdate with an error", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
