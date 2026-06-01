@@ -65,6 +65,47 @@ describe("SplitLegCarousel", () => {
     expect(props.onupdate).toHaveBeenCalledWith(0, { amount: "123.4" });
   });
 
+  it("passes formula characters through oninput without stripping", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "=10+5" } });
+    expect(props.onupdate).toHaveBeenCalledWith(0, { amount: "=10+5" });
+  });
+
+  it("on blur with valid formula calls onupdate with resolved amount and no error", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    // Set the formula value first
+    await fireEvent.input(inputs[0], { target: { value: "=10+5" } });
+    // Blur should evaluate and call onupdate with the resolved value
+    await fireEvent.blur(inputs[0]);
+    expect(props.onupdate).toHaveBeenLastCalledWith(0, { amount: "15.00", error: undefined });
+  });
+
+  it("on blur with malformed formula calls onupdate with an error", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "=10+abc" } });
+    await fireEvent.blur(inputs[0]);
+    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { error: string }];
+    expect(lastCall[0]).toBe(0);
+    expect(lastCall[1]).toHaveProperty("error");
+  });
+
+  it("on blur with formula resolving to non-positive calls onupdate with an error", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "=5-10" } });
+    await fireEvent.blur(inputs[0]);
+    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { error: string }];
+    expect(lastCall[0]).toBe(0);
+    expect(lastCall[1]).toHaveProperty("error");
+  });
+
   it("calls onupdate with tag when a tag pill is clicked", async () => {
     const props = baseProps();
     const { getAllByText } = render(SplitLegCarousel, props);

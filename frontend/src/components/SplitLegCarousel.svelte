@@ -2,6 +2,7 @@
 <script lang="ts">
   import { resolveCategoryStyle } from '../lib/theme';
   import type { SplitState, Leg } from '../lib/splitEntry';
+  import { isFormula, evaluateFormula } from '../lib/formula';
 
   interface Props {
     split: SplitState;
@@ -33,10 +34,26 @@
           class="amount-input bg-transparent border-0 outline-none font-mono text-[26px] font-medium text-foreground tracking-[-0.8px] w-full placeholder:text-muted-foreground"
           value={leg.amount}
           oninput={(e) => {
-            onupdate(i, { amount: (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '') });
+            const v = (e.target as HTMLInputElement).value;
+            onupdate(i, { amount: v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '') });
+          }}
+          onblur={(e) => {
+            const v = (e.target as HTMLInputElement).value;
+            if (!isFormula(v)) return;
+            const result = evaluateFormula(v);
+            if ('error' in result) {
+              onupdate(i, { error: result.error });
+            } else if (result.value <= 0) {
+              onupdate(i, { error: 'Amount must be positive' });
+            } else {
+              onupdate(i, { amount: result.value.toFixed(2), error: undefined });
+            }
           }}
           placeholder="0.00"
         />
+        {#if leg.error}
+          <p class="leg-error mt-1 text-[11px] font-sans text-destructive">{leg.error}</p>
+        {/if}
       </div>
       <div class="tag-grid flex flex-wrap gap-[5px]">
         {#each tagOptions as opt}
