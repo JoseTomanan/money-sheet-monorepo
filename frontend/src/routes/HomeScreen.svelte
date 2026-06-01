@@ -3,7 +3,7 @@
   import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth } from '../lib/format';
   import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
-  import { dateRunPositions } from '../lib/groupEntries';
+  import { dateRunPositions, compareEntriesForDisplay } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
@@ -28,7 +28,7 @@
   );
 
   const allSorted = $derived(
-    [...store.entries].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
+    [...store.entries].sort(compareEntriesForDisplay)
   );
 
   const todayEntries = $derived(allSorted.slice(-2));

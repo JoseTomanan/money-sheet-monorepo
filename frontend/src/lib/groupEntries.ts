@@ -56,6 +56,20 @@ export function groupEntriesByDate(entries: Entry[]): Entry[][] {
   return groups;
 }
 
+/**
+ * Comparator for display-order sort: ascending by date, then ascending by id.
+ * Optimistic entries (negative temp ids) always sort last within their date group
+ * so they appear at the bottom — where they'll settle once the server confirms a
+ * real (largest) id — avoiding a visible reorder/flicker.
+ */
+export function compareEntriesForDisplay(a: Entry, b: Entry): number {
+  return (
+    a.date.localeCompare(b.date) ||
+    (a.id < 0 ? Number.MAX_SAFE_INTEGER : a.id) -
+    (b.id < 0 ? Number.MAX_SAFE_INTEGER : b.id)
+  );
+}
+
 export function groupByWeek(entries: Entry[]): WeekGroup[] {
   const map = new Map<string, Entry[]>();
   for (const entry of entries) {

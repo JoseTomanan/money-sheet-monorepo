@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupByWeek, dateRunPositions, groupEntriesByDate } from "./groupEntries";
+import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay } from "./groupEntries";
 import type { Entry } from "./types";
 
 function entry(id: number, date: string): Entry {
@@ -176,5 +176,60 @@ describe("groupEntriesByDate", () => {
     const entries = [entry(1, "2026-05-17"), entry(2, "2026-05-18"), entry(3, "2026-05-17")];
     const result = groupEntriesByDate(entries);
     expect(result).toHaveLength(3);
+  });
+});
+
+describe("compareEntriesForDisplay", () => {
+  describe("same date — committed entries", () => {
+    it("sorts by id ascending when both ids are positive", () => {
+      const a = entry(1, "2026-06-01");
+      const b = entry(2, "2026-06-01");
+      expect(compareEntriesForDisplay(a, b)).toBeLessThan(0);
+      expect(compareEntriesForDisplay(b, a)).toBeGreaterThan(0);
+      expect([b, a].sort(compareEntriesForDisplay)).toEqual([a, b]);
+    });
+
+    it("returns 0 for the same entry", () => {
+      const e = entry(5, "2026-06-01");
+      expect(compareEntriesForDisplay(e, e)).toBe(0);
+    });
+  });
+
+  describe("same date — optimistic (negative) temp id sorts last", () => {
+    it("places a negative-id entry after a positive-id entry", () => {
+      const committed  = entry(10, "2026-06-01");
+      const optimistic = entry(-Date.now(), "2026-06-01");
+      const sorted = [optimistic, committed].sort(compareEntriesForDisplay);
+      expect(sorted[0]).toBe(committed);
+      expect(sorted[1]).toBe(optimistic);
+    });
+
+    it("places multiple negative-id entries after all positive-id entries", () => {
+      const c1 = entry(3,    "2026-06-01");
+      const c2 = entry(7,    "2026-06-01");
+      const t1 = entry(-1000, "2026-06-01");
+      const t2 = entry(-1001, "2026-06-01");
+      const sorted = [t2, c2, t1, c1].sort(compareEntriesForDisplay);
+      expect(sorted[0]).toBe(c1);
+      expect(sorted[1]).toBe(c2);
+      expect(sorted[2].id).toBeLessThan(0);
+      expect(sorted[3].id).toBeLessThan(0);
+    });
+  });
+
+  describe("different dates — date takes priority over id", () => {
+    it("earlier date before later date regardless of id sign", () => {
+      const early      = entry(999,  "2026-05-31");
+      const late       = entry(1,    "2026-06-01");
+      const optimistic = entry(-1,   "2026-06-01");
+      const sorted = [late, optimistic, early].sort(compareEntriesForDisplay);
+      expect(sorted[0]).toBe(early);
+    });
+
+    it("negative id on an earlier date sorts before positive id on a later date", () => {
+      const yesterday = entry(-9999, "2026-05-31");
+      const today     = entry(1,     "2026-06-01");
+      expect(compareEntriesForDisplay(yesterday, today)).toBeLessThan(0);
+    });
   });
 });
