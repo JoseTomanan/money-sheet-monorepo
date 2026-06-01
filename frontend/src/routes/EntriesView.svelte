@@ -5,7 +5,7 @@
   import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
-  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel } from '../lib/groupEntries';
+  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
@@ -43,7 +43,7 @@
         if (weekStartOf(e.date) !== selectedWeek) return false;
         return true;
       })
-      .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
+      .sort(compareEntriesForDisplay)
   );
 
   const weekGroups = $derived(groupByWeek(filtered));
