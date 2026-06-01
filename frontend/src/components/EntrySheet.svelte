@@ -14,6 +14,7 @@
     toAddEntryPayloads,
     type SplitState,
   } from '../lib/splitEntry';
+  import { isFormula, evaluateFormula } from '../lib/formula';
   import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '../lib/dragGesture';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
 
@@ -36,6 +37,7 @@
   let tag         = $state('');
   let description = $state('');
   let amount      = $state('');
+  let amountError = $state('');
   let animOpen    = $state(false);
   let animTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -55,6 +57,7 @@
       tag         = entry?.tag ?? '';
       description = entry?.description ?? '';
       amount      = entry != null ? String(entry.amount) : '';
+      amountError = '';
       splitMode   = false;
       split       = initSplitState();
       snap        = 'default';
@@ -98,7 +101,9 @@
   }
 
   const saveDisabled = $derived(
-    splitMode ? !isSplitValid(split) : (!tag || !amount || !isValidTag(tag, direction, categories))
+    splitMode
+      ? !isSplitValid(split)
+      : (!tag || !amount || !!amountError || !isValidTag(tag, direction, categories))
   );
   const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
 
@@ -228,11 +233,27 @@
               class="amount-input w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
               bind:value={amount}
               oninput={(e) => {
-                amount = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '');
+                const v = (e.target as HTMLInputElement).value;
+                amount = v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '');
+              }}
+              onblur={() => {
+                if (!isFormula(amount)) { amountError = ''; return; }
+                const result = evaluateFormula(amount);
+                if ('error' in result) {
+                  amountError = 'Invalid formula';
+                } else if (result.value <= 0) {
+                  amountError = 'Amount must be positive';
+                } else {
+                  amount = result.value.toFixed(2);
+                  amountError = '';
+                }
               }}
               placeholder="0.00"
             />
           </div>
+          {#if amountError}
+            <p class="amount-error mt-1 text-[12px] font-sans text-destructive">{amountError}</p>
+          {/if}
         </div>
       {/if}
 
