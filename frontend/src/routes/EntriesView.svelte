@@ -247,8 +247,6 @@
 </div>
 
 <style>
-  .entry-card:hover { background: color-mix(in srgb, var(--card) 96%, var(--foreground)); }
-
   .add-entry-card {
     width: 100%;
     border: 0;
