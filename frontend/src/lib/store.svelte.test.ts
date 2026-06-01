@@ -177,10 +177,10 @@ describe("pendingIds", () => {
     store.deleteEntry(1);
     // entry must still be visible while the API call is in-flight
     expect(store.entries.some((e) => e.id === 1)).toBe(true);
-    expect(store.pendingIds.has(1)).toBe(true);
+    expect(store.deletePendingIds.has(1)).toBe(true);
     // resolve the delete
     resolvePost({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
-    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+    await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
   });
 
   it("deleteEntry: entry stays + pendingIds cleared on failure", async () => {
@@ -197,7 +197,7 @@ describe("pendingIds", () => {
       })
     );
     store.deleteEntry(1);
-    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+    await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
     expect(store.entries.some((e) => e.id === 1)).toBe(true);
   });
 

@@ -24,6 +24,7 @@ let toastMsg = $state<string | null>(null);
 let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let toastIsConnection = $state(false);
 let pendingIds = $state(new Set<number>());
+let deletePendingIds = $state(new Set<number>());
 let failedIds = $state(new Set<number>());
 let syncing = $state(false);
 
@@ -33,6 +34,8 @@ const REQUEST_TIMEOUT_MS = 15_000;
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
 function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
+function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
+function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
 function addFailed(id: number): void { failedIds = new Set([...failedIds, id]); }
 function removeFailed(id: number): void { failedIds = new Set([...failedIds].filter((p) => p !== id)); }
 
@@ -189,7 +192,7 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
 
 async function deleteEntry(id: number): Promise<void> {
   if (!entries.some((e) => e.id === id)) return;
-  addPending(id);
+  addDeletePending(id);
   masterLoading = true;
   try {
     await withTimeout(api.deleteEntry(id));
@@ -198,7 +201,7 @@ async function deleteEntry(id: number): Promise<void> {
   } catch (err) {
     showToast(err);
   } finally {
-    removePending(id);
+    removeDeletePending(id);
     masterLoading = false;
   }
 }
@@ -249,6 +252,7 @@ export const store = {
   get toastAction() { return toastAction; },
   get toastIsConnection() { return toastIsConnection; },
   get pendingIds() { return pendingIds; },
+  get deletePendingIds() { return deletePendingIds; },
   get failedIds() { return failedIds; },
   get syncing() { return syncing; },
   init,

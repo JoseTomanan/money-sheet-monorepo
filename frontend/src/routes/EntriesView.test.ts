@@ -8,6 +8,7 @@ const mockStore = vi.hoisted(() => ({
   entries: [] as Entry[],
   categories: {} as Record<string, unknown>,
   pendingIds: new Set<number>(),
+  deletePendingIds: new Set<number>(),
   failedIds: new Set<number>(),
   masterLoading: false,
   retryEntry: vi.fn(),

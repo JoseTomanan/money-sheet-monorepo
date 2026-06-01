@@ -177,27 +177,25 @@
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
+                {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const failed = store.failedIds.has(entry.id)}
                 {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
                 <div
                   class="entry-card relative flex items-center gap-[10px] py-3 pr-3 pl-[14px] bg-card rounded-none cursor-pointer"
                   class:opacity-[0.55]={dim}
-                  class:pointer-events-none={pending}
-                  class:cursor-default={pending}
+                  class:animate-[shimmer_1s_ease-in-out_infinite]={pending && !deletePending}
+                  class:opacity-50={deletePending}
+                  class:pointer-events-none={pending || deletePending}
+                  class:cursor-default={pending || deletePending}
                   class:border-t={j > 0}
                   class:border-border={j > 0}
                   class:border-l-2={failed}
                   class:border-destructive={failed}
-                  onclick={() => !pending && !failed && onopenedit(entry)}
+                  onclick={() => !pending && !deletePending && !failed && onopenedit(entry)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => !pending && !failed && e.key === 'Enter' && onopenedit(entry)}
+                  onkeydown={(e) => !pending && !deletePending && !failed && e.key === 'Enter' && onopenedit(entry)}
                 >
-                  {#if pending}
-                    <div class="entry-pending-overlay absolute inset-0 flex items-center justify-center bg-white/60 rounded-[var(--radius-md)] z-[1]">
-                      <div class="entry-spinner size-[18px] rounded-full border-2 border-border border-t-accent animate-[spin_0.7s_linear_infinite]"></div>
-                    </div>
-                  {/if}
 
                   <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
