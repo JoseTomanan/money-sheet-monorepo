@@ -1,7 +1,7 @@
 <!-- Custom bottom-sheet with drag-to-resize/dismiss gestures (see lib/dragGesture.ts); shadcn Sheet does not expose snap points, so the bespoke implementation is retained. -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { CATEGORIES } from '../lib/theme';
+  import { resolveCategoryStyle } from '../lib/theme';
   import { getTagOptions, isValidTag } from '../lib/domain';
   import { fmtDate, dayOfWeek } from '../lib/format';
   import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction, EntryMutation } from '../lib/types';
@@ -261,7 +261,7 @@
         <div class="tag-section-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
         <div class="tag-scroller flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible" bind:this={tagScrollerEl}>
           {#each tagOptions as opt}
-            {@const catStyle = CATEGORIES[opt.parentCat] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)' }}
+            {@const catStyle = resolveCategoryStyle(opt.parentCat)}
             <button
               class="tag-pill shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap"
               class:tag-active={tag === opt.value}

@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "shakedown": "playwright test --config=shakedown/playwright.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

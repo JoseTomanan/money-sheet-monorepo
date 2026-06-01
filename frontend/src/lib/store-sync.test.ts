@@ -1,8 +1,7 @@
 /**
  * Real-API integration test: store mutation methods leave `store.entries`
  * in sync with a fresh `api.getEntries()` call. Catches drift bugs where
- * the store's optimistic state or its fire-and-forget `refreshAll(true)`
- * diverges from what GAS actually persisted.
+ * the store's optimistic state diverges from what GAS actually persisted.
  *
  * Closes #26.
  *
@@ -16,12 +15,10 @@ import {
   describe,
   expect,
   it,
-  vi,
 } from "vitest";
 import { store } from "./store.svelte";
 import * as api from "./api";
 import { setConnection } from "./connection.svelte";
-import { dedupeEntries } from "./dedupe";
 import type { AddEntryPayload, Entry } from "./types";
 
 const HAS_ENV =
@@ -49,19 +46,6 @@ function pickSubcategories(n: number): Array<{ category: string; subcategory: st
     throw new Error(`Need ${n} subcategories, sheet has ${flat.length}`);
   }
   return flat.slice(0, n);
-}
-
-async function waitForSettle(): Promise<void> {
-  await vi.waitFor(
-    () => {
-      if (store.masterLoading) throw new Error("still loading");
-    },
-    { timeout: 20_000, interval: 150 },
-  );
-  // The store's in-flight refreshAll(true) is fire-and-forget; give it a beat
-  // to land before we issue our own explicit refresh.
-  await new Promise((r) => setTimeout(r, 250));
-  await store.refreshAll(true);
 }
 
 function diffNewIds(before: Entry[], after: Entry[]): number[] {
@@ -119,10 +103,9 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     const before = [...store.entries];
 
-    store.addEntry(payload);
-    await waitForSettle();
+    await store.addEntry(payload);
 
-    const fresh = dedupeEntries(await api.getEntries());
+    const fresh = await api.getEntries();
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -147,10 +130,9 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     const before = [...store.entries];
 
-    store.addEntry(payloads);
-    await waitForSettle();
+    await store.addEntry(payloads);
 
-    const fresh = dedupeEntries(await api.getEntries());
+    const fresh = await api.getEntries();
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -176,10 +158,9 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     await store.refreshAll(true);
     expect(store.entries.some((e) => e.id === seeded.id)).toBe(true);
 
-    store.deleteEntry(seeded.id);
-    await waitForSettle();
+    await store.deleteEntry(seeded.id);
 
-    const fresh = dedupeEntries(await api.getEntries());
+    const fresh = await api.getEntries();
     expect(fresh.some((e) => e.id === seeded.id)).toBe(false);
     expect(store.entries).toEqual(fresh);
   });
@@ -197,10 +178,9 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     await store.refreshAll(true);
 
     const newDescription = marker("update-after");
-    store.updateEntry(seeded.id, { amount: 999, description: newDescription });
-    await waitForSettle();
+    await store.updateEntry(seeded.id, { amount: 999, description: newDescription });
 
-    const fresh = dedupeEntries(await api.getEntries());
+    const fresh = await api.getEntries();
     const updated = fresh.find((e) => e.id === seeded.id);
     expect(updated).toBeDefined();
     expect(updated!.amount).toBe(999);

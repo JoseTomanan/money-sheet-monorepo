@@ -6,7 +6,7 @@ import type {
   UpdateEntryPatch,
 } from "./types";
 import { CATEGORY_MAP } from "./theme";
-import { getMainCategory } from "./domain";
+import { buildEntry, getMainCategory } from "./domain";
 
 export const isMockMode = import.meta.env.VITE_MOCK === "true";
 
@@ -97,8 +97,7 @@ export function mockGetSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
 
 export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
   const nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const mainCategory = getMainCategory(payload.tag, CATEGORY_MAP);
-  const entry: Entry = { id: nextId, mainCategory, ...payload };
+  const entry = buildEntry(nextId, payload, CATEGORY_MAP);
   entries = [...entries, entry];
   return Promise.resolve(entry);
 }

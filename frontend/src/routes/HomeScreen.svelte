@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
-  import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth } from '../lib/format';
   import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
   import { dateRunPositions } from '../lib/groupEntries';
@@ -145,7 +145,7 @@
           <div class="today-card rounded-b-[var(--radius-lg)] rounded-t-none bg-card overflow-hidden">
             {#each todayEntries as entry, i (entry.id)}
               {@const dim = entry.amount === 0}
-              {@const catStyle = CATEGORIES[entry.mainCategory] ?? { pastel: 'var(--muted)', color: 'var(--muted-foreground)' }}
+              {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
               <div
                 class="today-row flex items-center gap-[10px] py-3 pr-3 pl-[14px]"
                 class:opacity-[0.55]={dim}

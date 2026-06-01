@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Badge } from '$lib/components/ui/badge';
-  import { CATEGORIES } from '../lib/theme';
+  import { resolveCategoryStyle } from '../lib/theme';
   import type { Direction } from '../lib/types';
 
   interface Props {
@@ -12,7 +12,7 @@
 
   let { tag, direction: _dir, mainCategory, small = false }: Props = $props();
 
-  const catStyle = $derived(CATEGORIES[mainCategory] ?? { color: 'var(--muted-foreground)', soft: 'var(--muted)', label: mainCategory });
+  const catStyle = $derived(resolveCategoryStyle(mainCategory));
   const fontSize = $derived(small ? 10 : 11);
   const padding  = $derived(small ? '2px 6px' : '3px 8px');
 </script>
