@@ -69,27 +69,58 @@ describe("CategoryTagPicker — Outgoing: selecting a subcategory", () => {
     expect(props.onselect).toHaveBeenCalledWith("Dining");
   });
 
-  it("Category row stays visible and Category stays expanded after subcategory selected", async () => {
-    const props = baseProps(); // start with no selection
-    const { getByRole } = render(CategoryTagPicker, props);
-    await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
+  it("pinned Category stays visible and subcategory row stays expanded after subcategory selected; other categories hidden", async () => {
+    const props = baseProps();
+    const { getByRole, queryByRole } = render(CategoryTagPicker, props);
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
     await fireEvent.click(getByRole("button", { name: /^Dining$/ }));
-    // Category row still visible
-    expect(getByRole("button", { name: /^FOOD$/ })).toBeInTheDocument();
-    expect(getByRole("button", { name: /^TRANSIT$/ })).toBeInTheDocument();
+    // Pinned chosen category still visible (as back pill)
+    expect(getByRole("button", { name: /FOOD/ })).toBeInTheDocument();
     // Subcategory row still expanded
     expect(getByRole("button", { name: /^Groceries$/ })).toBeInTheDocument();
+    // Peer category is hidden while expanded
+    expect(queryByRole("button", { name: /^TRANSIT$/ })).not.toBeInTheDocument();
   });
 });
 
 describe("CategoryTagPicker — Outgoing: switching categories", () => {
-  it("collapses previous and expands the new Category", async () => {
+  it("back then tap new Category: collapses previous subcategories and expands new", async () => {
     const { getByRole, queryByRole } = render(CategoryTagPicker, baseProps());
-    await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
+    // Drill into FOOD
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
     expect(getByRole("button", { name: /^Groceries$/ })).toBeInTheDocument();
+    // Go back by re-tapping the pinned FOOD pill
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
+    expect(queryByRole("button", { name: /^Groceries$/ })).not.toBeInTheDocument();
+    // Now drill into TRANSIT
     await fireEvent.click(getByRole("button", { name: /^TRANSIT$/ }));
     expect(queryByRole("button", { name: /^Groceries$/ })).not.toBeInTheDocument();
     expect(getByRole("button", { name: /^Fuel$/ })).toBeInTheDocument();
+  });
+});
+
+describe("CategoryTagPicker — Outgoing: drill-in hides peers", () => {
+  it("hides other category pills once a Category is expanded", async () => {
+    const { getByRole, queryByRole } = render(CategoryTagPicker, baseProps());
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
+    // Chosen category's subs are visible
+    expect(getByRole("button", { name: /^Groceries$/ })).toBeInTheDocument();
+    expect(getByRole("button", { name: /^Dining$/ })).toBeInTheDocument();
+    // Peer category is NOT visible
+    expect(queryByRole("button", { name: /^TRANSIT$/ })).not.toBeInTheDocument();
+  });
+
+  it("re-tapping the pinned Category restores the full category list", async () => {
+    const { getByRole, queryByRole } = render(CategoryTagPicker, baseProps());
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
+    expect(queryByRole("button", { name: /^TRANSIT$/ })).not.toBeInTheDocument();
+    // Tap FOOD again to go back
+    await fireEvent.click(getByRole("button", { name: /FOOD/ }));
+    // Both categories restored
+    expect(getByRole("button", { name: /^FOOD$/ })).toBeInTheDocument();
+    expect(getByRole("button", { name: /^TRANSIT$/ })).toBeInTheDocument();
+    // Subcategories gone
+    expect(queryByRole("button", { name: /^Groceries$/ })).not.toBeInTheDocument();
   });
 });
 

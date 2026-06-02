@@ -54,48 +54,57 @@
   const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0' : 'size-[6px] rounded-full shrink-0');
 </script>
 
-<!-- Category row -->
+<!-- Label (single line — reads "Subcategory" when drilled in, "Category" otherwise) -->
 {#if !compact}
   <div class="picker-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
-    Category
+    {direction === 'O' && activeCategory ? 'Subcategory' : 'Category'}
   </div>
 {/if}
-<div class="category-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
-  {#each sortedCategories as cat}
-    {@const s = resolveCategoryStyle(cat)}
-    {@const isActive = direction === 'I' ? tag === cat : activeCategory === cat}
+
+<!-- Single row: drill-in on Outgoing, flat list on Incoming / uncollapsed -->
+<div class="picker-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
+  {#if direction === 'O' && activeCategory}
+    {@const s = resolveCategoryStyle(activeCategory)}
+    <!-- Pinned chosen-category pill with ‹ back affordance -->
     <button
       class={catPillClass}
-      aria-pressed={isActive}
-      style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
-      onclick={() => handleCategoryClick(cat)}
+      aria-pressed={true}
+      aria-label={activeCategory}
+      style="background: {s.color}; color: #fff;"
+      onclick={() => handleCategoryClick(activeCategory)}
     >
-      <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
-      {cat}
+      <span class={dotClass} style="background: #fff"></span>
+      ‹ {activeCategory}
     </button>
-  {/each}
-</div>
-
-<!-- Subcategory row (Outgoing only, shown when a category is expanded) -->
-{#if direction === 'O' && activeCategory}
-  {@const parentStyle = resolveCategoryStyle(activeCategory)}
-  {#if !compact}
-    <div class="picker-label px-5 pt-[10px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
-      Subcategory
-    </div>
-  {/if}
-  <div class="subcategory-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
+    <!-- Vertical divider -->
+    <span class="w-px self-stretch bg-border shrink-0"></span>
+    <!-- Subcategory pills -->
     {#each subcategories as sub}
       {@const isActive = tag === sub}
       <button
         class={catPillClass}
         aria-pressed={isActive}
-        style="background: {isActive ? parentStyle.color : parentStyle.soft}; color: {isActive ? '#fff' : parentStyle.color};"
+        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
         onclick={() => onselect(sub)}
       >
-        <span class={dotClass} style="background: {isActive ? '#fff' : parentStyle.color}"></span>
+        <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
         {sub}
       </button>
     {/each}
-  </div>
-{/if}
+  {:else}
+    <!-- All category pills (collapsed / Incoming) -->
+    {#each sortedCategories as cat}
+      {@const s = resolveCategoryStyle(cat)}
+      {@const isActive = direction === 'I' ? tag === cat : activeCategory === cat}
+      <button
+        class={catPillClass}
+        aria-pressed={isActive}
+        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
+        onclick={() => handleCategoryClick(cat)}
+      >
+        <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
+        {cat}
+      </button>
+    {/each}
+  {/if}
+</div>
