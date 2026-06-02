@@ -12,26 +12,26 @@ function baseProps(overrides = {}) {
 }
 
 describe("EntryDescBand — plain (Incoming) styling", () => {
-  it("applies font-semibold and italic classes when plain=true", () => {
+  it("applies font-bold and italic classes when plain=true", () => {
     const { getByText } = render(EntryDescBand, baseProps({ plain: true }));
     const span = getByText("Test entry");
-    expect(span).toHaveClass("font-semibold");
+    expect(span).toHaveClass("font-bold");
     expect(span).toHaveClass("italic");
-    expect(span).not.toHaveClass("font-medium");
+    expect(span).not.toHaveClass("font-normal");
   });
 
-  it("applies font-medium (not italic) when plain=false", () => {
+  it("applies font-normal (not italic) when plain=false", () => {
     const { getByText } = render(EntryDescBand, baseProps({ plain: false }));
     const span = getByText("Test entry");
-    expect(span).toHaveClass("font-medium");
+    expect(span).toHaveClass("font-normal");
     expect(span).not.toHaveClass("italic");
-    expect(span).not.toHaveClass("font-semibold");
+    expect(span).not.toHaveClass("font-bold");
   });
 
-  it("default (no plain prop) uses font-medium, not italic", () => {
+  it("default (no plain prop) uses font-normal, not italic", () => {
     const { getByText } = render(EntryDescBand, baseProps());
     const span = getByText("Test entry");
-    expect(span).toHaveClass("font-medium");
+    expect(span).toHaveClass("font-normal");
     expect(span).not.toHaveClass("italic");
   });
 });

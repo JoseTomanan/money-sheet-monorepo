@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
@@ -19,9 +18,12 @@
 
   let { onopenedit, onadd, scrollEl, scrollTop }: Props = $props();
 
-  onMount(async () => {
-    await tick();
-    if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+  let hasScrolledToBottom = $state(false);
+  $effect(() => {
+    if (!store.loading && !hasScrolledToBottom) {
+      hasScrolledToBottom = true;
+      if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
+    }
   });
 
   let filterDir  = $state<'all' | 'I' | 'O'>('all');
@@ -69,7 +71,7 @@
 
 </script>
 
-<div class="entries-view p-0" style="padding-bottom: 72px;">
+<div class="entries-view p-0">
 {#if store.localIds.size > 0}
   <div class="sync-bar fixed bottom-[72px] inset-x-0 z-10 flex justify-center pb-2 pointer-events-none">
     <button
@@ -107,8 +109,13 @@
     {/each}
   </div>
 {:else}
+  <div class="entries-body md:flex md:items-start">
+
+  <!-- Left column: page header + filters. Sticky on desktop. -->
+  <div class="left-col md:sticky md:top-0 md:h-dvh md:flex-[0_0_220px] md:shrink-0 md:flex md:flex-col md:overflow-y-auto md:border-r md:border-border md:pb-[72px]">
+
   <!-- Page header -->
-  <div class="page-header px-5 pt-5 pb-1">
+  <div class="page-header px-5 pt-5 pb-1 md:px-4">
     <WeekPicker
       weeks={selectableWeeks()}
       currentWeekKey={currentWeekKey()}
@@ -121,9 +128,8 @@
     </div>
   </div>
 
-  <div class="entries-body md:flex md:items-start">
   <!-- Filter bar: segmented control + category chips -->
-  <div class="filter-bar relative flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden md:flex-[0_0_200px] md:flex-col md:gap-1 md:py-3 md:px-[10px] md:border-b-0 md:border-r md:border-border md:static md:overflow-visible md:self-stretch">
+  <div class="filter-bar relative flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden md:border-b-0 md:flex-col md:gap-1 md:py-2 md:px-[10px] md:static md:overflow-visible md:flex-1">
     <div class="segmented flex shrink-0 gap-[2px] overflow-x-auto min-w-0" role="radiogroup" aria-label="Direction">
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
@@ -171,9 +177,10 @@
       <div class="scroll-shadow absolute -bottom-5 left-0 right-0 h-5 bg-[linear-gradient(to_bottom,var(--border),transparent)] pointer-events-none z-[4] md:hidden" aria-hidden="true"></div>
     {/if}
   </div>
+  </div>
 
   <!-- Entry list -->
-  <div class="entry-list mt-2 mx-4 flex flex-col gap-0 md:flex-1 md:ml-2 md:min-w-0">
+  <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 md:flex-1 md:ml-2 md:mt-4 md:min-w-0">
     {#if filtered.length === 0}
       <button
         class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
