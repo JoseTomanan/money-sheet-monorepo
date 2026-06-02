@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay } from "./groupEntries";
+import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions } from "./groupEntries";
 import type { Entry } from "./types";
 
-function entry(id: number, date: string): Entry {
-  return { id, date, tag: "T", mainCategory: "C", description: "", direction: "O", amount: 1 };
+function entry(id: number, date: string, description = ""): Entry {
+  return { id, date, tag: "T", mainCategory: "C", description, direction: "O", amount: 1 };
 }
 
 describe("groupByWeek", () => {
@@ -176,6 +176,61 @@ describe("groupEntriesByDate", () => {
     const entries = [entry(1, "2026-05-17"), entry(2, "2026-05-18"), entry(3, "2026-05-17")];
     const result = groupEntriesByDate(entries);
     expect(result).toHaveLength(3);
+  });
+});
+
+describe("splitRunPositions", () => {
+  it("lone entry is isFirst+isLast, not inGroup", () => {
+    expect(splitRunPositions([entry(1, "2026-05-18", "coffee")])).toEqual([
+      { isFirst: true, isLast: true, inGroup: false },
+    ]);
+  });
+
+  it("two-leg split: first leg isFirst+inGroup, ditto leg isLast+inGroup", () => {
+    const entries = [entry(1, "2026-05-18", "dinner"), entry(2, "2026-05-18", "^^")];
+    expect(splitRunPositions(entries)).toEqual([
+      { isFirst: true,  isLast: false, inGroup: true },
+      { isFirst: false, isLast: true,  inGroup: true },
+    ]);
+  });
+
+  it("three-leg split: first/middle/last flags correct", () => {
+    const entries = [
+      entry(1, "2026-05-18", "groceries"),
+      entry(2, "2026-05-18", "^^"),
+      entry(3, "2026-05-18", "^^"),
+    ];
+    expect(splitRunPositions(entries)).toEqual([
+      { isFirst: true,  isLast: false, inGroup: true },
+      { isFirst: false, isLast: false, inGroup: true },
+      { isFirst: false, isLast: true,  inGroup: true },
+    ]);
+  });
+
+  it("same-description non-^^ batch: each entry is lone (no false grouping)", () => {
+    const entries = [
+      entry(25, "2026-05-17", "internship payday!"),
+      entry(26, "2026-05-17", "internship payday!"),
+      entry(27, "2026-05-17", "internship payday!"),
+    ];
+    expect(splitRunPositions(entries)).toEqual([
+      { isFirst: true, isLast: true, inGroup: false },
+      { isFirst: true, isLast: true, inGroup: false },
+      { isFirst: true, isLast: true, inGroup: false },
+    ]);
+  });
+
+  it("split group followed by lone entry: split is closed correctly", () => {
+    const entries = [
+      entry(1, "2026-05-18", "utilities"),
+      entry(2, "2026-05-18", "^^"),
+      entry(3, "2026-05-18", "coffee"),
+    ];
+    expect(splitRunPositions(entries)).toEqual([
+      { isFirst: true,  isLast: false, inGroup: true  },
+      { isFirst: false, isLast: true,  inGroup: true  },
+      { isFirst: true,  isLast: true,  inGroup: false },
+    ]);
   });
 });
 
