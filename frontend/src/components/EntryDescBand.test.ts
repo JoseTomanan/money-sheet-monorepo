@@ -7,7 +7,6 @@ function baseProps(overrides = {}) {
     description: "Test entry",
     pastel: "#eee",
     color: "#333",
-    dot: "#3b82f6",
     ...overrides,
   };
 }

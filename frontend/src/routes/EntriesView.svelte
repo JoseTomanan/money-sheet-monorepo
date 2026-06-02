@@ -4,7 +4,7 @@
   import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
   import { fmtDateShort } from '../lib/format';
-  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay } from '../lib/groupEntries';
+  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
@@ -193,6 +193,7 @@
           <div class="week-label font-display text-[11px] font-bold tracking-[0.8px] uppercase text-muted-foreground pt-1 pb-[2px] px-[2px]">{group.label}</div>
           {#each dateGroups as dateGroup, di (dateGroup[0].date)}
             {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
+            {@const splitPos = splitRunPositions(dateGroup)}
             <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden">
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
@@ -217,9 +218,19 @@
                   onkeydown={(e) => !pending && !deletePending && e.key === 'Enter' && onopenedit(entry)}
                 >
 
+                  {#if entry.direction === 'O'}
+                    <span
+                      class="entry-stripe absolute left-0 top-0 bottom-0 w-[3px]"
+                      class:rounded-t-full={splitPos[j].isFirst}
+                      class:rounded-b-full={splitPos[j].isLast}
+                      style="background: {catStyle.dot};"
+                      aria-hidden="true"
+                    ></span>
+                  {/if}
+
                   <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
-                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} dot={catStyle.dot} strikethrough={dim} direction={entry.direction} />
+                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} direction={entry.direction} />
 
                   <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
                     {#if local}

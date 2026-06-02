@@ -3,7 +3,7 @@
   import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
   import { peso, fmtDate, fmtDateShort, dayOfWeek, currentYearMonth } from '../lib/format';
   import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
-  import { dateRunPositions, compareEntriesForDisplay } from '../lib/groupEntries';
+  import { dateRunPositions, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import Money from '../components/Money.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryDescBand from '../components/EntryDescBand.svelte';
@@ -33,6 +33,7 @@
 
   const todayEntries = $derived(allSorted.slice(-2));
   const todayPositions = $derived(dateRunPositions(todayEntries));
+  const todaySplitPos = $derived(splitRunPositions(todayEntries));
 
   const latestLabel = $derived(
     latestDate
@@ -147,12 +148,21 @@
               {@const dim = entry.amount === 0}
               {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
               <div
-                class="today-row flex items-center gap-[10px] py-3 pr-3 pl-[14px]"
+                class="today-row relative flex items-center gap-[10px] py-3 pr-3 pl-[14px]"
                 class:opacity-[0.55]={dim}
                 style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
               >
+                {#if entry.direction === 'O'}
+                  <span
+                    class="entry-stripe absolute left-0 top-0 bottom-0 w-[3px]"
+                    class:rounded-t-full={todaySplitPos[i].isFirst}
+                    class:rounded-b-full={todaySplitPos[i].isLast}
+                    style="background: {catStyle.dot};"
+                    aria-hidden="true"
+                  ></span>
+                {/if}
                 <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
-                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} dot={catStyle.dot} direction={entry.direction} />
+                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} direction={entry.direction} />
                 <div class="entry-amount-wrap shrink-0 ml-auto">
                   <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
                 </div>
