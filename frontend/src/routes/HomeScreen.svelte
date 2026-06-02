@@ -152,7 +152,7 @@
                 style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
               >
                 <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
-                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} />
+                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} plain={entry.direction === 'I'} />
                 <div class="entry-amount-wrap shrink-0 ml-auto">
                   <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
                 </div>

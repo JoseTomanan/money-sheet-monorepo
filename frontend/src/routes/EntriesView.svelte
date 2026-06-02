@@ -212,7 +212,7 @@
 
                   <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
-                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
+                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} plain={entry.direction === 'I'} />
 
                   <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
                     {#if local}
