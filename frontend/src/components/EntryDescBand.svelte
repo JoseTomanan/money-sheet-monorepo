@@ -18,7 +18,7 @@
     class="entry-desc font-sans text-sm overflow-hidden text-ellipsis whitespace-nowrap block"
     class:font-bold={plain}
     class:italic={plain}
-    class:font-medium={!plain}
+    class:font-normal={!plain}
     class:line-through={strikethrough}
   >{description || '—'}</span>
 </div>
