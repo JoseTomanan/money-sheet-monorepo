@@ -12,7 +12,7 @@
 
 <div
   class="entry-desc-band shrink min-w-0 max-w-[55%] px-px py-[2px] rounded-none"
-  style={plain ? '' : `background: ${pastel}80; color: ${color};`}
+  style={plain ? `color: ${color};` : `background: ${pastel}80; color: ${color};`}
 >
   <span
     class="entry-desc font-sans text-sm overflow-hidden text-ellipsis whitespace-nowrap block"
