@@ -7,31 +7,30 @@ function baseProps(overrides = {}) {
     description: "Test entry",
     pastel: "#eee",
     color: "#333",
+    dot: "#3b82f6",
     ...overrides,
   };
 }
 
-describe("EntryDescBand — plain (Incoming) styling", () => {
-  it("applies font-bold and italic classes when plain=true", () => {
-    const { getByText } = render(EntryDescBand, baseProps({ plain: true }));
+describe("EntryDescBand — direction-based styling", () => {
+  it("applies font-bold when direction=I (incoming)", () => {
+    const { getByText } = render(EntryDescBand, baseProps({ direction: 'I' }));
     const span = getByText("Test entry");
     expect(span).toHaveClass("font-bold");
-    expect(span).toHaveClass("italic");
     expect(span).not.toHaveClass("font-normal");
   });
 
-  it("applies font-normal (not italic) when plain=false", () => {
-    const { getByText } = render(EntryDescBand, baseProps({ plain: false }));
+  it("applies font-normal when direction=O (outgoing)", () => {
+    const { getByText } = render(EntryDescBand, baseProps({ direction: 'O' }));
     const span = getByText("Test entry");
     expect(span).toHaveClass("font-normal");
-    expect(span).not.toHaveClass("italic");
     expect(span).not.toHaveClass("font-bold");
   });
 
-  it("default (no plain prop) uses font-normal, not italic", () => {
+  it("default (no direction prop) uses font-normal", () => {
     const { getByText } = render(EntryDescBand, baseProps());
     const span = getByText("Test entry");
     expect(span).toHaveClass("font-normal");
-    expect(span).not.toHaveClass("italic");
+    expect(span).not.toHaveClass("font-bold");
   });
 });
