@@ -70,6 +70,19 @@
 </script>
 
 <div class="entries-view p-0" style="padding-bottom: 72px;">
+{#if store.localIds.size > 0}
+  <div class="sync-bar fixed bottom-[72px] inset-x-0 z-10 flex justify-center pb-2 pointer-events-none">
+    <button
+      class="sync-now-btn pointer-events-auto flex items-center gap-[6px] py-[6px] px-4 rounded-[var(--radius-pill)] bg-card border border-border shadow-[var(--shadow-card)] font-sans text-[13px] font-medium text-accent transition-opacity duration-150"
+      class:opacity-50={store.draining}
+      disabled={store.draining}
+      onclick={() => void store.drainQueue()}
+    >
+      <span class="text-[12px]">↑</span>
+      Sync now
+    </button>
+  </div>
+{/if}
 {#if store.loading}
   <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
@@ -178,7 +191,7 @@
                 {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
-                {@const failed = store.failedIds.has(entry.id)}
+                {@const local = store.localIds.has(entry.id)}
                 {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
                 <div
                   class="entry-card relative flex items-center gap-[10px] py-3 pr-3 pl-[14px] bg-card rounded-none cursor-pointer"
@@ -189,42 +202,30 @@
                   class:cursor-default={pending || deletePending}
                   class:border-t={j > 0}
                   class:border-border={j > 0}
-                  class:border-l-2={failed}
-                  class:border-destructive={failed}
-                  onclick={() => !pending && !deletePending && !failed && onopenedit(entry)}
+                  class:border-l-2={local}
+                  class:border-local={local}
+                  onclick={() => !pending && !deletePending && onopenedit(entry)}
                   role="button"
                   tabindex="0"
-                  onkeydown={(e) => !pending && !deletePending && !failed && e.key === 'Enter' && onopenedit(entry)}
+                  onkeydown={(e) => !pending && !deletePending && e.key === 'Enter' && onopenedit(entry)}
                 >
 
                   <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
-                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} />
+                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} plain={entry.direction === 'I'} />
 
-                  <div class="entry-amount-wrap shrink-0 ml-auto">
-                    {#if failed}
-                      <div class="flex items-center gap-1">
-                        <button
-                          class="size-[28px] flex items-center justify-center rounded-[var(--radius-sm)] text-accent hover:bg-muted transition-colors duration-150"
-                          onclick={(e) => { e.stopPropagation(); store.retryEntry(entry.id); }}
-                          aria-label="Retry"
-                        >↺</button>
-                        <button
-                          class="size-[28px] flex items-center justify-center rounded-[var(--radius-sm)] text-muted-foreground hover:bg-muted transition-colors duration-150"
-                          onclick={(e) => { e.stopPropagation(); store.dismissFailedEntry(entry.id); }}
-                          aria-label="Dismiss"
-                        >✕</button>
-                      </div>
-                    {:else}
-                      <Money
-                        value={entry.amount}
-                        size={14}
-                        weight={500}
-                        negColor={false}
-                        positive={entry.direction === 'I'}
-                        {dim}
-                      />
+                  <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
+                    {#if local}
+                      <span class="text-[11px] text-muted-foreground leading-none" data-local-indicator aria-label="Not yet synced">↑</span>
                     {/if}
+                    <Money
+                      value={entry.amount}
+                      size={14}
+                      weight={500}
+                      negColor={false}
+                      positive={entry.direction === 'I'}
+                      {dim}
+                    />
                   </div>
                 </div>
               {/each}

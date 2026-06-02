@@ -1,6 +1,8 @@
 import * as api from './api';
 import { ConnectionError } from './api';
 import { readCache, writeCache } from './cache';
+import { readQueue, writeQueue, enqueue } from './queue';
+import type { QueueItem } from './queue';
 import { getMainCategory, buildEntry } from './domain';
 import { dedupeEntries } from './dedupe';
 import type {
@@ -25,9 +27,12 @@ let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let toastIsConnection = $state(false);
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
-let failedIds = $state(new Set<number>());
+let queue = $state<QueueItem[]>(readQueue());
+const localIds = $derived(
+  new Set<number>(queue.flatMap((item) => (item.op === 'add' ? [item.tempId] : [item.id])))
+);
+let draining = $state(false);
 let syncing = $state(false);
-
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -36,14 +41,12 @@ function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
 function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
 function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
-function addFailed(id: number): void { failedIds = new Set([...failedIds, id]); }
-function removeFailed(id: number): void { failedIds = new Set([...failedIds].filter((p) => p !== id)); }
 
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out.')), REQUEST_TIMEOUT_MS)
+      setTimeout(() => reject(new ConnectionError('Request timed out.')), REQUEST_TIMEOUT_MS)
     ),
   ]);
 }
@@ -57,6 +60,27 @@ function showToast(msgOrErr: unknown, action?: { label: string; run: () => void 
   }
 }
 
+function syncQueue(): void {
+  queue = readQueue();
+}
+
+function injectQueueEntries(): void {
+  for (const item of queue) {
+    if (item.op === 'add') {
+      if (!entries.some((e) => e.id === item.tempId)) {
+        entries = [...entries, buildEntry(item.tempId, item.payload, categories)];
+      }
+    } else if (item.op === 'edit') {
+      entries = entries.map((e) =>
+        e.id === item.id
+          ? { ...e, ...item.patch, mainCategory: item.patch.tag ? getMainCategory(item.patch.tag, categories) : e.mainCategory }
+          : e
+      );
+    }
+    // delete items: entry stays visible until drained
+  }
+}
+
 async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
   const now = Date.now();
   const tempIds = legs.map((_, i) => -(now + i));
@@ -65,8 +89,6 @@ async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
   masterLoading = true;
   try {
     const results = await Promise.allSettled(legs.map((p) => withTimeout(api.addEntry(p))));
-    const failed = legs.filter((_, i) => results[i].status === 'rejected');
-    const ok = legs.length - failed.length;
 
     for (let i = 0; i < results.length; i++) {
       const tempId = tempIds[i];
@@ -75,19 +97,20 @@ async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
         const real = (results[i] as PromiseFulfilledResult<Entry>).value;
         entries = entries.map((e) => (e.id === tempId ? real : e));
       } else {
-        entries = entries.filter((e) => e.id !== tempId);
+        // Failed leg stays as a Local Entry in the queue
+        enqueue({ op: 'add', tempId, payload: legs[i] });
       }
     }
+    syncQueue();
 
-    if (failed.length === 0) {
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    if (ok === results.length) {
       toastMsg = null;
       toastAction = null;
-    } else if (ok === 0) {
-      showToast("Couldn't save entries", { label: 'Retry', run: () => void submitLegs(failed) });
+      await refreshAll(true);
     } else {
-      showToast(`Saved ${ok} of ${legs.length} entries`, { label: 'Retry', run: () => void submitLegs(failed) });
+      await refreshAll(true);
     }
-    await refreshAll(true);
   } finally {
     masterLoading = false;
   }
@@ -106,14 +129,11 @@ async function refreshAll(silent = false): Promise<void> {
       api.getCategories(),
       api.getSubcategoryBreakdown(),
     ]));
-    const failedEntries = entries.filter((e) => failedIds.has(e.id));
     entries = e;
-    for (const fe of failedEntries) {
-      if (!entries.some((en) => en.id === fe.id)) entries = [...entries, fe];
-    }
     master = m;
     categories = c;
     breakdown = b;
+    injectQueueEntries();
     writeCache({ entries, master, categories, breakdown });
   } catch (err) {
     if (!silent) {
@@ -126,12 +146,14 @@ async function refreshAll(silent = false): Promise<void> {
 }
 
 async function init(): Promise<void> {
+  queue = readQueue(); // re-sync in case localStorage changed since module load
   const cache = readCache();
   if (cache) {
     entries = dedupeEntries(cache.entries);
     master = cache.master;
     categories = cache.categories;
     breakdown = cache.breakdown;
+    injectQueueEntries();
     syncing = true;
     masterLoading = true;
     void refreshAll(true).finally(() => {
@@ -140,7 +162,9 @@ async function init(): Promise<void> {
     });
   } else {
     await refreshAll(false);
+    injectQueueEntries();
   }
+  window.addEventListener('online', () => void drainQueue());
 }
 
 async function addSingle(payload: AddEntryPayload): Promise<void> {
@@ -156,9 +180,9 @@ async function addSingle(payload: AddEntryPayload): Promise<void> {
     await refreshAll(true);
     removePending(real.id);
   } catch {
-    addFailed(tempId);
+    enqueue({ op: 'add', tempId, payload });
+    syncQueue();
     removePending(tempId);
-    // entry stays in list; the card shows the error state — no toast needed
   } finally {
     masterLoading = false;
   }
@@ -176,14 +200,28 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
       ? { ...e, ...patch, mainCategory: patch.tag ? getMainCategory(patch.tag, categories) : e.mainCategory }
       : e
   );
+
+  // Local Entry: coalesce into queue directly, no API call
+  if (localIds.has(id)) {
+    enqueue({ op: 'edit', id, patch });
+    syncQueue();
+    return;
+  }
+
   addPending(id);
   masterLoading = true;
   try {
     await withTimeout(api.updateEntry(id, patch));
     await refreshAll(true);
   } catch (err) {
-    entries = entries.map((e) => (e.id === id ? prev : e));
-    showToast(err);
+    if (err instanceof ConnectionError) {
+      enqueue({ op: 'edit', id, patch });
+      syncQueue();
+      // Entry stays with its optimistic state
+    } else {
+      entries = entries.map((e) => (e.id === id ? prev : e));
+      showToast(err);
+    }
   } finally {
     removePending(id);
     masterLoading = false;
@@ -192,6 +230,15 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
 
 async function deleteEntry(id: number): Promise<void> {
   if (!entries.some((e) => e.id === id)) return;
+
+  // Local Entry: coalesce into queue directly, no API call
+  if (localIds.has(id)) {
+    enqueue({ op: 'delete', id });
+    syncQueue();
+    entries = entries.filter((e) => e.id !== id);
+    return;
+  }
+
   addDeletePending(id);
   masterLoading = true;
   try {
@@ -199,44 +246,47 @@ async function deleteEntry(id: number): Promise<void> {
     entries = entries.filter((e) => e.id !== id);
     await refreshAll(true);
   } catch (err) {
-    showToast(err);
+    if (err instanceof ConnectionError) {
+      enqueue({ op: 'delete', id });
+      syncQueue();
+      // Entry stays visible as a Local Entry
+    } else {
+      showToast(err);
+    }
   } finally {
     removeDeletePending(id);
     masterLoading = false;
   }
 }
 
-async function retryEntry(id: number): Promise<void> {
-  const fe = entries.find((e) => e.id === id);
-  if (!fe) return;
-  const payload: AddEntryPayload = {
-    date: fe.date,
-    tag: fe.tag,
-    description: fe.description,
-    direction: fe.direction,
-    amount: fe.amount,
-  };
-  removeFailed(id);
-  addPending(id);
-  masterLoading = true;
+async function drainQueue(): Promise<void> {
+  if (draining || queue.length === 0) return;
+  draining = true;
   try {
-    const real = await withTimeout(api.addEntry(payload));
-    entries = entries.map((e) => (e.id === id ? real : e));
-    removePending(id);
-    addPending(real.id);
-    await refreshAll(true);
-    removePending(real.id);
-  } catch {
-    addFailed(id);
-    removePending(id);
+    while (queue.length > 0) {
+      const item = queue[0];
+      try {
+        if (item.op === 'add') {
+          const real = await withTimeout(api.addEntry(item.payload));
+          entries = entries.map((e) => (e.id === item.tempId ? real : e));
+        } else if (item.op === 'edit') {
+          await withTimeout(api.updateEntry(item.id, item.patch));
+        } else if (item.op === 'delete') {
+          await withTimeout(api.deleteEntry(item.id));
+          entries = entries.filter((e) => e.id !== item.id);
+        }
+        queue = queue.slice(1);
+        writeQueue(queue);
+      } catch {
+        break;
+      }
+    }
+    if (queue.length === 0) {
+      await refreshAll(true);
+    }
   } finally {
-    masterLoading = false;
+    draining = false;
   }
-}
-
-function dismissFailedEntry(id: number): void {
-  entries = entries.filter((e) => e.id !== id);
-  removeFailed(id);
 }
 
 export const store = {
@@ -253,14 +303,14 @@ export const store = {
   get toastIsConnection() { return toastIsConnection; },
   get pendingIds() { return pendingIds; },
   get deletePendingIds() { return deletePendingIds; },
-  get failedIds() { return failedIds; },
+  get localIds() { return localIds; },
+  get draining() { return draining; },
   get syncing() { return syncing; },
   init,
   refreshAll,
   addEntry,
   updateEntry,
   deleteEntry,
-  retryEntry,
-  dismissFailedEntry,
+  drainQueue,
   dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; },
 };

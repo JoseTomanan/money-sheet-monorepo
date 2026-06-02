@@ -46,6 +46,12 @@ The sum of all Category Budgets. Represents total money currently available acro
 ## Connection
 The user-provided configuration required to reach their spreadsheet: a GAS web app URL and an API secret. Stored in the browser's localStorage, scoped to the device. Without a Connection, the app cannot make any API calls. A user configures their Connection once per device via the Settings screen; it can be changed at any time. Structurally: `{ gasUrl: string, apiSecret: string }`.
 
+## Local Entry
+An Entry that is visible in the app's UI but has not yet been confirmed written to the spreadsheet. Holds a temporary negative integer ID until it syncs and receives a real Entry ID from GAS. Displayed with a visual indicator to distinguish it from confirmed entries. A Local Entry exists because its originating mutation was queued in the Offline Queue rather than successfully sent.
+
+## Offline Queue
+The ordered list of pending mutations (addEntry, updateEntry, deleteEntry) that failed to reach GAS. Persisted in localStorage (`ms_queue`) so it survives page reloads. Drained in order when connectivity is restored — either automatically on the browser `online` event, or manually via a "Sync now" trigger. Coalescing rules apply: a later operation on the same logical entry merges into or cancels the earlier one rather than appending a new queue item.
+
 ## Sheets
 
 ### INCOMING/OUTGOING sheet

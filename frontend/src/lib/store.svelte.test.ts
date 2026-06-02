@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { writeCache } from "./cache";
+import { writeQueue } from "./queue";
 import type { CachePayload } from "./cache";
+import type { QueueItem } from "./queue";
 import type { Entry, AddEntryPayload } from "./types";
 
 const freshEntries: Entry[] = [
@@ -77,6 +79,31 @@ function makeFetchMock() {
   });
 }
 
+function gasGetBody(url: string): Record<string, unknown> {
+  const qs = url.includes("?") ? url.split("?")[1] : "";
+  const action = new URLSearchParams(qs).get("action");
+  switch (action) {
+    case "getEntries": return { entries: freshEntries };
+    case "getMaster": return { master: freshMaster };
+    case "getCategories": return { categories: freshCategories };
+    case "getSubcategoryBreakdown": return { breakdown: freshBreakdown };
+    default: return {};
+  }
+}
+
+function makeConnectionErrorFetch() {
+  return vi.fn().mockImplementation((url: string) => {
+    if (typeof url === "string" && url.includes("action=")) {
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+    }
+    return Promise.reject(new Error("Network error"));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// pendingIds (in-flight tracking — unchanged behavior)
+// ---------------------------------------------------------------------------
+
 describe("pendingIds", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
 
@@ -112,18 +139,14 @@ describe("pendingIds", () => {
       })
     );
     store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    // one pending id (the tempId) while fetch is in-flight
     expect(store.pendingIds.size).toBe(1);
-    // settle
     resolveFetch({ text: () => Promise.resolve(JSON.stringify({ entry: { id: 42, date: "2026-01-01", tag: "Food", mainCategory: "Food", description: "test", direction: "O", amount: 50 } })) });
     await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
   });
 
   it("updateEntry: id in pendingIds during call; cleared on success", async () => {
-    // seed the store with an existing entry
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
-    // freshEntries[0].id === 1
 
     let resolvePost!: (v: unknown) => void;
     vi.stubGlobal(
@@ -141,7 +164,7 @@ describe("pendingIds", () => {
     await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
   });
 
-  it("updateEntry: pendingIds cleared on failure + entry reverted", async () => {
+  it("updateEntry: pendingIds cleared on generic api failure + entry reverted", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
 
@@ -168,22 +191,19 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          // refresh returns no entries (simulates deletion confirmed)
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
         }
         return new Promise((res) => { resolvePost = res; });
       })
     );
     store.deleteEntry(1);
-    // entry must still be visible while the API call is in-flight
     expect(store.entries.some((e) => e.id === 1)).toBe(true);
     expect(store.deletePendingIds.has(1)).toBe(true);
-    // resolve the delete
     resolvePost({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
     await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
   });
 
-  it("deleteEntry: entry stays + pendingIds cleared on failure", async () => {
+  it("deleteEntry: entry stays + pendingIds cleared on generic api failure", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
 
@@ -201,7 +221,7 @@ describe("pendingIds", () => {
     expect(store.entries.some((e) => e.id === 1)).toBe(true);
   });
 
-  it("15s timeout: addEntry keeps entry in list, marks failed, clears pending, no toast", async () => {
+  it("15s timeout: addEntry keeps entry in list, marks as local (localIds), no toast", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
@@ -209,143 +229,49 @@ describe("pendingIds", () => {
         if ((url as string).includes("action=")) {
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
         }
-        // never resolves — simulates a hung request
         return new Promise(() => {});
       })
     );
     store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    expect(store.entries.length).toBe(1); // optimistic add
+    expect(store.entries.length).toBe(1);
     await vi.advanceTimersByTimeAsync(15_000);
     await vi.waitFor(() => {
-      expect(store.entries.length).toBe(1);       // entry stays
-      expect(store.pendingIds.size).toBe(0);      // no longer pending
-      expect(store.failedIds.size).toBe(1);       // marked as failed
-      expect(store.toastMsg).toBeNull();           // no toast — card shows the error
+      expect(store.entries.length).toBe(1);
+      expect(store.pendingIds.size).toBe(0);
+      expect(store.localIds.size).toBe(1);
+      expect(store.toastMsg).toBeNull();
     });
     vi.useRealTimers();
   });
 
-  it("addEntry: on api failure, entry stays, pendingIds cleared, failedIds populated", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
-      })
-    );
+  it("addEntry: on connection failure, entry stays, localIds populated (no failedIds)", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
     await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
-    expect(store.entries.length).toBe(1);         // entry stays
-    expect(store.failedIds.size).toBe(1);         // marked as failed
+    expect(store.entries.length).toBe(1);
+    expect(store.localIds.size).toBe(1);
     expect(store.toastMsg).toBeNull();
   });
 
-  it("retryEntry: clears failedIds, re-pends, replaces temp row on success", async () => {
-    // Stage: add one entry that fails
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
-      })
-    );
+  it("local entry survives a silent refreshAll that omits it from the server response", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
-    const [failedId] = [...store.failedIds];
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    const [localId] = [...store.localIds];
 
-    // Retry succeeds
-    const realEntry = { id: 77, date: "2026-01-01", tag: "Food", mainCategory: "Food", description: "test", direction: "O", amount: 50 };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
-      })
-    );
-    store.retryEntry(failedId);
-    expect(store.failedIds.size).toBe(0);          // no longer failed
-    expect(store.pendingIds.size).toBe(1);          // back to pending
-    await vi.waitFor(() => {
-      expect(store.failedIds.size).toBe(0);
-      expect(store.pendingIds.size).toBe(0);
-      expect(store.entries.some((e) => e.id === realEntry.id)).toBe(true);
-    });
-  });
-
-  it("retryEntry: second failure re-marks entry as failed with no data loss", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
-      })
-    );
-    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
-    const [failedId] = [...store.failedIds];
-
-    // Retry also fails
-    store.retryEntry(failedId);
-    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
-    expect(store.entries.length).toBe(1);           // entry still present
-    expect(store.pendingIds.size).toBe(0);
-    expect([...store.failedIds][0]).toBe(failedId);
-  });
-
-  it("dismissFailedEntry: removes entry from list and clears failedIds", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
-      })
-    );
-    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
-    const [failedId] = [...store.failedIds];
-    store.dismissFailedEntry(failedId);
-    expect(store.entries.length).toBe(0);
-    expect(store.failedIds.size).toBe(0);
-  });
-
-  it("failed entry survives a silent refreshAll that omits it from the server response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-        }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
-      })
-    );
-    store.addEntry({ date: "2026-01-01", tag: "Food", description: "test", direction: "O", amount: 50 });
-    await vi.waitFor(() => expect(store.failedIds.size).toBe(1));
-    const [failedId] = [...store.failedIds];
-
-    // Trigger a silent refresh — server returns no entries (omits our failed one)
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation((url: string) => {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-      })
-    );
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
+      Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) })
+    ));
     await store.refreshAll(true);
 
-    // Failed entry must still be in the list
-    expect(store.entries.some((e) => e.id === failedId)).toBe(true);
-    expect(store.failedIds.has(failedId)).toBe(true);
+    expect(store.entries.some((e) => e.id === localId)).toBe(true);
+    expect(store.localIds.has(localId)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// store — refreshAll, init (stale-while-revalidate), timeout
+// ---------------------------------------------------------------------------
 
 describe("store", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
@@ -447,7 +373,6 @@ describe("store", () => {
       writeCache(makePayload({ entries: cachedEntries }));
 
       const initPromise = store.init();
-      // cache hydration is synchronous — state is available before awaiting
       expect(store.entries).toEqual(cachedEntries);
       await initPromise;
     });
@@ -455,7 +380,6 @@ describe("store", () => {
     it("with cache: silently refreshes state from fetch after init resolves", async () => {
       writeCache(makePayload({ entries: [] }));
       await store.init();
-      // init resolved (cache path), silent refresh is still in-flight
       await vi.waitFor(() => {
         expect(store.entries).toEqual(freshEntries);
       });
@@ -479,8 +403,7 @@ describe("refreshAll timeout", () => {
     localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     vi.useFakeTimers();
     vi.resetModules();
-    // stub fetch AFTER resetModules so the freshly imported module picks it up
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => new Promise(() => {/* never resolves */})));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => new Promise(() => {})));
     const mod = await import("./store.svelte");
     store = mod.store;
   });
@@ -522,22 +445,10 @@ describe("refreshAll timeout", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Helpers shared by the split-path describe block
+// addEntry — split (array) path
 // ---------------------------------------------------------------------------
 
-function gasGetBody(url: string): Record<string, unknown> {
-  const qs = url.includes("?") ? url.split("?")[1] : "";
-  const action = new URLSearchParams(qs).get("action");
-  switch (action) {
-    case "getEntries": return { entries: freshEntries };
-    case "getMaster": return { master: freshMaster };
-    case "getCategories": return { categories: freshCategories };
-    case "getSubcategoryBreakdown": return { breakdown: freshBreakdown };
-    default: return {};
-  }
-}
-
-/** Returns a fetch stub where POSTs at the given indices fail with { error }. */
+/** Returns a fetch stub where POSTs at the given indices fail with a network error. */
 function makePostMock(failAtIndices: number[] = []) {
   let postIdx = 0;
   return vi.fn().mockImplementation((url: string) => {
@@ -546,7 +457,7 @@ function makePostMock(failAtIndices: number[] = []) {
     }
     const i = postIdx++;
     if (failAtIndices.includes(i)) {
-      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "server error" })) });
+      return Promise.reject(new Error("Network error"));
     }
     const entry = { id: 100 + i, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 + i };
     return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
@@ -572,68 +483,41 @@ describe("addEntry — split (array) path", () => {
     vi.useRealTimers();
   });
 
-  it("partial failure: toast shows 'Saved N of M', toastAction set, refreshAll runs", async () => {
+  it("partial failure: failed legs stay as Local Entries in localIds", async () => {
     vi.stubGlobal("fetch", makePostMock([1])); // 2nd POST fails
     const payloads: AddEntryPayload[] = [
       { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
       { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
       { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
     ];
-    store.addEntry(payloads);
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 2 of 3 entries"));
-    expect(store.toastAction?.label).toBe("Retry");
-    expect(store.entries).toEqual(freshEntries); // refreshAll ran despite partial failure
+    await store.addEntry(payloads);
+    expect(store.localIds.size).toBe(1);
+    expect(store.entries.length).toBeGreaterThanOrEqual(1); // at least the local entry remains
   });
 
-  it("Retry re-submits only failed legs; clears toast on full success", async () => {
-    vi.stubGlobal("fetch", makePostMock([1])); // 2nd of 2 fails
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-    ]);
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
-    vi.stubGlobal("fetch", makePostMock([])); // next round: all succeed
-    store.toastAction!.run();
-    await vi.waitFor(() => expect(store.toastMsg).toBeNull());
-    expect(store.toastAction).toBeNull();
-  });
-
-  it("all legs fail: 'Couldn't save entries' + toastAction set", async () => {
+  it("all legs fail: all legs stay as Local Entries in localIds", async () => {
     vi.stubGlobal("fetch", makePostMock([0, 1, 2]));
     store.addEntry([
       { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
       { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
       { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
     ]);
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Couldn't save entries"));
-    expect(store.toastAction?.label).toBe("Retry");
+    await vi.waitFor(() => expect(store.localIds.size).toBe(3));
+    expect(store.entries.filter(e => store.localIds.has(e.id))).toHaveLength(3);
   });
 
-  it("full success: no toast, entries refreshed", async () => {
+  it("full success: no local entries, entries refreshed", async () => {
     vi.stubGlobal("fetch", makePostMock([]));
     store.addEntry([
       { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
       { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
     ]);
     await vi.waitFor(() => expect(store.entries).toEqual(freshEntries));
+    expect(store.localIds.size).toBe(0);
     expect(store.toastMsg).toBeNull();
-    expect(store.toastAction).toBeNull();
   });
 
-  it("actionable toast persists past 3s auto-dismiss window", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal("fetch", makePostMock([0])); // 1st fails → partial
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-    ]);
-    await vi.advanceTimersByTimeAsync(500); // flush the allSettled chain
-    expect(store.toastMsg).toBe("Saved 1 of 2 entries");
-    await vi.advanceTimersByTimeAsync(3_000); // plain toast would have cleared
-    expect(store.toastMsg).toBe("Saved 1 of 2 entries"); // still persists
-  });
-
-  it("hung leg counted as failed after 15s withTimeout", async () => {
+  it("hung leg counted as local entry after 15s withTimeout", async () => {
     vi.useFakeTimers();
     let postIdx = 0;
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
@@ -641,7 +525,7 @@ describe("addEntry — split (array) path", () => {
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
       }
       const i = postIdx++;
-      if (i === 0) return new Promise<never>(() => {}); // hangs forever
+      if (i === 0) return new Promise<never>(() => {});
       const entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "split", direction: "O", amount: 20 };
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
     }));
@@ -649,23 +533,9 @@ describe("addEntry — split (array) path", () => {
       { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
       { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
     ]);
-    await vi.advanceTimersByTimeAsync(14_999);
-    expect(store.toastMsg).toBeNull(); // still waiting for hung leg
-    await vi.advanceTimersByTimeAsync(1); // fires 15s timeout
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
-  });
-
-  it("repeated partial retry: toast updates count on each failed retry", async () => {
-    vi.stubGlobal("fetch", makePostMock([0])); // 1st of 2 fails → "Saved 1 of 2"
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-    ]);
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Saved 1 of 2 entries"));
-    vi.stubGlobal("fetch", makePostMock([0])); // retry also fails → "Couldn't save entries"
-    store.toastAction!.run();
-    await vi.waitFor(() => expect(store.toastMsg).toBe("Couldn't save entries"));
-    expect(store.toastAction).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    expect(store.entries.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -678,7 +548,6 @@ describe("store — errorIsConnection and toastIsConnection", () => {
 
   beforeEach(async () => {
     localStorage.clear();
-    // seed connection so api.ts can reach the (mocked) GAS URL after GREEN
     localStorage.setItem(
       "ms_connection",
       JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }),
@@ -718,20 +587,6 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     expect(store.error).toBeNull();
   });
 
-  it("toastIsConnection is true when a mutation fails with a connection-class error", async () => {
-    vi.stubGlobal("fetch", makeFetchMock());
-    await store.refreshAll();
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
-      if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
-      }
-      return Promise.reject(new Error("Network error"));
-    }));
-    store.updateEntry(1, { description: "changed" });
-    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
-    expect(store.toastIsConnection).toBe(true);
-  });
-
   it("toastIsConnection is false when a mutation fails with a generic API error", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
@@ -753,11 +608,456 @@ describe("store — errorIsConnection and toastIsConnection", () => {
       if ((url as string).includes("action=")) {
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
       }
-      return Promise.reject(new Error("down"));
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
     }));
     store.updateEntry(1, { description: "x" });
-    await vi.waitFor(() => expect(store.toastIsConnection).toBe(true));
+    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
     store.dismissToast();
     expect(store.toastIsConnection).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Offline queue — addEntry failure (Slice 2)
+// ---------------------------------------------------------------------------
+
+describe("offline queue — addEntry connection failure", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("entry stays in list after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
+    expect(store.entries.length).toBe(1);
+  });
+
+  it("localIds gains the tempId after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    const [localId] = [...store.localIds];
+    expect(localId).toBeLessThan(0); // tempId is negative
+    expect(store.entries.some(e => e.id === localId)).toBe(true);
+  });
+
+  it("queue is persisted to localStorage", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    const raw = localStorage.getItem("ms_queue");
+    expect(raw).not.toBeNull();
+    const q = JSON.parse(raw!);
+    expect(q).toHaveLength(1);
+    expect(q[0].op).toBe("add");
+  });
+
+  it("no toast shown — cloud indicator is the UX signal", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    expect(store.toastMsg).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Offline queue — updateEntry connection failure (Slice 3)
+// ---------------------------------------------------------------------------
+
+describe("offline queue — updateEntry connection failure", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.refreshAll(); // seed entry id=1
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("entry keeps optimistic state (no rollback) after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
+    expect(store.entries.find(e => e.id === 1)?.description).toBe("updated");
+  });
+
+  it("localIds gains the id after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+  });
+
+  it("edit is enqueued in localStorage", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+    const q = JSON.parse(localStorage.getItem("ms_queue")!);
+    expect(q).toHaveLength(1);
+    expect(q[0].op).toBe("edit");
+    expect(q[0].id).toBe(1);
+    expect(q[0].patch.description).toBe("updated");
+  });
+
+  it("no toast for connection errors — queue is the recovery path", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+    expect(store.toastMsg).toBeNull();
+  });
+
+  it("generic API error still rolls back and shows toast", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+    }));
+    store.updateEntry(1, { description: "updated" });
+    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
+    expect(store.entries.find(e => e.id === 1)?.description).toBe("fresh");
+    expect(store.localIds.has(1)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Offline queue — deleteEntry connection failure (Slice 4)
+// ---------------------------------------------------------------------------
+
+describe("offline queue — deleteEntry connection failure", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.refreshAll(); // seed entry id=1
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("entry stays in list after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.deleteEntry(1);
+    await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
+    expect(store.entries.some(e => e.id === 1)).toBe(true);
+  });
+
+  it("localIds gains the id after connection failure", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.deleteEntry(1);
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+  });
+
+  it("delete is enqueued in localStorage", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.deleteEntry(1);
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+    const q = JSON.parse(localStorage.getItem("ms_queue")!);
+    expect(q).toHaveLength(1);
+    expect(q[0].op).toBe("delete");
+    expect(q[0].id).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Offline queue — edit/delete a Local Entry skips API call (Slice 5)
+// ---------------------------------------------------------------------------
+
+describe("offline queue — edit/delete a Local Entry coalesces without API call", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    fetchMock = makeConnectionErrorFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    // Add an entry that fails → Local Entry
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "local", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("updateEntry on local entry: queue is coalesced (still 1 item), no extra fetch", async () => {
+    const [localId] = [...store.localIds];
+    const callsBefore = fetchMock.mock.calls.length;
+    store.updateEntry(localId, { amount: 99 });
+    // Give any async work a tick
+    await new Promise(r => setTimeout(r, 10));
+    expect(fetchMock.mock.calls.length).toBe(callsBefore); // no new fetch
+    const q = JSON.parse(localStorage.getItem("ms_queue")!);
+    expect(q).toHaveLength(1); // still 1 item (coalesced)
+    expect(q[0].op).toBe("add");
+    expect(q[0].payload.amount).toBe(99); // merged
+  });
+
+  it("deleteEntry on local entry: queue becomes empty (net zero), entry removed", async () => {
+    const [localId] = [...store.localIds];
+    store.deleteEntry(localId);
+    await vi.waitFor(() => expect(store.localIds.size).toBe(0));
+    expect(store.entries.some(e => e.id === localId)).toBe(false);
+    const q = JSON.parse(localStorage.getItem("ms_queue") ?? "[]");
+    expect(q).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// drainQueue (Slice 6)
+// ---------------------------------------------------------------------------
+
+describe("drainQueue", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("drains an add item: temp entry replaced by real entry, queue emptied", async () => {
+    // Seed a Local Entry via failed add
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "queued", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    const [tempId] = [...store.localIds];
+
+    // Now drain with successful fetch
+    const realEntry = { id: 77, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "queued", direction: "O", amount: 50 };
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
+    }));
+    await store.drainQueue();
+
+    expect(store.localIds.size).toBe(0);
+    expect(store.entries.some(e => e.id === tempId)).toBe(false);
+    expect(store.entries.some(e => e.id === 77)).toBe(true);
+    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+  });
+
+  it("drains an edit item: queue emptied, entry retains updated state", async () => {
+    await store.refreshAll(); // seed id=1 with description="fresh"
+
+    // Seed edit in queue via connection failure
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "queued-edit" });
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+
+    // Drain successfully
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        const updated = [{ ...freshEntries[0], description: "queued-edit" }];
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: updated, master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    }));
+    await store.drainQueue();
+
+    expect(store.localIds.size).toBe(0);
+    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+    expect(store.entries.find(e => e.id === 1)?.description).toBe("queued-edit");
+  });
+
+  it("drains a delete item: entry removed from list, queue emptied", async () => {
+    await store.refreshAll(); // seed id=1
+
+    // Seed delete in queue via connection failure
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.deleteEntry(1);
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+
+    // Drain successfully
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    }));
+    await store.drainQueue();
+
+    expect(store.localIds.size).toBe(0);
+    expect(store.entries.some(e => e.id === 1)).toBe(false);
+    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+  });
+
+  it("drain stops at the first failure; successfully drained items are committed", async () => {
+    // Pre-seed two queue items: first will succeed, second will fail
+    const addPayload1 = { date: "2026-01-01", tag: "Groceries", description: "first", direction: "O" as const, amount: 10 };
+    const addPayload2 = { date: "2026-01-02", tag: "Dining", description: "second", direction: "O" as const, amount: 20 };
+    writeQueue([
+      { op: "add", tempId: -1001, payload: addPayload1 },
+      { op: "add", tempId: -1002, payload: addPayload2 },
+    ]);
+    // Re-import to pick up pre-seeded queue
+    vi.resetModules();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    const real1 = { id: 101, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "first", direction: "O", amount: 10 };
+    let callCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [real1], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+      }
+      callCount++;
+      if (callCount === 1) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: real1 })) });
+      return Promise.reject(new Error("Network error")); // 2nd POST fails
+    }));
+    const mod = await import("./store.svelte");
+    store = mod.store;
+
+    await store.drainQueue();
+
+    const remaining = JSON.parse(localStorage.getItem("ms_queue")!);
+    expect(remaining).toHaveLength(1); // 2nd item still queued
+    expect(remaining[0].tempId).toBe(-1002);
+    expect(store.localIds.has(-1001)).toBe(false); // first drained
+    expect(store.localIds.has(-1002)).toBe(true);  // second still local
+  });
+});
+
+// ---------------------------------------------------------------------------
+// online event triggers drainQueue (Slice 7)
+// ---------------------------------------------------------------------------
+
+describe("online event triggers drainQueue", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.init();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("dispatching window 'online' event drains the queue", async () => {
+    // Seed a local entry
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "offline", direction: "O", amount: 50 });
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+
+    // Restore connectivity
+    const realEntry = { id: 99, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "offline", direction: "O", amount: 50 };
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if ((url as string).includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
+    }));
+
+    window.dispatchEvent(new Event("online"));
+    await vi.waitFor(() => expect(store.localIds.size).toBe(0));
+    expect(store.entries.some(e => e.id === 99)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// init with existing queue (Slice 8)
+// ---------------------------------------------------------------------------
+
+describe("init with existing queue", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("init injects Local Entry from a queued add item on cache path", async () => {
+    const payload = { date: "2026-01-01", tag: "Groceries", description: "queued", direction: "O" as const, amount: 50 };
+    writeQueue([{ op: "add", tempId: -9999, payload }]);
+    writeCache({
+      entries: freshEntries,
+      master: freshMaster,
+      categories: freshCategories,
+      breakdown: freshBreakdown,
+    });
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const { store } = await import("./store.svelte");
+
+    const initPromise = store.init();
+    // synchronous cache hydration: local entry should be present immediately
+    expect(store.entries.some(e => e.id === -9999)).toBe(true);
+    expect(store.localIds.has(-9999)).toBe(true);
+    await initPromise;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// refreshAll re-applies queued edit patch (Slice 9)
+// ---------------------------------------------------------------------------
+
+describe("refreshAll preserves local state", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.refreshAll(); // seed id=1 description="fresh"
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("silent refreshAll re-applies a queued edit patch on top of fetched data", async () => {
+    // Trigger edit failure → enqueue
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store.updateEntry(1, { description: "local-edit" });
+    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
+
+    // Silent refresh fetches OLD data from GAS (description="fresh"), but patch re-applied
+    vi.stubGlobal("fetch", makeFetchMock()); // returns freshEntries (description="fresh")
+    await store.refreshAll(true);
+
+    // Entry should still reflect the queued edit
+    expect(store.entries.find(e => e.id === 1)?.description).toBe("local-edit");
+    expect(store.localIds.has(1)).toBe(true);
   });
 });

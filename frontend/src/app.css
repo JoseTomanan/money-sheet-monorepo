@@ -12,6 +12,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive:       var(--destructive);
   --color-positive:          var(--positive);
+  --color-local:             var(--local);
   --color-primary:           var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary:         var(--secondary);
@@ -75,6 +76,7 @@
   --accent-foreground: #ffffff;
   --destructive:       #c14a32;
   --positive:          #1a8a3f;
+  --local:             #6366f1;
 
   /* shadcn-svelte token aliases — map onto our palette */
   --primary:              var(--accent);

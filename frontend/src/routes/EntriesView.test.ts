@@ -9,10 +9,10 @@ const mockStore = vi.hoisted(() => ({
   categories: {} as Record<string, unknown>,
   pendingIds: new Set<number>(),
   deletePendingIds: new Set<number>(),
-  failedIds: new Set<number>(),
+  localIds: new Set<number>(),
   masterLoading: false,
-  retryEntry: vi.fn(),
-  dismissFailedEntry: vi.fn(),
+  draining: false,
+  drainQueue: vi.fn(),
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
@@ -199,79 +199,82 @@ describe("EntriesView skeleton loading", () => {
   });
 });
 
-describe("EntriesView failed entry state", () => {
+describe("EntriesView local entry state (offline queue)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-05-17")); // pin to a week with entries
+    vi.setSystemTime(new Date("2026-05-17"));
     mockStore.loading = false;
     mockStore.pendingIds = new Set();
-    mockStore.failedIds = new Set();
-    mockStore.retryEntry.mockReset();
-    mockStore.dismissFailedEntry.mockReset();
+    mockStore.localIds = new Set();
+    mockStore.drainQueue.mockReset();
   });
   afterEach(() => vi.useRealTimers());
 
-  it("failed entry renders Retry and Dismiss buttons in place of the amount", () => {
-    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+  it("local entry renders a cloud indicator and shows the amount", () => {
+    const entry = makeEntry(5, "2026-05-17", "Local entry");
     mockStore.entries = [entry];
-    mockStore.failedIds = new Set([5]);
-    const { getByRole, queryByText } = render(EntriesView, baseProps());
-    expect(getByRole("button", { name: /retry/i })).toBeInTheDocument();
-    expect(getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
-    // amount should NOT be shown for a failed entry
-    expect(queryByText("100")).not.toBeInTheDocument();
+    mockStore.localIds = new Set([5]);
+    const { container, queryByRole } = render(EntriesView, baseProps());
+    expect(container.querySelector("[data-local-indicator]")).toBeInTheDocument();
+    expect(queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    expect(queryByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
   });
 
-  it("failed entry card has border-destructive class", () => {
-    const entry = makeEntry(5, "2026-05-17", "Failed entry");
+  it("local entry card has a distinguishing border class (border-local)", () => {
+    const entry = makeEntry(5, "2026-05-17", "Local entry");
     mockStore.entries = [entry];
-    mockStore.failedIds = new Set([5]);
+    mockStore.localIds = new Set([5]);
     const { container } = render(EntriesView, baseProps());
     const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
-    expect(card.classList.contains("border-destructive")).toBe(true);
+    expect(card.classList.contains("border-local")).toBe(true);
   });
 
-  it("clicking Retry calls store.retryEntry with the entry id and does not open edit", async () => {
-    const entry = makeEntry(5, "2026-05-17", "Failed entry");
-    mockStore.entries = [entry];
-    mockStore.failedIds = new Set([5]);
-    const props = baseProps();
-    const { getByRole } = render(EntriesView, props);
-    await fireEvent.click(getByRole("button", { name: /retry/i }));
-    expect(mockStore.retryEntry).toHaveBeenCalledWith(5);
-    expect(props.onopenedit).not.toHaveBeenCalled();
-  });
-
-  it("clicking Dismiss calls store.dismissFailedEntry with the entry id", async () => {
-    const entry = makeEntry(5, "2026-05-17", "Failed entry");
-    mockStore.entries = [entry];
-    mockStore.failedIds = new Set([5]);
-    const props = baseProps();
-    const { getByRole } = render(EntriesView, props);
-    await fireEvent.click(getByRole("button", { name: /dismiss/i }));
-    expect(mockStore.dismissFailedEntry).toHaveBeenCalledWith(5);
-  });
-
-  it("clicking the card of a failed entry does NOT call onopenedit", async () => {
-    const entry = makeEntry(5, "2026-05-17", "Failed entry");
-    mockStore.entries = [entry];
-    mockStore.failedIds = new Set([5]);
-    const props = baseProps();
-    const { container } = render(EntriesView, props);
-    const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
-    await fireEvent.click(card);
-    expect(props.onopenedit).not.toHaveBeenCalled();
-  });
-
-  it("non-failed entry is unaffected: shows amount, opens edit on click", async () => {
+  it("non-local entry is unaffected: no cloud indicator, opens edit on click", async () => {
     const entry = makeEntry(7, "2026-05-17", "Normal entry");
     mockStore.entries = [entry];
-    mockStore.failedIds = new Set();
+    mockStore.localIds = new Set();
     const props = baseProps();
-    const { queryByRole, container } = render(EntriesView, props);
-    expect(queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    const { container, queryByTestId } = render(EntriesView, props);
+    expect(container.querySelector("[data-local-indicator]")).not.toBeInTheDocument();
     const card = container.querySelector(".entry-card:not(.add-entry-card)") as HTMLElement;
     await fireEvent.click(card);
     expect(props.onopenedit).toHaveBeenCalledWith(entry);
+  });
+});
+
+describe("EntriesView Sync Now button", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-17"));
+    mockStore.loading = false;
+    mockStore.pendingIds = new Set();
+    mockStore.localIds = new Set();
+    mockStore.draining = false;
+    mockStore.drainQueue.mockReset();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("Sync Now button is absent when localIds is empty", () => {
+    mockStore.entries = [makeEntry(1, "2026-05-17")];
+    mockStore.localIds = new Set();
+    const { queryByRole } = render(EntriesView, baseProps());
+    expect(queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
+  });
+
+  it("Sync Now button is present when localIds has entries", () => {
+    const entry = makeEntry(5, "2026-05-17", "Local");
+    mockStore.entries = [entry];
+    mockStore.localIds = new Set([5]);
+    const { getByRole } = render(EntriesView, baseProps());
+    expect(getByRole("button", { name: /sync now/i })).toBeInTheDocument();
+  });
+
+  it("clicking Sync Now calls store.drainQueue", async () => {
+    const entry = makeEntry(5, "2026-05-17", "Local");
+    mockStore.entries = [entry];
+    mockStore.localIds = new Set([5]);
+    const { getByRole } = render(EntriesView, baseProps());
+    await fireEvent.click(getByRole("button", { name: /sync now/i }));
+    expect(mockStore.drainQueue).toHaveBeenCalledOnce();
   });
 });
