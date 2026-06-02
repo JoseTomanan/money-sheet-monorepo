@@ -1,8 +1,8 @@
 <!-- Custom bottom-sheet with drag-to-resize/dismiss gestures (see lib/dragGesture.ts); shadcn Sheet does not expose snap points, so the bespoke implementation is retained. -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { resolveCategoryStyle } from '../lib/theme';
-  import { getTagOptions, isValidTag } from '../lib/domain';
+  import { isValidTag } from '../lib/domain';
+  import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { fmtDate, dayOfWeek } from '../lib/format';
   import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction, EntryMutation } from '../lib/types';
   import {
@@ -48,8 +48,6 @@
   let activeDrag  = $state<DragState | null>(null);
   let dragOffset  = $state(0);
 
-  let tagScrollerEl: HTMLElement | undefined = $state();
-
   $effect(() => {
     if (open) {
       date        = entry?.date ?? today;
@@ -64,22 +62,12 @@
       activeDrag  = null;
       dragOffset  = 0;
       animTimer = setTimeout(() => { animOpen = true; }, 10);
-      if (entry) {
-        tick().then(() => {
-          const active = tagScrollerEl?.querySelector('.tag-active') as HTMLElement | null;
-          if (tagScrollerEl && active) {
-            tagScrollerEl.scrollLeft = active.offsetLeft - tagScrollerEl.clientWidth / 2 + active.clientWidth / 2;
-          }
-        });
-      }
+      void tick(); // keep async flush; auto-scroll now lives inside CategoryTagPicker
     } else {
       animOpen = false;
       if (animTimer) { clearTimeout(animTimer); animTimer = null; }
     }
   });
-
-
-  const tagOptions = $derived(getTagOptions(direction, categories));
 
   function handleBackdrop() {
     onclose();
@@ -216,7 +204,8 @@
       {#if splitMode}
         <SplitLegCarousel
           {split}
-          {tagOptions}
+          {direction}
+          {categories}
           onupdate={(i, patch) => { split = updateLeg(split, i, patch); }}
           onremove={(i) => { split = removeLeg(split, i); }}
           onadd={() => { split = addLeg(split); }}
@@ -279,24 +268,15 @@
 
       <!-- single-mode tag picker -->
       {#if !splitMode}
-        <div class="tag-section-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">{direction === 'I' ? 'Category' : 'Subcategory'}</div>
-        <div class="tag-scroller flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible" bind:this={tagScrollerEl}>
-          {#each tagOptions as opt}
-            {@const catStyle = resolveCategoryStyle(opt.parentCat)}
-            <button
-              class="tag-pill shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap"
-              class:tag-active={tag === opt.value}
-              style="
-                background: {tag === opt.value ? catStyle.color : catStyle.soft};
-                color: {tag === opt.value ? '#fff' : catStyle.color};
-              "
-              onclick={() => (tag = opt.value)}
-            >
-              <span class="tag-dot size-[6px] rounded-full shrink-0" style="background: {tag === opt.value ? '#fff' : catStyle.color}"></span>
-              {opt.value}
-            </button>
-          {/each}
-        </div>
+        {#key direction}
+          <CategoryTagPicker
+            {direction}
+            {categories}
+            {tag}
+            initialTag={entry?.tag ?? ''}
+            onselect={(t) => (tag = t)}
+          />
+        {/key}
       {/if}
 
       {#if entry && ondelete}

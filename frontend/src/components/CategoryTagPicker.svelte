@@ -13,15 +13,23 @@
     tag: string;
     onselect: (tag: string) => void;
     compact?: boolean;
+    /** Stable tag value used only to pre-expand the parent Category on mount.
+     *  When omitted, falls back to `tag`. Allows callers that derive `tag` from
+     *  reactive $state (e.g. EntrySheet) to pass `entry?.tag` (a prop, available
+     *  immediately on first render) instead of the deferred $state value. */
+    initialTag?: string;
   }
 
-  let { direction, categories, tag, onselect, compact = false }: Props = $props();
+  let { direction, categories, tag, onselect, compact = false, initialTag }: Props = $props();
 
   // When editing an Outgoing entry that already has a tag, pre-expand its parent category.
   // untrack() because we intentionally want the mount-time value only — the parent uses
   // {#key direction} to re-mount this component when direction changes.
   let activeCategory = $state(
-    untrack(() => direction === 'O' && tag ? getMainCategory(tag, categories) : '')
+    untrack(() => {
+      const seed = initialTag !== undefined ? initialTag : tag;
+      return direction === 'O' && seed ? getMainCategory(seed, categories) : '';
+    })
   );
 
   const sortedCategories = $derived(Object.keys(categories).sort());
