@@ -183,13 +183,16 @@ test.describe("mobile 390px — layout unchanged", () => {
     await page.locator(".split-toggle-btn").click();
     await page.locator(".carousel").waitFor({ state: "visible" });
 
-    // Primary: sheet must have overflow-x clipped, not scrollable.
-    // Without the fix, CSS spec coerces overflow-x to "auto" because overflow-y is "auto".
-    // With the fix (overflow-x-clip class), the computed value is "clip".
+    // Primary: sheet's overflow-x must be non-scrollable (clipped or hidden), not "auto".
+    // Without the fix, CSS spec coerces overflow-x from visible→auto because overflow-y is "auto",
+    // leaving the sheet able to scroll/grow horizontally.
+    // With the fix (overflow-x-clip), Chrome normalises the computed value to "hidden" (an
+    // alias for clip when combined with overflow-y:auto). Either "hidden" or "clip" are valid
+    // non-scrollable outcomes; "auto" or "visible" are not acceptable.
     const sheetOverflowX = await page.locator(".sheet").evaluate(
       (el) => getComputedStyle(el).overflowX
     );
-    expect(sheetOverflowX).toBe("clip");
+    expect(["hidden", "clip"]).toContain(sheetOverflowX);
 
     // Secondary: the sheet's right edge must not extend past the viewport.
     const sheetBox = await page.locator(".sheet").boundingBox();

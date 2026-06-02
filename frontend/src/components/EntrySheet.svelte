@@ -156,7 +156,7 @@
 
     <!-- sheet -->
     <div
-      class="sheet absolute bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] max-h-[90dvh] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8 overflow-y-auto"
+      class="sheet absolute bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] max-h-[90dvh] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8 overflow-y-auto overflow-x-clip"
       class:open={animOpen}
       style="transform: {animOpen ? sheetTransform : 'translateX(-50%) translateY(100%)'}; transition: {sheetTransition};"
     >
