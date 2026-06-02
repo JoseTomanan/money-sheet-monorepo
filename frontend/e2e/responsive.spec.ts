@@ -167,6 +167,46 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(list!.y).toBeGreaterThan(bar!.y + bar!.height * 0.5);
   });
 
+  // AC: split carousel open — sheet clips horizontal overflow (overflow-x-clip) so that
+  // the carousel's leg cards cannot push the sheet beyond the viewport width.
+  // Primary assertion uses a computed-style check rather than a bounding-box check because
+  // Playwright desktop Chrome at 390 px does not reproduce the scroll symptom as reliably as
+  // real mobile browsers do; the CSS property directly verifies the fix.
+  // Red before fix (overflow-x resolves to "auto" when only overflow-y-auto is set, per CSS spec);
+  // green after adding overflow-x-clip.
+  test("EntrySheet split mode: sheet has overflow-x clipped to prevent horizontal page scroll", async ({ page }) => {
+    // Open the entry sheet
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    await page.locator(".sheet.open").waitFor({ state: "visible" });
+
+    // Enable split mode
+    await page.locator(".split-toggle-btn").click();
+    await page.locator(".carousel").waitFor({ state: "visible" });
+
+    // Primary: sheet's overflow-x must be non-scrollable (clipped or hidden), not "auto".
+    // Without the fix, CSS spec coerces overflow-x from visible→auto because overflow-y is "auto",
+    // leaving the sheet able to scroll/grow horizontally.
+    // With the fix (overflow-x-clip), Chrome normalises the computed value to "hidden" (an
+    // alias for clip when combined with overflow-y:auto). Either "hidden" or "clip" are valid
+    // non-scrollable outcomes; "auto" or "visible" are not acceptable.
+    const sheetOverflowX = await page.locator(".sheet").evaluate(
+      (el) => getComputedStyle(el).overflowX
+    );
+    expect(["hidden", "clip"]).toContain(sheetOverflowX);
+
+    // Secondary: the sheet's right edge must not extend past the viewport.
+    const sheetBox = await page.locator(".sheet").boundingBox();
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(sheetBox).not.toBeNull();
+    expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual(viewportWidth + 1);
+
+    // Sanity: carousel's own internal overflow-x is still auto (snap-scroll preserved).
+    const carouselOverflowX = await page.locator(".carousel").evaluate(
+      (el) => getComputedStyle(el).overflowX
+    );
+    expect(carouselOverflowX).toBe("auto");
+  });
+
   // AC: mobile BudgetsView — category rows are stacked in a single column
   test("BudgetsView: category rows are stacked vertically", async ({ page }) => {
     await switchTab(page, "Summary");
