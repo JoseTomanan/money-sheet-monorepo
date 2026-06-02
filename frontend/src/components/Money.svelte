@@ -20,13 +20,15 @@
     : negColor && value > 0 ? 'inherit'
     : 'inherit'
   );
+
+  const effectiveWeight = $derived(weight + (positive ? 100 : 0));
 </script>
 
 <span style="
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: {size}px;
-  font-weight: {weight};
+  font-weight: {effectiveWeight};
   color: {color};
   letter-spacing: -0.2px;
 ">{positive ? '+' : ''}{peso(value)}</span>
