@@ -2,16 +2,18 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import SplitLegCarousel from "./SplitLegCarousel.svelte";
 import { initSplitState, addLeg } from "../lib/splitEntry";
+import type { CategoryMap } from "../lib/types";
 
-const TAG_OPTIONS = [
-  { value: "Dining", parentCat: "FOOD" },
-  { value: "Fuel", parentCat: "TRANSIT" },
-];
+const CATEGORIES: CategoryMap = {
+  FOOD: ["Groceries", "Dining"],
+  TRANSIT: ["Commute Fare", "Fuel"],
+};
 
 function baseProps(overrides = {}) {
   return {
     split: initSplitState(),
-    tagOptions: TAG_OPTIONS,
+    direction: "O" as const,
+    categories: CATEGORIES,
     onupdate: vi.fn(),
     onremove: vi.fn(),
     onadd: vi.fn(),
@@ -124,11 +126,15 @@ describe("SplitLegCarousel", () => {
     expect(lastCall[1]).toHaveProperty("error");
   });
 
-  it("calls onupdate with tag when a tag pill is clicked", async () => {
+  it("calls onupdate with subcategory tag via two-step picker (FOOD → Dining)", async () => {
     const props = baseProps();
-    const { getAllByText } = render(SplitLegCarousel, props);
-    const diningPills = getAllByText("Dining");
-    await fireEvent.click(diningPills[0]);
+    const { getAllByRole } = render(SplitLegCarousel, props);
+    // expand FOOD in the first leg card
+    const foodBtns = getAllByRole("button", { name: /^FOOD$/ });
+    await fireEvent.click(foodBtns[0]);
+    // select Dining in the first leg card
+    const diningBtns = getAllByRole("button", { name: /^Dining$/ });
+    await fireEvent.click(diningBtns[0]);
     expect(props.onupdate).toHaveBeenCalledWith(0, { tag: "Dining" });
   });
 });

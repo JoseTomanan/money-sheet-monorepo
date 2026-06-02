@@ -1,0 +1,101 @@
+<!-- Two-step Category → Subcategory tag picker.
+     Outgoing: Category row always visible; tapping a Category expands its Subcategory row.
+     Incoming: Category row only; tapping a Category calls onselect immediately. -->
+<script lang="ts">
+  import { untrack } from 'svelte';
+  import { resolveCategoryStyle } from '../lib/theme';
+  import { getMainCategory } from '../lib/domain';
+  import type { Direction, CategoryMap } from '../lib/types';
+
+  interface Props {
+    direction: Direction;
+    categories: CategoryMap;
+    tag: string;
+    onselect: (tag: string) => void;
+    compact?: boolean;
+    /** Stable tag value used only to pre-expand the parent Category on mount.
+     *  When omitted, falls back to `tag`. Allows callers that derive `tag` from
+     *  reactive $state (e.g. EntrySheet) to pass `entry?.tag` (a prop, available
+     *  immediately on first render) instead of the deferred $state value. */
+    initialTag?: string;
+  }
+
+  let { direction, categories, tag, onselect, compact = false, initialTag }: Props = $props();
+
+  // When editing an Outgoing entry that already has a tag, pre-expand its parent category.
+  // untrack() because we intentionally want the mount-time value only — the parent uses
+  // {#key direction} to re-mount this component when direction changes.
+  let activeCategory = $state(
+    untrack(() => {
+      const seed = initialTag !== undefined ? initialTag : tag;
+      return direction === 'O' && seed ? getMainCategory(seed, categories) : '';
+    })
+  );
+
+  const sortedCategories = $derived(Object.keys(categories).sort());
+  const subcategories = $derived(
+    activeCategory ? (categories[activeCategory] ?? []) : []
+  );
+
+  function handleCategoryClick(cat: string) {
+    if (direction === 'I') {
+      onselect(cat);
+    } else {
+      activeCategory = activeCategory === cat ? '' : cat;
+    }
+  }
+
+  // Pill size classes (full vs compact)
+  const catPillClass = $derived(
+    compact
+      ? 'shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
+      : 'shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
+  );
+  const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0' : 'size-[6px] rounded-full shrink-0');
+</script>
+
+<!-- Category row -->
+{#if !compact}
+  <div class="picker-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
+    Category
+  </div>
+{/if}
+<div class="category-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
+  {#each sortedCategories as cat}
+    {@const s = resolveCategoryStyle(cat)}
+    {@const isActive = direction === 'I' ? tag === cat : activeCategory === cat}
+    <button
+      class={catPillClass}
+      aria-pressed={isActive}
+      style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
+      onclick={() => handleCategoryClick(cat)}
+    >
+      <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
+      {cat}
+    </button>
+  {/each}
+</div>
+
+<!-- Subcategory row (Outgoing only, shown when a category is expanded) -->
+{#if direction === 'O' && activeCategory}
+  {@const parentStyle = resolveCategoryStyle(activeCategory)}
+  {#if !compact}
+    <div class="picker-label px-5 pt-[10px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
+      Subcategory
+    </div>
+  {/if}
+  <div class="subcategory-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
+    {#each subcategories as sub}
+      {@const isActive = tag === sub}
+      <button
+        class={catPillClass}
+        aria-pressed={isActive}
+        style="background: {isActive ? parentStyle.color : parentStyle.soft}; color: {isActive ? '#fff' : parentStyle.color};"
+        onclick={() => onselect(sub)}
+      >
+        <span class={dotClass} style="background: {isActive ? '#fff' : parentStyle.color}"></span>
+        {sub}
+      </button>
+    {/each}
+  </div>
+{/if}

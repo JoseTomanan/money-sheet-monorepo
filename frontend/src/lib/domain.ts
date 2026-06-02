@@ -1,18 +1,5 @@
 import type { Direction, CategoryMap, Entry, AddEntryPayload } from './types';
 
-export function getTagOptions(
-  direction: Direction,
-  categories: CategoryMap
-): Array<{ value: string; parentCat: string }> {
-  const cats = Object.keys(categories).sort();
-  if (direction === 'I') {
-    return cats.map((c) => ({ value: c, parentCat: c }));
-  }
-  return cats.flatMap((cat) =>
-    (categories[cat] ?? []).map((sub) => ({ value: sub, parentCat: cat }))
-  );
-}
-
 export function getMainCategory(tag: string, categories: CategoryMap): string {
   for (const [cat, subs] of Object.entries(categories)) {
     if (subs.includes(tag)) return cat;

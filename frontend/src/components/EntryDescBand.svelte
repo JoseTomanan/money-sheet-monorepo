@@ -17,6 +17,7 @@
   <span
     class="entry-desc font-sans text-sm overflow-hidden text-ellipsis whitespace-nowrap block"
     class:font-semibold={plain}
+    class:italic={plain}
     class:font-medium={!plain}
     class:line-through={strikethrough}
   >{description || '—'}</span>

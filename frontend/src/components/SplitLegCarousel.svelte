@@ -1,18 +1,20 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
-  import { resolveCategoryStyle } from '../lib/theme';
   import type { SplitState, Leg } from '../lib/splitEntry';
   import { isFormula, evaluateFormula } from '../lib/formula';
+  import type { Direction, CategoryMap } from '../lib/types';
+  import CategoryTagPicker from './CategoryTagPicker.svelte';
 
   interface Props {
     split: SplitState;
-    tagOptions: Array<{ value: string; parentCat: string }>;
+    direction: Direction;
+    categories: CategoryMap;
     onupdate: (i: number, patch: Partial<Leg>) => void;
     onremove: (i: number) => void;
     onadd: () => void;
   }
 
-  let { split, tagOptions, onupdate, onremove, onadd }: Props = $props();
+  let { split, direction, categories, onupdate, onremove, onadd }: Props = $props();
 </script>
 
 <div class="carousel flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 gap-[10px] py-[10px]">
@@ -55,20 +57,13 @@
           <p class="leg-error mt-1 text-[11px] font-sans text-destructive">{leg.error}</p>
         {/if}
       </div>
-      <div class="tag-grid flex flex-wrap gap-[5px]">
-        {#each tagOptions as opt}
-          {@const s = resolveCategoryStyle(opt.parentCat)}
-          <button
-            class="tag-pill shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap"
-            class:active={leg.tag === opt.value}
-            style="background: {leg.tag === opt.value ? s.color : s.soft}; color: {leg.tag === opt.value ? '#fff' : s.color};"
-            onclick={() => onupdate(i, { tag: opt.value })}
-          >
-            <span class="dot size-[5px] rounded-full shrink-0" style="background: {leg.tag === opt.value ? '#fff' : s.color}"></span>
-            {opt.value}
-          </button>
-        {/each}
-      </div>
+      <CategoryTagPicker
+        {direction}
+        {categories}
+        tag={leg.tag}
+        compact
+        onselect={(t) => onupdate(i, { tag: t })}
+      />
     </div>
   {/each}
 

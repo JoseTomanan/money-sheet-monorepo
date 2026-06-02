@@ -121,6 +121,42 @@ describe("EntrySheet — formula evaluation on blur", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Two-step picker integration tests
+// ---------------------------------------------------------------------------
+
+describe("EntrySheet — two-step tag picker (new Outgoing entry)", () => {
+  it("shows Category pills but no subcategory pills initially", () => {
+    const { getByRole, queryByRole } = render(EntrySheet, baseProps());
+    expect(getByRole("button", { name: /^Food$/ })).toBeInTheDocument();
+    expect(queryByRole("button", { name: /^Dining$/ })).not.toBeInTheDocument();
+  });
+
+  it("Save disabled until a subcategory and amount are set via two-step picker", async () => {
+    const { getByRole, getByPlaceholderText } = render(EntrySheet, baseProps());
+    // pick Category → Subcategory
+    await fireEvent.click(getByRole("button", { name: /^Food$/ }));
+    await fireEvent.click(getByRole("button", { name: /^Dining$/ }));
+    // enter amount
+    await fireEvent.input(getByPlaceholderText("0.00"), { target: { value: "50" } });
+    await waitFor(() =>
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled()
+    );
+  });
+});
+
+describe("EntrySheet — two-step picker edit prefill", () => {
+  it("pre-expands the parent Category when editing an Outgoing entry", () => {
+    const { getByRole } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    // Dining's parent (Food) should be pre-expanded — its subcategories visible
+    expect(getByRole("button", { name: /^Dining$/ })).toBeInTheDocument();
+    expect(getByRole("button", { name: /^Groceries$/ })).toBeInTheDocument();
+  });
+});
+
 describe("EntrySheet — saveDisabled direction/tag validation", () => {
   it("Save enabled for valid Outgoing entry with subcategory tag", async () => {
     const { getByRole } = render(

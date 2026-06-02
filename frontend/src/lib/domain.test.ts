@@ -1,36 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { getTagOptions, getMainCategory, isValidTag } from './domain';
+import { getMainCategory, isValidTag } from './domain';
 import type { CategoryMap } from './types';
 
 const MAP: CategoryMap = {
   FOOD:    ['Groceries', 'Dining'],
   TRANSIT: ['Commute Fare', 'Fuel'],
 };
-
-describe('getTagOptions', () => {
-  it('Incoming → returns every category as both value and parentCat, sorted', () => {
-    const opts = getTagOptions('I', MAP);
-    expect(opts).toEqual([
-      { value: 'FOOD', parentCat: 'FOOD' },
-      { value: 'TRANSIT', parentCat: 'TRANSIT' },
-    ]);
-  });
-
-  it('Outgoing → returns flattened subcategories with their parent Category', () => {
-    const opts = getTagOptions('O', MAP);
-    expect(opts).toEqual([
-      { value: 'Groceries', parentCat: 'FOOD' },
-      { value: 'Dining',    parentCat: 'FOOD' },
-      { value: 'Commute Fare', parentCat: 'TRANSIT' },
-      { value: 'Fuel',      parentCat: 'TRANSIT' },
-    ]);
-  });
-
-  it('empty CategoryMap returns empty array for both directions', () => {
-    expect(getTagOptions('I', {})).toEqual([]);
-    expect(getTagOptions('O', {})).toEqual([]);
-  });
-});
 
 describe('getMainCategory', () => {
   it('resolves a known subcategory to its parent category', () => {
