@@ -66,9 +66,11 @@ Svelte 5 + Vite + Tailwind v4. No SvelteKit. Single-page app; view switching via
 **Commands** (run from `frontend/`):
 ```bash
 npm install
-npm run dev      # local dev server
-npm run build    # outputs to dist/
+npm run dev -- --port 1111   # local dev server — port 1111 is dedicated to this project
+npm run build                # outputs to dist/
 ```
+
+**Dev server port**: always use `--port 1111`. If port 1111 is already listening, it is this project's server — do not launch another. Never start a server on a different port.
 
 **Key behaviors:**
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
