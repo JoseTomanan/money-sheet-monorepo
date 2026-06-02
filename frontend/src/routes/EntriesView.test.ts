@@ -278,3 +278,30 @@ describe("EntriesView Sync Now button", () => {
     expect(mockStore.drainQueue).toHaveBeenCalledOnce();
   });
 });
+
+describe("EntriesView scroll to bottom", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-17"));
+    mockStore.loading = false;
+    mockStore.localIds = new Set();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("scrolls scrollEl to the bottom when mounted with data already loaded", async () => {
+    mockStore.entries = [makeEntry(1, "2026-05-17", "Alpha")];
+    const scrollEl = { scrollTop: 0, scrollHeight: 800 } as unknown as HTMLElement;
+    render(EntriesView, baseProps({ scrollEl }));
+    await Promise.resolve(); // flush microtask from tick()
+    expect(scrollEl.scrollTop).toBe(800);
+  });
+
+  it("does not scroll when still loading on mount", async () => {
+    mockStore.loading = true;
+    mockStore.entries = [makeEntry(1, "2026-05-17", "Alpha")];
+    const scrollEl = { scrollTop: 0, scrollHeight: 600 } as unknown as HTMLElement;
+    render(EntriesView, baseProps({ scrollEl }));
+    await Promise.resolve();
+    expect(scrollEl.scrollTop).toBe(0);
+  });
+});
