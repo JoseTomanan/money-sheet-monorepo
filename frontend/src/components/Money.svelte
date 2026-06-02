@@ -29,4 +29,4 @@
   font-weight: {weight};
   color: {color};
   letter-spacing: -0.2px;
-">{peso(value)}</span>
+">{positive ? '+' : ''}{peso(value)}</span>
