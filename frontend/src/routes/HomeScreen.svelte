@@ -152,7 +152,7 @@
                 style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
               >
                 <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
-                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} plain={entry.direction === 'I'} />
+                <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} dot={catStyle.dot} direction={entry.direction} />
                 <div class="entry-amount-wrap shrink-0 ml-auto">
                   <Money value={entry.amount} size={14} weight={500} negColor={false} positive={entry.direction === 'I'} {dim} />
                 </div>
@@ -180,7 +180,7 @@
           {@const budget = store.master.budgets[key] ?? 0}
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] bg-card shadow-[var(--shadow-card)] md:shrink">
             <div class="cat-chip-header flex items-center gap-[6px]">
-              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.color}cc;"></span>
+              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
             <div

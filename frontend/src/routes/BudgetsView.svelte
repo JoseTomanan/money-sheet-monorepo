@@ -118,7 +118,7 @@
     <div class="dist-legend flex flex-wrap gap-x-[14px] gap-y-2">
       {#each categoryData.filter(d => d.spent > 0) as d}
         <span class="legend-item flex items-center gap-[5px] font-sans text-[11px] text-muted-foreground font-medium">
-          <span class="legend-dot size-[6px] rounded-full shrink-0" style="background: {d.c.color};"></span>
+          <span class="legend-dot size-[6px] rounded-full shrink-0" style="background: {d.c.dot};"></span>
           {d.c.label} {d.pct.toFixed(1)}%
         </span>
       {/each}
@@ -136,7 +136,7 @@
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
       >
         <div class="cat-row-main flex items-center gap-[10px]">
-          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.color}cc;"></span>
+          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.dot};"></span>
           <span class="cat-label flex-1 font-sans text-sm font-medium text-foreground">{d.c.label}</span>
           <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%

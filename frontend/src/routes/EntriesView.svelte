@@ -164,7 +164,7 @@
               style={filterCat === key ? `color: ${c.color};` : ''}
               onclick={() => (filterCat = filterCat === key ? '' : key)}
             >
-              <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {c.color};"></span>
+              <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {c.dot};"></span>
               {c.label}
               <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{catCounts[key]}</span>
             </button>
@@ -219,7 +219,7 @@
 
                   <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
-                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} strikethrough={dim} plain={entry.direction === 'I'} />
+                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} dot={catStyle.dot} strikethrough={dim} direction={entry.direction} />
 
                   <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
                     {#if local}
