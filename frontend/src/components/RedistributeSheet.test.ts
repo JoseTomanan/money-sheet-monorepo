@@ -89,12 +89,12 @@ describe('RedistributeSheet — submit payload', () => {
     expect(drain.tag).toBe('HOUSING');
     expect(drain.amount).toBe(-1000);
     expect(drain.direction).toBe('I');
-    expect(drain.description).toBe('Redistribute: HOUSING → FINANCE');
+    expect(drain.description).toBe('[REDISTRIBUTE]');
 
     expect(credit.tag).toBe('FINANCE');
     expect(credit.amount).toBe(1000);
     expect(credit.direction).toBe('I');
-    expect(credit.description).toBe('Redistribute: HOUSING → FINANCE');
+    expect(credit.description).toBe('^^');
   });
 });
 

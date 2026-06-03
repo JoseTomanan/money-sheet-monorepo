@@ -48,10 +48,9 @@
 
   function handleSubmit() {
     if (submitDisabled) return;
-    const desc = `Redistribute: ${source} → ${target}`;
     const legs: AddEntryPayload[] = [
-      { date: today, tag: source, description: desc, direction: 'I', amount: -parsedAmount },
-      { date: today, tag: target, description: desc, direction: 'I', amount: parsedAmount },
+      { date: today, tag: source, description: '[REDISTRIBUTE]', direction: 'I', amount: -parsedAmount },
+      { date: today, tag: target, description: '^^',             direction: 'I', amount: parsedAmount },
     ];
     onsubmit(legs);
     onclose();
