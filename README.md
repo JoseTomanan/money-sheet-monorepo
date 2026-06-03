@@ -28,9 +28,13 @@ Google Sheets acts as the database. A Google Apps Script web app is deployed as 
 
 Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/TEMPLATE_ID/template/preview) and click **Use Template**. This creates your own copy with all three sheets pre-configured (INCOMING/OUTGOING, MASTER, Categories) and the GAS script already attached.
 
-### 2. Generate your API secret
+### 2. Run setup
 
-In your new sheet, open **Extensions → Apps Script**, select the `setup` function, and click **Run**. It generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
+In your new sheet, open the **Money Sheet → Run setup** menu item. This:
+- Generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
+- Creates a **Config** sheet with default settings (currency symbol: `₱`).
+
+Alternatively, open **Extensions → Apps Script**, select the `setup` function, and click **Run**.
 
 ### 3. Deploy the web app
 
@@ -45,6 +49,14 @@ Click **Deploy** and copy the web app URL.
 Open the Money Sheet app (your GitHub Pages URL). On first launch you'll see a setup screen — paste your web app URL and API secret into the fields and click **Save**.
 
 That's it. The app is connected to your spreadsheet.
+
+### Customizing the currency symbol
+
+Open the **Config** sheet in your spreadsheet and change the value in the `currency` row to your currency symbol (e.g. `$`, `€`, `£`). The app picks it up automatically on next load.
+
+### Adding or removing subcategories
+
+Edit the **Categories** sheet directly — add a row under the relevant category heading or delete an existing subcategory row. Changes are picked up automatically; no app restart needed.
 
 ---
 
