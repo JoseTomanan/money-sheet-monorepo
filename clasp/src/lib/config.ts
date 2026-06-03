@@ -1,5 +1,5 @@
 const CONFIG_SHEET_NAME = "Config";
-const DEFAULT_CONFIG_ROWS: [string, string][] = [["currency", "₱"]];
+const DEFAULT_CONFIG_ROWS: [string, string][] = [["currency", "₱"], ["nickname", ""]];
 
 /**
  * Parses a 2-column key-value range from the Config sheet into a plain object.

@@ -34,6 +34,10 @@
       ? `${dayOfWeek(latestDate)}, ${fmtDate(latestDate)}`
       : 'Today'
   );
+
+  const greeting = $derived(
+    store.config.nickname ? `Hi, ${store.config.nickname}` : 'Hi!'
+  );
 </script>
 
 <div class="home p-0" style="padding-bottom: 72px;">
@@ -41,7 +45,7 @@
   <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
+    <div class="h-[36px] w-[200px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
   </div>
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <div class="home-left">
@@ -77,7 +81,7 @@
   <!-- Month header -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
-    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">On Hand</div>
+    <div class="page-title font-display text-[36px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">{greeting}</div>
   </div>
 
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
