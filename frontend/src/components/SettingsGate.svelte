@@ -31,7 +31,7 @@
       </li>
       <li class="flex gap-2">
         <span class="shrink-0 font-semibold text-muted-foreground w-4">2.</span>
-        <span>Open <strong>Extensions → Apps Script</strong>, run <code>setup()</code> — copy the secret shown.</span>
+        <span>In your sheet, open the <strong>Autohide</strong> menu → <strong>Run setup</strong> — copy the secret shown.</span>
       </li>
       <li class="flex gap-2">
         <span class="shrink-0 font-semibold text-muted-foreground w-4">3.</span>
