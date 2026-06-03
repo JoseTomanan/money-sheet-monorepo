@@ -94,7 +94,7 @@ describe('RedistributeSheet — submit payload', () => {
     expect(credit.tag).toBe('FINANCE');
     expect(credit.amount).toBe(1000);
     expect(credit.direction).toBe('I');
-    expect(credit.description).toBe('^^');
+    expect(credit.description).toBe('[REDISTRIBUTE]');
   });
 });
 

@@ -22,7 +22,7 @@
     : 'inherit'
   );
 
-  const effectiveWeight = $derived(weight + (positive ? 100 : 0));
+  const effectiveWeight = $derived(weight + (positive || (negColor && value < 0) ? 100 : 0));
 </script>
 
 <span style="
