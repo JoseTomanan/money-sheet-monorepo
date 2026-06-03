@@ -1,7 +1,7 @@
 # Domain Glossary
 
 ## Entry
-A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API.
+A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API. Amount is normally positive; a negative amount is valid only on an Incoming Entry and indicates a redistribution drain (see Fund Redistribution).
 
 ## Split Entry
 A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). `^^` has no query semantics and is never interpreted by the app.
@@ -39,6 +39,9 @@ Column D of INCOMING/OUTGOING. A VLOOKUP formula that resolves any Tag (Category
 
 ## Budget
 The net balance for a Category. Computed as: sum of all Incoming Entries whose Tag equals that Category, minus sum of all Outgoing Entries whose Main Category resolves to it. Rolling all-time (no period resets). A Budget can go negative.
+
+## Fund Redistribution
+A user-initiated reallocation of a fixed amount from one Category's Budget to another. ON HAND is unchanged by a redistribution. Modeled as a pair of Incoming Entries written together: a negative-amount Entry draining the source Category's Budget and a positive-amount Entry crediting the target Category's Budget. Only Incoming Entries may carry a negative amount.
 
 ## ON HAND
 The sum of all Category Budgets. Represents total money currently available across all categories. Displayed in the MASTER sheet. Derived entirely from spreadsheet formulas; GAS never writes to it.
