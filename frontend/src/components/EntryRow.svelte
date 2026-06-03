@@ -55,7 +55,7 @@
     value={entry.amount}
     size={14}
     weight={500}
-    negColor={false}
+    negColor={entry.direction === 'I' && entry.amount < 0}
     positive={entry.direction === 'I' && entry.amount >= 0}
     {dim}
   />
