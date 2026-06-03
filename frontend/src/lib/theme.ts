@@ -18,7 +18,7 @@ export const CATEGORIES: Record<string, CategoryStyle> = {
                subcategories: ['Commute Fare', 'Auto Maintenance', 'Fuel', 'Parking'] },
   HEALTH:    { color: '#9a5c0a', soft: 'rgba(196, 120, 24, 0.14)',  pastel: '#fdecd0', dot: '#d4782a', label: 'Health',
                subcategories: ['Consultation Fee', 'Pharmacy', 'Fitness', 'Insurance'] },
-  FINANCE:   { color: '#636b0e', soft: 'rgba(138, 150, 24, 0.14)',  pastel: '#eef0c8', dot: '#5a9050', label: 'Finance',
+  FINANCE:   { color: '#636b0e', soft: 'rgba(138, 150, 24, 0.14)',  pastel: '#eef0c8', dot: '#c8a800', label: 'Finance',
                subcategories: ['Tax', 'Debt', 'Investment', 'Savings'] },
   LIFESTYLE: { color: '#4a4a4a', soft: 'rgba(120, 120, 120, 0.14)', pastel: '#e8e8e8', dot: '#888888', label: 'Lifestyle',
                subcategories: ['Leisure', 'Entertainment', 'Subscription', 'Grooming', 'Clothing', 'Gifts'] },
