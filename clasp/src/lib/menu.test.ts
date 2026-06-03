@@ -4,11 +4,13 @@ import { buildMenu } from "./menu";
 describe("buildMenu", () => {
   const mockAddToUi = vi.fn();
   const mockAddItem = vi.fn();
+  const mockAddSeparator = vi.fn();
   const mockCreateMenu = vi.fn();
 
   beforeEach(() => {
     mockAddToUi.mockReset();
-    mockAddItem.mockReset().mockReturnValue({ addItem: mockAddItem, addToUi: mockAddToUi });
+    mockAddSeparator.mockReset().mockReturnValue({ addItem: mockAddItem, addToUi: mockAddToUi });
+    mockAddItem.mockReset().mockReturnValue({ addItem: mockAddItem, addSeparator: mockAddSeparator, addToUi: mockAddToUi });
     mockCreateMenu.mockReset().mockReturnValue({ addItem: mockAddItem });
   });
 
@@ -39,5 +41,15 @@ describe("buildMenu", () => {
   it("calls addToUi to attach the menu to the spreadsheet", () => {
     buildMenu(makeUi());
     expect(mockAddToUi).toHaveBeenCalledOnce();
+  });
+
+  it("calls addSeparator once to separate autohide items from setup", () => {
+    buildMenu(makeUi());
+    expect(mockAddSeparator).toHaveBeenCalledOnce();
+  });
+
+  it('adds "Run setup" item wired to the setup function', () => {
+    buildMenu(makeUi());
+    expect(mockAddItem).toHaveBeenCalledWith("Run setup", "setup");
   });
 });
