@@ -1,6 +1,7 @@
 <!-- Currency display primitive; no shadcn equivalent. -->
 <script lang="ts">
   import { peso } from '../lib/format';
+  import { store } from '../lib/store.svelte';
 
   interface Props {
     value: number;
@@ -31,4 +32,4 @@
   font-weight: {effectiveWeight};
   color: {color};
   letter-spacing: -0.2px;
-">{positive ? '+' : ''}{peso(value)}</span>
+">{positive ? '+' : ''}{peso(value, store.config.currency)}</span>

@@ -66,6 +66,9 @@ function makeFetchMock() {
       case "getCategories":
         body = { categories: freshCategories };
         break;
+      case "getConfig":
+        body = { config: { currency: "₱" } };
+        break;
       default:
         body = { error: `unknown action: ${action}` };
     }
@@ -81,6 +84,7 @@ function gasGetBody(url: string): Record<string, unknown> {
     case "getEntries": return { entries: freshEntries };
     case "getMaster": return { master: freshMaster };
     case "getCategories": return { categories: freshCategories };
+    case "getConfig": return { config: { currency: "₱" } };
     default: return {};
   }
 }
@@ -125,7 +129,8 @@ describe("pendingIds", () => {
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=getEntries") ||
             (url as string).includes("action=getMaster") ||
-            (url as string).includes("action=getCategories")) {
+            (url as string).includes("action=getCategories") ||
+            (url as string).includes("action=getConfig")) {
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return new Promise((res) => { resolveFetch = res; });

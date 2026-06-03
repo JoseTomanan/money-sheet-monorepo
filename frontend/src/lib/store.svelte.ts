@@ -9,6 +9,7 @@ import type {
   Entry,
   MasterRow,
   CategoryMap,
+  Config,
   AddEntryPayload,
   UpdateEntryPatch,
 } from './types';
@@ -16,6 +17,7 @@ import type {
 let entries = $state<Entry[]>([]);
 let master = $state<MasterRow>({ onHand: 0, budgets: {} });
 let categories = $state<CategoryMap>({});
+let config = $state<Config>({ currency: "₱" });
 let loading = $state(false);
 let error = $state<string | null>(null);
 let errorIsConnection = $state(false);
@@ -121,16 +123,18 @@ async function refreshAll(silent = false): Promise<void> {
     errorIsConnection = false;
   }
   try {
-    const [e, m, c] = await withTimeout(Promise.all([
+    const [e, m, c, cfg] = await withTimeout(Promise.all([
       api.getEntries(),
       api.getMaster(),
       api.getCategories(),
+      api.getConfig(),
     ]));
     entries = e;
     master = m;
     categories = c;
+    config = cfg;
     injectQueueEntries();
-    writeCache({ entries, master, categories });
+    writeCache({ entries, master, categories, config });
   } catch (err) {
     if (!silent) {
       error = err instanceof Error ? err.message : String(err);
@@ -148,6 +152,7 @@ async function init(): Promise<void> {
     entries = dedupeEntries(cache.entries);
     master = cache.master;
     categories = cache.categories;
+    if (cache.config) config = cache.config;
     injectQueueEntries();
     syncing = true;
     masterLoading = true;
@@ -288,6 +293,7 @@ export const store = {
   get entries() { return entries; },
   get master() { return master; },
   get categories() { return categories; },
+  get config() { return config; },
   get loading() { return loading; },
   get error() { return error; },
   get errorIsConnection() { return errorIsConnection; },

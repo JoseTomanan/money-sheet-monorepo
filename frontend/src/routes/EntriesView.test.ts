@@ -7,6 +7,7 @@ const mockStore = vi.hoisted(() => ({
   loading: false,
   entries: [] as Entry[],
   categories: {} as Record<string, unknown>,
+  config: { currency: "₱" },
   pendingIds: new Set<number>(),
   deletePendingIds: new Set<number>(),
   localIds: new Set<number>(),

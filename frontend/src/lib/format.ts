@@ -20,10 +20,10 @@ export function normalizeDate(raw: string): string {
 }
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 
-export function peso(n: number): string {
+export function peso(n: number, symbol = '₱'): string {
   const abs = Math.abs(n);
   const s = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return (n < 0 ? '-₱' : '₱') + s;
+  return (n < 0 ? `-${symbol}` : symbol) + s;
 }
 
 /** ISO "YYYY-MM-DD" → "M/D/YY" */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDate } from './format';
+import { normalizeDate, peso } from './format';
 
 describe('normalizeDate', () => {
   it('passes through YYYY-MM-DD unchanged', () => {
@@ -36,5 +36,31 @@ describe('normalizeDate', () => {
 
   it('parses Date.toString() format at start of month boundary', () => {
     expect(normalizeDate('Fri May 01 2026 00:00:00 GMT+0800 (Standard na Oras sa Pilipinas)')).toBe('2026-05-01');
+  });
+});
+
+describe('peso', () => {
+  it('formats a positive number with the default ₱ symbol', () => {
+    expect(peso(1200)).toBe('₱1,200.00');
+  });
+
+  it('formats a negative number with leading minus before the symbol', () => {
+    expect(peso(-50.5)).toBe('-₱50.50');
+  });
+
+  it('formats zero as ₱0.00', () => {
+    expect(peso(0)).toBe('₱0.00');
+  });
+
+  it('accepts a custom currency symbol', () => {
+    expect(peso(1200, '$')).toBe('$1,200.00');
+  });
+
+  it('applies the custom symbol to negative numbers too', () => {
+    expect(peso(-50.5, '€')).toBe('-€50.50');
+  });
+
+  it('falls back to ₱ when symbol is not provided', () => {
+    expect(peso(500)).toBe('₱500.00');
   });
 });

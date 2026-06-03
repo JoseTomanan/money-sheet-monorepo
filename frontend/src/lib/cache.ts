@@ -1,4 +1,4 @@
-import type { Entry, MasterRow, CategoryMap } from './types';
+import type { Entry, MasterRow, CategoryMap, Config } from './types';
 
 const KEY = 'ms_cache';
 
@@ -6,6 +6,7 @@ export interface CachePayload {
   entries: Entry[];
   master: MasterRow;
   categories: CategoryMap;
+  config?: Config;
 }
 
 export function readCache(): CachePayload | null {

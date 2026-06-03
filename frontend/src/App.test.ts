@@ -15,6 +15,7 @@ const mockStore = vi.hoisted(() => ({
   entries: [] as unknown[],
   categories: {},
   master: { onHand: 0, budgets: {} },
+  config: { currency: "₱" },
   pendingIds: new Set<number>(),
   toastMsg: null as string | null,
   toastIsConnection: false,

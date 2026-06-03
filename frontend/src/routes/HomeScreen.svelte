@@ -91,7 +91,7 @@
           class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
           class:opacity-40={store.masterLoading}
         >
-          {peso(store.master.onHand)}
+          {peso(store.master.onHand, store.config.currency)}
         </div>
       </div>
 
@@ -155,7 +155,7 @@
               class:opacity-40={store.masterLoading}
               style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};"
             >
-              {peso(budget)}
+              {peso(budget, store.config.currency)}
             </div>
           </div>
         {/each}
