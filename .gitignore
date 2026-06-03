@@ -7,8 +7,12 @@
 *.swp
 *.swo
 
-# Claude Code local settings (project settings CLAUDE.md is committed)
-.claude/
+# Claude Code — local overrides stay out; project settings.json is committed
+.claude/settings.local.json
+.claude/transcripts/
+.claude/todos/
+.claude/statsig/
+.claude/store/
 
 # Playwright MCP snapshots
 .playwright-mcp/
