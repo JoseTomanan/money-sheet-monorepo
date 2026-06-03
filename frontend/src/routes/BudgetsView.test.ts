@@ -4,7 +4,7 @@ import BudgetsView from "./BudgetsView.svelte";
 
 const mockStore = vi.hoisted(() => ({
   loading: true,
-  entries: [],
+  entries: [] as Array<{ id: number; date: string; direction: 'I' | 'O'; amount: number; tag: string; mainCategory: string; description: string }>,
   master: { onHand: 0, budgets: {} as Record<string, number> },
   categories: {} as Record<string, string[]>,
   masterLoading: false,
@@ -12,6 +12,33 @@ const mockStore = vi.hoisted(() => ({
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
+
+describe("BudgetsView hero card — monthly stats", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+  });
+
+  it("renders an 'Incoming' label in the hero card", () => {
+    const { getByText } = render(BudgetsView);
+    expect(getByText(/Incoming/i)).toBeInTheDocument();
+  });
+
+  it("renders an 'Outgoing' label in the hero card", () => {
+    const { getByText } = render(BudgetsView);
+    expect(getByText(/Outgoing/i)).toBeInTheDocument();
+  });
+});
+
+describe("BudgetsView actions strip", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+  });
+
+  it("renders a 'Redistribute' action button", () => {
+    const { getByRole } = render(BudgetsView);
+    expect(getByRole('button', { name: /Redistribute/i })).toBeInTheDocument();
+  });
+});
 
 describe("BudgetsView skeleton loading", () => {
   beforeEach(() => {
