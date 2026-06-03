@@ -50,7 +50,7 @@
     if (submitDisabled) return;
     const legs: AddEntryPayload[] = [
       { date: today, tag: source, description: '[REDISTRIBUTE]', direction: 'I', amount: -parsedAmount },
-      { date: today, tag: target, description: '^^',             direction: 'I', amount: parsedAmount },
+      { date: today, tag: target, description: '[REDISTRIBUTE]', direction: 'I', amount: parsedAmount },
     ];
     onsubmit(legs);
     onclose();
