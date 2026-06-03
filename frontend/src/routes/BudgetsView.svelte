@@ -104,7 +104,7 @@
         class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
         class:opacity-40={store.masterLoading}
       >
-        {peso(store.master.onHand)}
+        {peso(store.master.onHand, store.config.currency)}
       </div>
     </div>
     <div class="onhand-right text-right mt-1 flex flex-col gap-[6px]">
@@ -144,7 +144,7 @@
         <div
           class="dist-segment transition-[flex] duration-[500ms] ease-[cubic-bezier(.2,.7,.2,1)]"
           class:dist-segment--zero={d.spent === 0}
-          title="{d.c.label}: {peso(d.spent)}"
+          title="{d.c.label}: {peso(d.spent, store.config.currency)}"
           style="
             {d.spent > 0 ? `flex: ${d.spent};` : ''}
             background: {d.c.color};

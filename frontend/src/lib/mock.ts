@@ -1,6 +1,7 @@
 import type {
   Entry,
   MasterRow,
+  Config,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
@@ -106,4 +107,8 @@ export function mockUpdateEntry(id: number, patch: UpdateEntryPatch): Promise<vo
 export function mockDeleteEntry(id: number): Promise<void> {
   entries = entries.filter(e => e.id !== id);
   return Promise.resolve();
+}
+
+export function mockGetConfig(): Promise<Config> {
+  return Promise.resolve({ currency: "₱" });
 }

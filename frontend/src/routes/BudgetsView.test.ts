@@ -7,6 +7,7 @@ const mockStore = vi.hoisted(() => ({
   entries: [] as Array<{ id: number; date: string; direction: 'I' | 'O'; amount: number; tag: string; mainCategory: string; description: string }>,
   master: { onHand: 0, budgets: {} as Record<string, number> },
   categories: {} as Record<string, string[]>,
+  config: { currency: "₱" },
   masterLoading: false,
   error: null as string | null,
 }));

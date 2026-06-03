@@ -2,6 +2,7 @@ import type {
   Entry,
   MasterRow,
   CategoryMap,
+  Config,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
@@ -80,6 +81,19 @@ export async function getCategories(): Promise<CategoryMap> {
   if (mock.isMockMode) return mock.mockGetCategories();
   const data = await gasGet<{ categories: CategoryMap }>("getCategories");
   return data.categories;
+}
+
+const DEFAULT_CONFIG: Config = { currency: "₱" };
+
+export async function getConfig(): Promise<Config> {
+  if (mock.isMockMode) return mock.mockGetConfig();
+  try {
+    const data = await gasGet<{ config: Record<string, string> }>("getConfig");
+    // Fall back to default if the currency key is absent
+    return { ...DEFAULT_CONFIG, ...data.config };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
 }
 
 export async function addEntry(payload: AddEntryPayload): Promise<Entry> {

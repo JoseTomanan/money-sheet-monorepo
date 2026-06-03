@@ -18,3 +18,6 @@ interface MasterRow {
 // { [Category]: Subcategory[] }
 type CategoryMap = Record<string, string[]>;
 
+// { [key]: value } — key-value pairs from the Config sheet
+type ConfigMap = Record<string, string>;
+

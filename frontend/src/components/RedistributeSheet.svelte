@@ -6,6 +6,7 @@
   import { tick } from 'svelte';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { isFormula, evaluateFormula } from '../lib/formula';
+  import { store } from '../lib/store.svelte';
   import type { CategoryMap, AddEntryPayload } from '../lib/types';
 
   interface Props {
@@ -98,7 +99,7 @@
       <div class="mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
         <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">Amount to move</div>
         <div class="flex justify-center items-baseline gap-1">
-          <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">₱</span>
+          <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
           <input
             type="text"
             inputmode="decimal"

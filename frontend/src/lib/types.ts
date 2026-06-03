@@ -23,6 +23,11 @@ export interface MasterRow {
 // { [Category]: Subcategory[] }
 export type CategoryMap = Record<string, string[]>;
 
+export interface Config {
+  currency: string;
+  [key: string]: string;
+}
+
 export interface AddEntryPayload {
   date: string;
   tag: string;

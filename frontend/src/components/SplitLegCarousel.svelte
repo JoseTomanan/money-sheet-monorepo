@@ -3,6 +3,7 @@
   import type { SplitState, Leg } from '../lib/splitEntry';
   import { isFormula, evaluateFormula } from '../lib/formula';
   import type { Direction, CategoryMap } from '../lib/types';
+  import { store } from '../lib/store.svelte';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
 
   interface Props {
@@ -29,7 +30,7 @@
         >Remove</button>
       </div>
       <div class="amount-row flex items-baseline gap-[3px] mb-[10px]">
-        <span class="peso font-mono text-[18px] font-medium text-muted-foreground">₱</span>
+        <span class="peso font-mono text-[18px] font-medium text-muted-foreground">{store.config.currency}</span>
         <input
           type="text"
           inputmode="decimal"

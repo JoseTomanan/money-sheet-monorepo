@@ -97,4 +97,18 @@
       type="button"
     >{copyLabel}</button>
   {/if}
+
+  <div class="spreadsheet-hints mt-8 space-y-3">
+    <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px]">Spreadsheet Settings</h2>
+
+    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Currency symbol</p>
+      <p class="font-sans text-[13px] text-muted-foreground leading-snug">Set in the <strong class="text-foreground font-semibold">Config</strong> sheet of your spreadsheet — change the value in the <em>currency</em> row. Picked up automatically on next load.</p>
+    </div>
+
+    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Subcategories</p>
+      <p class="font-sans text-[13px] text-muted-foreground leading-snug">Add or remove subcategories by editing the <strong class="text-foreground font-semibold">Categories</strong> sheet directly. Changes are picked up automatically.</p>
+    </div>
+  </div>
 </div>

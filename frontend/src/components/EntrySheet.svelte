@@ -4,6 +4,7 @@
   import { isValidTag } from '../lib/domain';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { fmtDate, dayOfWeek } from '../lib/format';
+  import { store } from '../lib/store.svelte';
   import type { CategoryMap, Entry, AddEntryPayload, UpdateEntryPatch, Direction, EntryMutation } from '../lib/types';
   import {
     initSplitState,
@@ -215,7 +216,7 @@
         <div class="amount-card mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
           <div class="amount-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
           <div class="amount-row flex justify-center items-baseline gap-1">
-            <span class="peso-prefix font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">₱</span>
+            <span class="peso-prefix font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
             <input
               type="text"
               inputmode="decimal"
