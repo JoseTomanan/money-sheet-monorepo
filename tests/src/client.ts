@@ -20,6 +20,8 @@ export interface AddEntryPayload {
 
 export type CategoryMap = Record<string, string[]>;
 
+export type ConfigMap = Record<string, string>;
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing required env var: ${name}`);
@@ -61,6 +63,11 @@ export class GasClient {
   async getCategories(): Promise<CategoryMap> {
     const data = await this.post<{ categories: CategoryMap }>({ action: "getCategories" });
     return data.categories;
+  }
+
+  async getConfig(): Promise<ConfigMap> {
+    const data = await this.post<{ config: ConfigMap }>({ action: "getConfig" });
+    return data.config;
   }
 
   async addEntry(payload: AddEntryPayload): Promise<Entry> {
