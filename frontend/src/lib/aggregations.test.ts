@@ -3,6 +3,7 @@ import {
   totalOutgoing,
   totalIncoming,
   outgoingByMonth,
+  incomingByMonth,
   outgoingByCategory,
   countByCategory,
 } from './aggregations';
@@ -58,6 +59,24 @@ describe('outgoingByMonth', () => {
 
   it('returns 0 for empty array', () => {
     expect(outgoingByMonth([], '2026-05')).toBe(0);
+  });
+});
+
+describe('incomingByMonth', () => {
+  it('sums incoming entries matching the given YYYY-MM', () => {
+    expect(incomingByMonth(ENTRIES, '2026-05')).toBe(1400); // 1000+400
+  });
+
+  it('returns 0 when no incoming entries match the month', () => {
+    expect(incomingByMonth(ENTRIES, '2025-01')).toBe(0);
+  });
+
+  it('excludes outgoing entries even if in the same month', () => {
+    expect(incomingByMonth(ENTRIES, '2026-05')).toBe(1400);
+  });
+
+  it('returns 0 for empty array', () => {
+    expect(incomingByMonth([], '2026-05')).toBe(0);
   });
 });
 

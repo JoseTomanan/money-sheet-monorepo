@@ -15,6 +15,12 @@ export function outgoingByMonth(entries: Entry[], ym: string): number {
     .reduce((s, e) => s + e.amount, 0);
 }
 
+export function incomingByMonth(entries: Entry[], ym: string): number {
+  return entries
+    .filter(e => e.direction === 'I' && yearMonth(e.date) === ym)
+    .reduce((s, e) => s + e.amount, 0);
+}
+
 export function outgoingByCategory(entries: Entry[]): Record<string, number> {
   const result: Record<string, number> = {};
   for (const e of entries) {
