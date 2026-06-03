@@ -1,6 +1,7 @@
 const SHEET_IO = "INCOMING/OUTGOING";
 const SHEET_MASTER = "MASTER";
 const SHEET_CATEGORIES = "Categories";
+const SHEET_CONFIG = "Config";
 
 // 1-based column indices for INCOMING/OUTGOING
 const COL = {
