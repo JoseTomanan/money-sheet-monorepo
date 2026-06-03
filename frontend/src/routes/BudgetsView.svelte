@@ -3,6 +3,8 @@
   import { cubicOut } from 'svelte/easing';
   import { onMount } from 'svelte';
   import { store } from '../lib/store.svelte';
+  import RedistributeSheet from '../components/RedistributeSheet.svelte';
+  import type { AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { peso } from '../lib/format';
   import { totalOutgoing, outgoingByCategory, outgoingByMonth, incomingByMonth } from '../lib/aggregations';
@@ -190,6 +192,13 @@
     {/each}
   </div>
 {/if}
+
+<RedistributeSheet
+  open={redistOpen}
+  categories={store.categories}
+  onclose={() => (redistOpen = false)}
+  onsubmit={(legs: AddEntryPayload[]) => { store.addEntry(legs); redistOpen = false; }}
+/>
 </div>
 
 <style>

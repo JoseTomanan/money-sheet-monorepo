@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/svelte";
+import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import BudgetsView from "./BudgetsView.svelte";
 
 const mockStore = vi.hoisted(() => ({
@@ -37,6 +37,18 @@ describe("BudgetsView actions strip", () => {
   it("renders a 'Redistribute' action button", () => {
     const { getByRole } = render(BudgetsView);
     expect(getByRole('button', { name: /Redistribute/i })).toBeInTheDocument();
+  });
+});
+
+describe("BudgetsView — Redistribute chip opens sheet", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+  });
+
+  it("clicking Redistribute opens the bottom sheet (shows 'Redistribute Funds' title)", async () => {
+    const { getByRole, findByText } = render(BudgetsView);
+    await fireEvent.click(getByRole('button', { name: /Redistribute/i }));
+    await waitFor(() => findByText('Redistribute Funds'));
   });
 });
 
