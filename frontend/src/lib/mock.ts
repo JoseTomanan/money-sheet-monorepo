@@ -1,7 +1,6 @@
 import type {
   Entry,
   MasterRow,
-  SubcategoryBreakdown,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
@@ -85,14 +84,6 @@ export function mockGetMaster(): Promise<MasterRow> {
     budgets[cat] = inc - out;
   }
   return Promise.resolve({ onHand: totalIn - totalOut, budgets });
-}
-
-export function mockGetSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
-  const breakdown: SubcategoryBreakdown = {};
-  for (const e of entries) {
-    if (e.direction === "O") breakdown[e.tag] = (breakdown[e.tag] ?? 0) + e.amount;
-  }
-  return Promise.resolve(breakdown);
 }
 
 export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {

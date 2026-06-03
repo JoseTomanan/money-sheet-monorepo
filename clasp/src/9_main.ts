@@ -4,7 +4,6 @@ function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextO
     if (action === "getEntries") return apiJson({ entries: getEntries() });
     if (action === "getMaster") return apiJson({ master: getMaster() });
     if (action === "getCategories") return apiJson({ categories: getCategories() });
-    if (action === "getSubcategoryBreakdown") return apiJson({ breakdown: getSubcategoryBreakdown() });
     return apiJson({ error: "unknown action" });
   } catch (err) {
     return apiJson({ error: String(err) });
@@ -20,8 +19,6 @@ function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.Tex
     if (action === "getEntries") return apiJson({ entries: getEntries() });
     if (action === "getMaster") return apiJson({ master: getMaster() });
     if (action === "getCategories") return apiJson({ categories: getCategories() });
-    if (action === "getSubcategoryBreakdown") return apiJson({ breakdown: getSubcategoryBreakdown() });
-
     // Write actions — shared-secret auth required
     const secret = PropertiesService.getScriptProperties().getProperty("API_SECRET");
     if (!secret || body.secret !== secret) {

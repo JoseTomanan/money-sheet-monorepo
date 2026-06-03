@@ -2,7 +2,6 @@ import type {
   Entry,
   MasterRow,
   CategoryMap,
-  SubcategoryBreakdown,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
@@ -81,14 +80,6 @@ export async function getCategories(): Promise<CategoryMap> {
   if (mock.isMockMode) return mock.mockGetCategories();
   const data = await gasGet<{ categories: CategoryMap }>("getCategories");
   return data.categories;
-}
-
-export async function getSubcategoryBreakdown(): Promise<SubcategoryBreakdown> {
-  if (mock.isMockMode) return mock.mockGetSubcategoryBreakdown();
-  const data = await gasGet<{ breakdown: SubcategoryBreakdown }>(
-    "getSubcategoryBreakdown"
-  );
-  return data.breakdown;
 }
 
 export async function addEntry(payload: AddEntryPayload): Promise<Entry> {

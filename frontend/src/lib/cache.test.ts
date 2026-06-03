@@ -16,7 +16,6 @@ const payload: CachePayload = {
   ],
   master: { onHand: 5000, budgets: { Food: 300 } },
   categories: { Food: ["Groceries", "Dining"] },
-  breakdown: { Groceries: 100 },
 };
 
 describe("cache", () => {
