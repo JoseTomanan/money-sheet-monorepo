@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc && node scripts/strip-exports.js",
-    "push": "npm run build && npx @google/clasp push",
+    "push": "npm run build && npx @google/clasp push -f",
     "test": "vitest",
     "test:run": "vitest run"
   },
