@@ -49,17 +49,9 @@
 }
 
 @font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Medium.woff2') format('woff2');
-  font-weight: 500;
+  font-family: 'Roboto Mono';
+  src: url('./fonts/RobotoMono-VariableFont_wght.woff2') format('woff2');
+  font-weight: 100 700;
   font-style: normal;
   font-display: swap;
 }
@@ -91,7 +83,7 @@
 
   --font-sans:    'Inter', -apple-system, system-ui, sans-serif;
   --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-mono:    'Roboto Mono', ui-monospace, monospace;
 
   --radius-sm:   8px;
   --radius-md:   14px;
