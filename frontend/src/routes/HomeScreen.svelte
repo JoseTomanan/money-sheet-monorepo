@@ -36,7 +36,7 @@
   );
 
   const greeting = $derived(
-    store.config.nickname ? `Hi, ${store.config.nickname}` : 'Hi!'
+    store.config.nickname ? `Hi, ${store.config.nickname}.` : 'Hi!'
   );
 </script>
 
