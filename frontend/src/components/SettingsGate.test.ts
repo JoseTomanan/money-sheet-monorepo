@@ -35,6 +35,28 @@ describe("SettingsGate", () => {
     expect(hasClose).toBe(false);
   });
 
+  it("renders a link to the Google Sheet template", () => {
+    const { getByRole } = render(SettingsGate, { onsaved: vi.fn() });
+    const link = getByRole("link", { name: /copy the template/i });
+    expect(link).toHaveAttribute("href", expect.stringContaining("docs.google.com/spreadsheets"));
+  });
+
+  it("renders instructions mentioning setup()", () => {
+    const { getByText } = render(SettingsGate, { onsaved: vi.fn() });
+    expect(getByText(/setup\(\)/i)).toBeInTheDocument();
+  });
+
+  it("renders instructions mentioning deploying as a web app", () => {
+    const { getByText } = render(SettingsGate, { onsaved: vi.fn() });
+    expect(getByText(/web app/i)).toBeInTheDocument();
+  });
+
+  it("renders 4 numbered setup steps", () => {
+    const { container } = render(SettingsGate, { onsaved: vi.fn() });
+    const items = container.querySelectorAll("ol li");
+    expect(items).toHaveLength(4);
+  });
+
   it("fires onsaved when both fields are filled and Save is clicked", async () => {
     const onsaved = vi.fn();
     const { getByLabelText, getByRole } = render(SettingsGate, { onsaved });
