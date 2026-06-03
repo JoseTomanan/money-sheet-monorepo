@@ -19,18 +19,3 @@ function getCategories(): CategoryMap {
 
   return map;
 }
-
-function getSubcategoryBreakdown(): SubcategoryBreakdown {
-  const rows = getIODataRows();
-  const breakdown: SubcategoryBreakdown = {};
-
-  for (const row of rows) {
-    const direction = String(row[4]); // F column (index 4 in B-based slice)
-    if (direction !== "O") continue;
-    const tag = String(row[1]); // C column
-    const amount = Number(row[5]) || 0;
-    breakdown[tag] = (breakdown[tag] ?? 0) + amount;
-  }
-
-  return breakdown;
-}

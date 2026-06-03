@@ -23,9 +23,6 @@ export interface MasterRow {
 // { [Category]: Subcategory[] }
 export type CategoryMap = Record<string, string[]>;
 
-// { [Subcategory]: total outgoing amount }
-export type SubcategoryBreakdown = Record<string, number>;
-
 export interface AddEntryPayload {
   date: string;
   tag: string;

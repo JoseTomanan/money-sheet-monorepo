@@ -1,8 +1,7 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
-  import { peso, fmtDate, dayOfWeek, currentYearMonth } from '../lib/format';
-  import { totalOutgoing, outgoingByMonth } from '../lib/aggregations';
+  import { peso, fmtDate, dayOfWeek } from '../lib/format';
   import { dateRunPositions, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryRow from '../components/EntryRow.svelte';
@@ -15,10 +14,6 @@
 
   const now = new Date();
   const monthLabel = now.toLocaleString('en-PH', { month: 'long', year: 'numeric' });
-  const ym = currentYearMonth();
-
-  const thisMonthTotal = $derived(outgoingByMonth(store.entries, ym));
-  const allTotal = $derived(totalOutgoing(store.entries));
 
   const latestDate = $derived(
     store.entries.length > 0
@@ -53,18 +48,6 @@
       <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
         <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
-        <div class="hero-divider h-px bg-border mt-[18px] mb-4"></div>
-        <div class="flex gap-[22px] items-center">
-          <div>
-            <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-            <div class="h-[17px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
-          </div>
-          <div class="w-px h-7 bg-border"></div>
-          <div>
-            <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-            <div class="h-[17px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
-          </div>
-        </div>
       </div>
       <div class="px-5 pt-5 pb-2">
         <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
@@ -109,18 +92,6 @@
           class:opacity-40={store.masterLoading}
         >
           {peso(store.master.onHand)}
-        </div>
-        <div class="hero-divider h-px bg-border mt-[18px] mb-4"></div>
-        <div class="hero-stats flex gap-[22px] items-center">
-          <div class="hero-stat">
-            <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">This Month</div>
-            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(thisMonthTotal)}</div>
-          </div>
-          <div class="hero-stat-divider w-px h-7 bg-border"></div>
-          <div class="hero-stat">
-            <div class="stat-label font-display text-[10px] text-muted-foreground tracking-[0.8px] uppercase font-semibold">All Total</div>
-            <div class="stat-value font-mono tabular-nums mt-1 text-[17px] text-foreground font-medium">{peso(allTotal)}</div>
-          </div>
         </div>
       </div>
 

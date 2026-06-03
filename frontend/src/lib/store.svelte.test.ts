@@ -19,14 +19,12 @@ const freshEntries: Entry[] = [
 
 const freshMaster = { onHand: 2000, budgets: { Food: 400 } };
 const freshCategories = { Food: ["Groceries", "Dining"] };
-const freshBreakdown = { Groceries: 100 };
 
 function makePayload(overrides: Partial<CachePayload> = {}): CachePayload {
   return {
     entries: [],
     master: { onHand: 1000, budgets: { Food: 200 } },
     categories: { Food: ["Groceries"] },
-    breakdown: { Groceries: 50 },
     ...overrides,
   };
 }
@@ -68,9 +66,6 @@ function makeFetchMock() {
       case "getCategories":
         body = { categories: freshCategories };
         break;
-      case "getSubcategoryBreakdown":
-        body = { breakdown: freshBreakdown };
-        break;
       default:
         body = { error: `unknown action: ${action}` };
     }
@@ -86,7 +81,6 @@ function gasGetBody(url: string): Record<string, unknown> {
     case "getEntries": return { entries: freshEntries };
     case "getMaster": return { master: freshMaster };
     case "getCategories": return { categories: freshCategories };
-    case "getSubcategoryBreakdown": return { breakdown: freshBreakdown };
     default: return {};
   }
 }
@@ -131,9 +125,8 @@ describe("pendingIds", () => {
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=getEntries") ||
             (url as string).includes("action=getMaster") ||
-            (url as string).includes("action=getCategories") ||
-            (url as string).includes("action=getSubcategoryBreakdown")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+            (url as string).includes("action=getCategories")) {
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return new Promise((res) => { resolveFetch = res; });
       })
@@ -153,7 +146,7 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return new Promise((res) => { resolvePost = res; });
       })
@@ -172,7 +165,7 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
       })
@@ -191,7 +184,7 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return new Promise((res) => { resolvePost = res; });
       })
@@ -211,7 +204,7 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
       })
@@ -227,7 +220,7 @@ describe("pendingIds", () => {
       "fetch",
       vi.fn().mockImplementation((url: string) => {
         if ((url as string).includes("action=")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
         return new Promise(() => {});
       })
@@ -260,7 +253,7 @@ describe("pendingIds", () => {
     const [localId] = [...store.localIds];
 
     vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
-      Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) })
+      Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) })
     ));
     await store.refreshAll(true);
 
@@ -295,7 +288,6 @@ describe("store", () => {
       expect(store.entries).toEqual(freshEntries);
       expect(store.master).toEqual(freshMaster);
       expect(store.categories).toEqual(freshCategories);
-      expect(store.breakdown).toEqual(freshBreakdown);
     });
 
     it("writes fetched data to cache", async () => {
@@ -338,7 +330,6 @@ describe("store", () => {
             case "getEntries": body = { entries: dupEntries }; break;
             case "getMaster": body = { master: freshMaster }; break;
             case "getCategories": body = { categories: freshCategories }; break;
-            case "getSubcategoryBreakdown": body = { breakdown: freshBreakdown }; break;
             default: body = { error: `unknown action: ${action}` };
           }
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(body)) });
@@ -432,7 +423,6 @@ describe("refreshAll timeout", () => {
     expect(store.entries).toEqual(freshEntries);
     expect(store.master).toEqual(freshMaster);
     expect(store.categories).toEqual(freshCategories);
-    expect(store.breakdown).toEqual(freshBreakdown);
   });
 
   it("silent refresh: timeout does not set loading or error", async () => {
@@ -592,7 +582,7 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     await store.refreshAll();
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
     }));
@@ -606,7 +596,7 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     await store.refreshAll();
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, breakdown: {} })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
     }));
@@ -862,7 +852,7 @@ describe("drainQueue", () => {
     const realEntry = { id: 77, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "queued", direction: "O", amount: 50 };
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
     }));
@@ -886,7 +876,7 @@ describe("drainQueue", () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
         const updated = [{ ...freshEntries[0], description: "queued-edit" }];
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: updated, master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: updated, master: freshMaster, categories: freshCategories })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
     }));
@@ -908,7 +898,7 @@ describe("drainQueue", () => {
     // Drain successfully
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: freshMaster, categories: freshCategories })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
     }));
@@ -934,7 +924,7 @@ describe("drainQueue", () => {
     let callCount = 0;
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [real1], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [real1], master: freshMaster, categories: freshCategories })) });
       }
       callCount++;
       if (callCount === 1) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: real1 })) });
@@ -984,7 +974,7 @@ describe("online event triggers drainQueue", () => {
     const realEntry = { id: 99, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "offline", direction: "O", amount: 50 };
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories, breakdown: freshBreakdown })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [realEntry], master: freshMaster, categories: freshCategories })) });
       }
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: realEntry })) });
     }));
@@ -1010,7 +1000,6 @@ describe("init with existing queue", () => {
       entries: freshEntries,
       master: freshMaster,
       categories: freshCategories,
-      breakdown: freshBreakdown,
     });
     localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     vi.resetModules();

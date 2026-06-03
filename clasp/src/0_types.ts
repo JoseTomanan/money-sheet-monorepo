@@ -18,5 +18,3 @@ interface MasterRow {
 // { [Category]: Subcategory[] }
 type CategoryMap = Record<string, string[]>;
 
-// { [Subcategory]: total outgoing amount }
-type SubcategoryBreakdown = Record<string, number>;

@@ -15,6 +15,26 @@ vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
 
 const baseProps = { onnavigate: vi.fn() };
 
+describe("HomeScreen hero card content", () => {
+  it("when not loading, renders the ON HAND label", () => {
+    mockStore.loading = false;
+    const { getByText } = render(HomeScreen, baseProps);
+    expect(getByText("ON HAND")).toBeInTheDocument();
+  });
+
+  it("when not loading, does not render 'This Month' sub-stat", () => {
+    mockStore.loading = false;
+    const { queryByText } = render(HomeScreen, baseProps);
+    expect(queryByText("This Month")).not.toBeInTheDocument();
+  });
+
+  it("when not loading, does not render 'All Total' sub-stat", () => {
+    mockStore.loading = false;
+    const { queryByText } = render(HomeScreen, baseProps);
+    expect(queryByText("All Total")).not.toBeInTheDocument();
+  });
+});
+
 describe("HomeScreen skeleton loading", () => {
   beforeEach(() => {
     mockStore.loading = true;
