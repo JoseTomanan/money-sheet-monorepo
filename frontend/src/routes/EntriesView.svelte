@@ -1,12 +1,10 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
-  import { CATEGORIES, CATEGORY_ORDER, resolveCategoryStyle } from '../lib/theme';
+  import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { countByCategory } from '../lib/aggregations';
-  import { fmtDateShort } from '../lib/format';
-  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay } from '../lib/groupEntries';
-  import Money from '../components/Money.svelte';
-  import EntryDescBand from '../components/EntryDescBand.svelte';
+  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
+  import EntryRow from '../components/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
 
   interface Props {
@@ -193,15 +191,15 @@
           <div class="week-label font-display text-[11px] font-bold tracking-[0.8px] uppercase text-muted-foreground pt-1 pb-[2px] px-[2px]">{group.label}</div>
           {#each dateGroups as dateGroup, di (dateGroup[0].date)}
             {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
+            {@const splitPos = splitRunPositions(dateGroup)}
             <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden">
               {#each dateGroup as entry, j (entry.id)}
                 {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const local = store.localIds.has(entry.id)}
-                {@const catStyle = resolveCategoryStyle(entry.mainCategory)}
                 <div
-                  class="entry-card relative flex items-center gap-[10px] py-3 pr-3 pl-[14px] bg-card rounded-none cursor-pointer"
+                  class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
                   class:opacity-[0.55]={dim}
                   class:animate-[shimmer_1s_ease-in-out_infinite]={pending && !deletePending}
                   class:opacity-50={deletePending}
@@ -216,24 +214,7 @@
                   tabindex="0"
                   onkeydown={(e) => !pending && !deletePending && e.key === 'Enter' && onopenedit(entry)}
                 >
-
-                  <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
-
-                  <EntryDescBand description={entry.description} pastel={catStyle.pastel} color={catStyle.color} dot={catStyle.dot} strikethrough={dim} direction={entry.direction} />
-
-                  <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
-                    {#if local}
-                      <span class="text-[11px] text-muted-foreground leading-none" data-local-indicator aria-label="Not yet synced">↑</span>
-                    {/if}
-                    <Money
-                      value={entry.amount}
-                      size={14}
-                      weight={500}
-                      negColor={false}
-                      positive={entry.direction === 'I'}
-                      {dim}
-                    />
-                  </div>
+                  <EntryRow {entry} splitPos={splitPos[j]} {local} />
                 </div>
               {/each}
             </div>

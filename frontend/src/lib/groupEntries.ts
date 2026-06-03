@@ -70,6 +70,29 @@ export function compareEntriesForDisplay(a: Entry, b: Entry): number {
   );
 }
 
+export interface SplitPosition {
+  inGroup: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+}
+
+/**
+ * Marks Split Entry runs within a display-ordered list.
+ * A run is a real-description entry followed by consecutive '^^' ditto legs.
+ * Detection is purely by '^^' — entries that merely share a description are not grouped.
+ */
+export function splitRunPositions(entries: Entry[]): SplitPosition[] {
+  return entries.map((entry, i) => {
+    const isDitto = entry.description === '^^';
+    const nextIsDitto = i + 1 < entries.length && entries[i + 1].description === '^^';
+    return {
+      isFirst: !isDitto,
+      isLast: !nextIsDitto,
+      inGroup: isDitto || nextIsDitto,
+    };
+  });
+}
+
 export function groupByWeek(entries: Entry[]): WeekGroup[] {
   const map = new Map<string, Entry[]>();
   for (const entry of entries) {

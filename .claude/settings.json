@@ -1,0 +1,33 @@
+{
+  "enabledPlugins": {
+    "frontend-design@anthropic-tools": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(clasp open *)",
+      "Bash(npx clasp *)",
+      "Read(//c/Users/The King/**)",
+      "Bash(npm install *)",
+      "Bash(gh issue *)",
+      "Bash(gh run *)",
+      "Bash(npx playwright *)",
+      "Bash(gh pr *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\The King\\\\Documents\\\\GitHub\\\\money-sheet-monorepo\\\\frontend\" -Recurse -Name)",
+      "Bash(npx @google/clasp push -f)",
+      "Bash(npx @google/clasp status)",
+      "Bash(npx @google/clasp --version)",
+      "Bash(npx @google/clasp push)",
+      "Bash(mv /tmp/30_master_fixed.ts \"c:/Users/The King/Documents/GitHub/money-sheet-monorepo/clasp/src/30_master.ts\")",
+      "Bash(npx @google/clasp deployments)",
+      "Bash(npx @google/clasp deploy --deploymentId \"AKfycbwICKGfeP_7H-RMlwaiCE7h1kssjXpto2Xq_hfGUyKydXXRMo0_QwrXbdkCdNzgZy5MRA\" --description \"Frontend API\")",
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\The King\\\\Documents\\\\GitHub\\\\money-sheet-monorepo\\\\frontend\\\\src\" -Recurse -Include \"*.svelte\", \"*.tsx\", \"*.ts\", \"*.css\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Remove-Item -Path \"C:\\\\Users\\\\The King\\\\Documents\\\\GitHub\\\\money-sheet-monorepo\\\\frontend\\\\src\\\\prototype\\\\SplitLegCarousel.svelte\", \"C:\\\\Users\\\\The King\\\\Documents\\\\GitHub\\\\money-sheet-monorepo\\\\frontend\\\\src\\\\prototype\\\\PrototypeSwitcher.svelte\" -Force)",
+      "Bash(Remove-Item -Path \"C:\\\\Users\\\\The King\\\\Documents\\\\GitHub\\\\money-sheet-monorepo\\\\frontend\\\\src\\\\prototype\" -ErrorAction SilentlyContinue)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

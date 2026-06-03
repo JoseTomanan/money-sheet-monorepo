@@ -4,6 +4,9 @@ const LS_KEY = "ms_connection";
 
 function readFromStorage(): Connection | null {
   if (import.meta.env.VITE_MOCK === "true") return { gasUrl: "mock://noop", apiSecret: "mock" };
+  if (import.meta.env.DEV && !import.meta.env.VITEST && import.meta.env.VITE_GAS_URL && import.meta.env.VITE_API_SECRET) {
+    return { gasUrl: import.meta.env.VITE_GAS_URL, apiSecret: import.meta.env.VITE_API_SECRET };
+  }
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
