@@ -90,13 +90,16 @@
   </div>
 {:else}
   <!-- Page header -->
-  <div class="page-header px-5 pt-5 pb-1">
+  <div class="page-header px-5 pt-5 pb-1" style="animation: rise-in 400ms ease-out both;">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
   </div>
 
   <!-- On Hand card -->
-  <div class="onhand-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
+  <div class="onhand-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
+    style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset); animation: rise-in 400ms ease-out 80ms both;">
+    <!-- currency watermark -->
+    <span class="absolute right-3 bottom-1 font-mono font-bold text-[72px] leading-none select-none pointer-events-none" style="color: var(--accent); opacity: 0.06;" aria-hidden="true">{store.config.currency || '₱'}</span>
     <div class="onhand-left">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">On Hand</div>
       <div

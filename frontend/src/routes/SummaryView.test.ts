@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte";
-import BudgetsView from "./BudgetsView.svelte";
+import SummaryView from "./SummaryView.svelte";
 
 const mockStore = vi.hoisted(() => ({
   loading: true,
@@ -14,63 +14,63 @@ const mockStore = vi.hoisted(() => ({
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
 
-describe("BudgetsView hero card — monthly stats", () => {
+describe("SummaryView hero card — monthly stats", () => {
   beforeEach(() => {
     mockStore.loading = false;
   });
 
   it("renders an 'Incoming' label in the hero card", () => {
-    const { getByText } = render(BudgetsView);
+    const { getByText } = render(SummaryView);
     expect(getByText(/Incoming/i)).toBeInTheDocument();
   });
 
   it("renders an 'Outgoing' label in the hero card", () => {
-    const { getByText } = render(BudgetsView);
+    const { getByText } = render(SummaryView);
     expect(getByText(/Outgoing/i)).toBeInTheDocument();
   });
 });
 
-describe("BudgetsView actions strip", () => {
+describe("SummaryView actions strip", () => {
   beforeEach(() => {
     mockStore.loading = false;
   });
 
   it("renders a 'Redistribute' action button", () => {
-    const { getByRole } = render(BudgetsView);
+    const { getByRole } = render(SummaryView);
     expect(getByRole('button', { name: /Redistribute/i })).toBeInTheDocument();
   });
 });
 
-describe("BudgetsView — Redistribute chip opens sheet", () => {
+describe("SummaryView — Redistribute chip opens sheet", () => {
   beforeEach(() => {
     mockStore.loading = false;
   });
 
   it("clicking Redistribute opens the bottom sheet (shows 'Redistribute Funds' title)", async () => {
-    const { getByRole, findByText } = render(BudgetsView);
+    const { getByRole, findByText } = render(SummaryView);
     await fireEvent.click(getByRole('button', { name: /Redistribute/i }));
     await waitFor(() => findByText('Redistribute Funds'));
   });
 });
 
-describe("BudgetsView skeleton loading", () => {
+describe("SummaryView skeleton loading", () => {
   beforeEach(() => {
     mockStore.loading = true;
   });
 
   it("when loading, does not render 'Loading' text", () => {
-    const { queryByText } = render(BudgetsView);
+    const { queryByText } = render(SummaryView);
     expect(queryByText(/loading/i)).not.toBeInTheDocument();
   });
 
   it("when loading, renders shimmer elements", () => {
-    const { container } = render(BudgetsView);
+    const { container } = render(SummaryView);
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBeGreaterThan(0);
   });
 
   it("when not loading, renders no shimmer elements", () => {
     mockStore.loading = false;
-    const { container } = render(BudgetsView);
+    const { container } = render(SummaryView);
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
   });
 });

@@ -79,16 +79,19 @@
   </div>
 {:else}
   <!-- Month header -->
-  <div class="page-header px-5 pt-5 pb-1">
+  <div class="page-header px-5 pt-5 pb-1" style="animation: rise-in 400ms ease-out both;">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
     <div class="page-title font-display text-[36px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">{greeting}</div>
   </div>
 
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <!-- Left: hero + latest -->
-    <div class="home-left">
+    <div class="home-left" style="animation: rise-in 400ms ease-out 80ms both;">
       <!-- On Hand hero card -->
-      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+      <div class="hero-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
+        style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+        <!-- oversized currency watermark — decorative, conveys financial context -->
+        <span class="absolute right-3 bottom-1 font-mono font-bold text-[72px] leading-none select-none pointer-events-none" style="color: var(--accent); opacity: 0.06;" aria-hidden="true">{store.config.currency || '₱'}</span>
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
@@ -108,34 +111,27 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]">
-        <!-- Blurred teaser card — no real content, just a shape -->
-        <div class="teaser-wrap h-[10px] overflow-hidden" aria-hidden="true">
-          <div class="teaser-card h-12 bg-card rounded-none border-b border-border translate-y-[calc(-100%+10px)]"></div>
-        </div>
-
+        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] bg-card overflow-hidden">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
-          <div class="today-card rounded-b-[var(--radius-lg)] rounded-t-none bg-card overflow-hidden">
-            {#each todayEntries as entry, i (entry.id)}
-              {@const dim = entry.amount === 0}
-              <div
-                class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3"
-                class:opacity-[0.55]={dim}
-                style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
-              >
-                <EntryRow {entry} splitPos={todaySplitPos[i]} />
-              </div>
-            {/each}
-          </div>
+          {#each todayEntries as entry, i (entry.id)}
+            {@const dim = entry.amount === 0}
+            <div
+              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3"
+              class:opacity-[0.55]={dim}
+              style="border-top: {todayPositions[i].isFirstOfDate ? 'none' : '1px solid var(--border)'};"
+            >
+              <EntryRow {entry} splitPos={todaySplitPos[i]} />
+            </div>
+          {/each}
         {/if}
         </div>
       </button>
     </div>
 
     <!-- Right: category chips -->
-    <div class="home-right md:border-l md:border-border md:min-h-full">
+    <div class="home-right md:border-l md:border-border md:min-h-full" style="animation: rise-in 400ms ease-out 140ms both;">
       <SectionHeader>
         {#snippet children()}By Category{/snippet}
         {#snippet right()}
@@ -148,7 +144,8 @@
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] bg-card shadow-[var(--shadow-card)] md:shrink">
+          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
+            style="background: {c.pastel}; border-left: 3px solid {c.dot}; box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>

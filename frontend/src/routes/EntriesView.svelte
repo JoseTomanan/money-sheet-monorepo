@@ -126,8 +126,8 @@
     </div>
   </div>
 
-  <!-- Filter bar: segmented control + category chips -->
-  <div class="filter-bar relative flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden md:border-b-0 md:flex-col md:gap-1 md:py-2 md:px-[10px] md:static md:overflow-visible md:flex-1">
+  <!-- Filter bar: sticky glass chrome on mobile, static in the desktop sidebar -->
+  <div class="filter-bar sticky top-0 z-[5] flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden filter-bar-glass md:border-b-0 md:flex-col md:gap-1 md:py-2 md:px-[10px] md:static md:overflow-visible md:flex-1 md:bg-transparent md:backdrop-blur-none">
     <div class="segmented flex shrink-0 gap-[2px] overflow-x-auto min-w-0" role="radiogroup" aria-label="Direction">
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
@@ -246,4 +246,11 @@
   }
 
   .segmented button:hover:not(.text-accent) { background: var(--muted); }
+
+  /* glass filter bar — only active on mobile (md: overrides to transparent/static) */
+  .filter-bar-glass {
+    background: color-mix(in srgb, var(--background) 82%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 </style>
