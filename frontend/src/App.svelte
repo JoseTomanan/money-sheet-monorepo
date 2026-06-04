@@ -16,6 +16,7 @@
   let tab = $state<TabId>('home');
   let scrollArea = $state<HTMLElement | null>(null);
   let scrollTop = $state(0);
+  let entriesSelectMode = $state(false);
 
   function handleScroll() {
     if (scrollArea) scrollTop = scrollArea.scrollTop;
@@ -95,9 +96,9 @@
       {:else if tab === 'home'}
         <HomeScreen onnavigate={(t) => (tab = t)} />
       {:else if tab === 'entries'}
-        <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} />
+        <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} bind:selectMode={entriesSelectMode} />
       {:else}
-        <SummaryView />
+        <SummaryView onbulkdelete={() => { entriesSelectMode = true; tab = 'entries'; }} />
       {/if}
     </div>
 
@@ -113,7 +114,9 @@
           </svg>
         </button>
       {/if}
-      <Fab onclick={openAdd} />
+      {#if !(tab === 'entries' && entriesSelectMode)}
+        <Fab onclick={openAdd} />
+      {/if}
     {/if}
 
     {#if store.toastMsg}

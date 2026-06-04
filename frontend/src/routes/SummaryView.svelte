@@ -21,6 +21,12 @@
   const monthIncoming = $derived(incomingByMonth(store.entries, ym));
   const monthOutgoing = $derived(outgoingByMonth(store.entries, ym));
 
+  interface Props {
+    onbulkdelete: () => void;
+  }
+
+  let { onbulkdelete }: Props = $props();
+
   let redistOpen = $state(false);
 
   const categoryData = $derived(
@@ -134,6 +140,20 @@
         <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
       </svg>
       Redistribute
+    </button>
+    <button
+      class="action-chip flex items-center gap-[6px] py-[8px] px-[14px] rounded-[var(--radius-pill)] bg-card shadow-[var(--shadow-card)] border-0 cursor-pointer font-sans text-[13px] font-semibold text-destructive"
+      onclick={onbulkdelete}
+      aria-label="Bulk delete entries"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+      Bulk delete
     </button>
   </div>
 
