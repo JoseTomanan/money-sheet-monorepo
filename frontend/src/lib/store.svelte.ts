@@ -259,6 +259,50 @@ async function deleteEntry(id: number): Promise<void> {
   }
 }
 
+async function deleteEntries(ids: number[]): Promise<void> {
+  const present = ids.filter((id) => entries.some((e) => e.id === id));
+  if (present.length === 0) return;
+
+  // Local (unsynced) entries: queue and remove optimistically, no API call.
+  const localToDelete = present.filter((id) => localIds.has(id));
+  for (const id of localToDelete) {
+    enqueue({ op: 'delete', id });
+    entries = entries.filter((e) => e.id !== id);
+  }
+  syncQueue();
+
+  const remote = present.filter((id) => !localIds.has(id));
+  if (remote.length === 0) return;
+
+  for (const id of remote) addDeletePending(id);
+  masterLoading = true;
+  try {
+    const results = await Promise.allSettled(remote.map((id) => withTimeout(api.deleteEntry(id))));
+    const removed: number[] = [];
+    let failCount = 0;
+    for (let i = 0; i < results.length; i++) {
+      const id = remote[i];
+      if (results[i].status === 'fulfilled') {
+        removed.push(id);
+      } else {
+        const err = (results[i] as PromiseRejectedResult).reason;
+        if (err instanceof ConnectionError) {
+          enqueue({ op: 'delete', id });
+        } else {
+          failCount++;
+        }
+      }
+    }
+    syncQueue();
+    if (removed.length > 0) entries = entries.filter((e) => !removed.includes(e.id));
+    if (failCount > 0) showToast(`Failed to delete ${failCount} entr${failCount === 1 ? 'y' : 'ies'}.`);
+    await refreshAll(true);
+  } finally {
+    for (const id of remote) removeDeletePending(id);
+    masterLoading = false;
+  }
+}
+
 async function drainQueue(): Promise<void> {
   if (draining || queue.length === 0) return;
   draining = true;
@@ -311,6 +355,7 @@ export const store = {
   addEntry,
   updateEntry,
   deleteEntry,
+  deleteEntries,
   drainQueue,
   dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; },
 };

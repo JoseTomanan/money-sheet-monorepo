@@ -6,15 +6,17 @@
   import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import EntryRow from '../components/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
+  import * as Sheet from '$lib/components/ui/sheet';
 
   interface Props {
     onopenedit: (entry: Entry) => void;
     onadd: () => void;
     scrollEl: HTMLElement | null;
     scrollTop: number;
+    selectMode?: boolean;
   }
 
-  let { onopenedit, onadd, scrollEl, scrollTop }: Props = $props();
+  let { onopenedit, onadd, scrollEl, scrollTop, selectMode = $bindable(false) }: Props = $props();
 
   let hasScrolledToBottom = $state(false);
   $effect(() => {
@@ -67,10 +69,48 @@
     countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
   );
 
+  // ── Bulk select state ──────────────────────────────────────────────────────
+  let selectedIds = $state(new Set<number>());
+  let confirmOpen = $state(false);
+
+  // Clear selection whenever select mode exits.
+  $effect(() => { if (!selectMode) selectedIds = new Set(); });
+
+  const selectableIds = $derived(
+    filtered
+      .filter(e => !store.pendingIds.has(e.id) && !store.deletePendingIds.has(e.id))
+      .map(e => e.id)
+  );
+
+  function toggle(id: number): void {
+    if (selectedIds.has(id)) {
+      selectedIds = new Set([...selectedIds].filter(x => x !== id));
+    } else {
+      selectedIds = new Set([...selectedIds, id]);
+    }
+  }
+
+  function selectAll(): void {
+    selectedIds = new Set(selectableIds);
+  }
+
+  function clearAll(): void {
+    selectedIds = new Set();
+  }
+
+  const allSelected = $derived(
+    selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id))
+  );
+
+  async function confirmDelete(): Promise<void> {
+    confirmOpen = false;
+    await store.deleteEntries([...selectedIds]);
+    selectMode = false;
+  }
 </script>
 
 <div class="entries-view p-0">
-{#if store.localIds.size > 0}
+{#if store.localIds.size > 0 && !selectMode}
   <div class="sync-bar fixed bottom-[72px] inset-x-0 z-10 flex justify-center pb-2 pointer-events-none">
     <button
       class="sync-now-btn pointer-events-auto flex items-center gap-[6px] py-[6px] px-4 rounded-[var(--radius-pill)] bg-card border border-border shadow-[var(--shadow-card)] font-sans text-[13px] font-medium text-accent transition-opacity duration-150"
@@ -83,6 +123,30 @@
     </button>
   </div>
 {/if}
+
+<!-- Bulk-select action bar: sits above the TabBar when in select mode -->
+{#if selectMode}
+  <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.06)] max-w-[var(--app-max-width)] mx-auto">
+    <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
+      {selectedIds.size} selected
+    </span>
+    <button
+      class="delete-sel-btn flex items-center gap-[6px] py-[8px] px-[16px] rounded-[var(--radius-md)] border border-[rgba(193,74,50,0.3)] bg-[rgba(193,74,50,0.08)] text-destructive font-sans text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+      disabled={selectedIds.size === 0}
+      onclick={() => (confirmOpen = true)}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+      Delete
+    </button>
+  </div>
+{/if}
+
 {#if store.loading}
   <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
@@ -123,7 +187,32 @@
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex items-baseline gap-[10px]">
       Entries
       <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filtered.length}</span>
+      <!-- Select / Cancel toggle -->
+      {#if selectMode}
+        <button
+          class="ml-auto font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center"
+          onclick={() => (selectMode = false)}
+        >Cancel</button>
+      {:else}
+        <button
+          class="ml-auto font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center"
+          onclick={() => (selectMode = true)}
+          aria-label="Enter bulk-select mode"
+        >Select</button>
+      {/if}
     </div>
+
+    <!-- Select-all / Clear controls shown only in select mode -->
+    {#if selectMode}
+      <div class="flex items-center gap-3 mt-[6px]">
+        <button
+          class="font-sans text-[12px] font-semibold bg-transparent border-0 cursor-pointer p-0"
+          class:text-accent={!allSelected}
+          class:text-muted-foreground={allSelected}
+          onclick={() => allSelected ? clearAll() : selectAll()}
+        >{allSelected ? 'Clear all' : 'Select all'}</button>
+      </div>
+    {/if}
   </div>
 
   <!-- Filter bar: segmented control + category chips -->
@@ -180,10 +269,12 @@
   <!-- Entry list -->
   <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 md:flex-1 md:ml-2 md:mt-4 md:min-w-0">
     {#if filtered.length === 0}
-      <button
-        class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
-        onclick={onadd}
-      >+ ADD ENTRY</button>
+      {#if !selectMode}
+        <button
+          class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
+          onclick={onadd}
+        >+ ADD ENTRY</button>
+      {/if}
     {:else}
       {#each weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
@@ -198,6 +289,9 @@
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const local = store.localIds.has(entry.id)}
+                {@const selectable = selectMode && !pending && !deletePending}
+                {@const checked = selectedIds.has(entry.id)}
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
                   class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
                   class:opacity-[0.55]={dim}
@@ -209,16 +303,47 @@
                   class:border-border={j > 0}
                   class:border-l-2={local}
                   class:border-local={local}
-                  onclick={() => !pending && !deletePending && onopenedit(entry)}
-                  role="button"
+                  class:bg-[rgba(193,74,50,0.04)]={selectMode && checked}
+                  onclick={() => {
+                    if (selectMode) {
+                      if (selectable) toggle(entry.id);
+                    } else if (!pending && !deletePending) {
+                      onopenedit(entry);
+                    }
+                  }}
+                  role={selectMode ? 'checkbox' : 'button'}
+                  aria-checked={selectMode ? checked : undefined}
                   tabindex="0"
-                  onkeydown={(e) => !pending && !deletePending && e.key === 'Enter' && onopenedit(entry)}
+                  onkeydown={(e) => {
+                    if (selectMode) {
+                      if ((e.key === 'Enter' || e.key === ' ') && selectable) toggle(entry.id);
+                    } else if (!pending && !deletePending && e.key === 'Enter') {
+                      onopenedit(entry);
+                    }
+                  }}
                 >
+                  <!-- Checkbox indicator in select mode -->
+                  {#if selectMode}
+                    <div
+                      class="checkbox-box shrink-0 size-[18px] rounded-[5px] border-2 flex items-center justify-center transition-[background,border-color] duration-150"
+                      class:bg-accent={checked}
+                      class:border-accent={checked}
+                      class:bg-transparent={!checked}
+                      class:border-border={!checked}
+                      aria-hidden="true"
+                    >
+                      {#if checked}
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="2 6 5 9 10 3"/>
+                        </svg>
+                      {/if}
+                    </div>
+                  {/if}
                   <EntryRow {entry} splitPos={splitPos[j]} {local} />
                 </div>
               {/each}
             </div>
-            {#if isLatestChunk}
+            {#if isLatestChunk && !selectMode}
               <button
                 class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
                 onclick={onadd}
@@ -232,6 +357,29 @@
   </div>
 {/if}
 </div>
+
+<!-- Confirm-delete dialog -->
+<Sheet.Root open={confirmOpen} onOpenChange={(v) => { if (!v) confirmOpen = false; }}>
+  <div class="flex justify-center pt-[14px] pb-[10px]">
+    <div class="w-9 h-1 rounded-[2px] bg-border"></div>
+  </div>
+  <Sheet.Header>
+    <Sheet.Title>Delete {selectedIds.size} {selectedIds.size === 1 ? 'entry' : 'entries'}?</Sheet.Title>
+  </Sheet.Header>
+  <div class="px-5 pb-2 pt-1">
+    <p class="font-sans text-[14px] text-muted-foreground">This action cannot be undone. The selected {selectedIds.size === 1 ? 'entry' : 'entries'} will be permanently removed.</p>
+  </div>
+  <div class="px-5 pb-6 flex flex-col gap-2 mt-2">
+    <button
+      class="w-full py-3 rounded-[var(--radius-md)] border-0 bg-destructive text-white font-sans text-[15px] font-semibold cursor-pointer"
+      onclick={confirmDelete}
+    >Delete {selectedIds.size === 1 ? 'entry' : `${selectedIds.size} entries`}</button>
+    <button
+      class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-foreground font-sans text-[15px] font-medium cursor-pointer"
+      onclick={() => (confirmOpen = false)}
+    >Cancel</button>
+  </div>
+</Sheet.Root>
 
 <style>
   .add-entry-card {
