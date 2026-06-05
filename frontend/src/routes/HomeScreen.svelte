@@ -145,14 +145,13 @@
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
             style="background: {c.pastel}; border: 1px solid color-mix(in srgb, {c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
-              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.dot};"></span>
-              <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
+              <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-foreground">{c.label}</span>
             </div>
             <div
-              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium"
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right"
               class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
               class:opacity-40={store.masterLoading}
-              style="color: {budget < 0 ? 'var(--destructive)' : 'var(--foreground)'};"
+              style="color: {c.color};"
             >
               {peso(budget, store.config.currency)}
             </div>
