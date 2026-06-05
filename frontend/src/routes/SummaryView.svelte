@@ -171,7 +171,7 @@
     {#snippet children()}By Category{/snippet}
   </SectionHeader>
   <div class="cat-list bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden md:grid md:grid-cols-2">
-    {#each categoryData.sort((a, b) => b.spent - a.spent) as d, i}
+    {#each categoryData as d, i}
       <div
         class="cat-row py-[14px] px-4 md:border-b md:border-border"
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
