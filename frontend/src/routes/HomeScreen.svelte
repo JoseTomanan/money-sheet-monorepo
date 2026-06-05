@@ -145,7 +145,7 @@
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
-            style="background: {c.pastel}; border-left: 3px solid {c.dot}; box-shadow: var(--shadow-card);">
+            style="background: {c.pastel}; border: 1px solid {c.dot}; box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
