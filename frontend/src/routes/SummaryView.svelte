@@ -90,14 +90,14 @@
   </div>
 {:else}
   <!-- Page header -->
-  <div class="page-header px-5 pt-5 pb-1" style="animation: rise-in 400ms ease-out both;">
+  <div class="page-header px-5 pt-5 pb-1">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
   </div>
 
   <!-- Incoming / Outgoing card -->
   <div class="io-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
-    style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset); animation: rise-in 400ms ease-out 80ms both;">
+    style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
       <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />

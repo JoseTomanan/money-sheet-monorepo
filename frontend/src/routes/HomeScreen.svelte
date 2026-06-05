@@ -79,14 +79,14 @@
   </div>
 {:else}
   <!-- Month header -->
-  <div class="page-header px-5 pt-5 pb-1" style="animation: rise-in 400ms ease-out both;">
+  <div class="page-header px-5 pt-5 pb-1">
     <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
     <div class="page-title font-display text-[36px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">{greeting}</div>
   </div>
 
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <!-- Left: hero + latest -->
-    <div class="home-left" style="animation: rise-in 400ms ease-out 80ms both;">
+    <div class="home-left">
       <!-- On Hand hero card -->
       <div class="hero-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
         style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
@@ -129,7 +129,7 @@
     </div>
 
     <!-- Right: category chips -->
-    <div class="home-right md:border-l md:border-border md:min-h-full" style="animation: rise-in 400ms ease-out 140ms both;">
+    <div class="home-right md:border-l md:border-border md:min-h-full">
       <SectionHeader>
         {#snippet children()}By Category{/snippet}
         {#snippet right()}
