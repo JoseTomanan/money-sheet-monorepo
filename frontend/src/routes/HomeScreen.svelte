@@ -90,8 +90,6 @@
       <!-- On Hand hero card -->
       <div class="hero-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
         style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
-        <!-- oversized currency watermark — decorative, conveys financial context -->
-        <span class="absolute right-3 bottom-1 font-mono font-bold text-[72px] leading-none select-none pointer-events-none" style="color: var(--accent); opacity: 0.06;" aria-hidden="true">{store.config.currency || '₱'}</span>
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
