@@ -3,7 +3,7 @@
      Incoming: Category row only; tapping a Category calls onselect immediately. -->
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { resolveCategoryStyle } from '../lib/theme';
+  import { resolveCategoryStyle, CATEGORY_ORDER } from '../lib/theme';
   import { getMainCategory } from '../lib/domain';
   import type { Direction, CategoryMap } from '../lib/types';
 
@@ -32,7 +32,10 @@
     })
   );
 
-  const sortedCategories = $derived(Object.keys(categories).sort());
+  const sortedCategories = $derived([
+    ...CATEGORY_ORDER.filter(k => k in categories),
+    ...Object.keys(categories).filter(k => !CATEGORY_ORDER.includes(k as typeof CATEGORY_ORDER[number])),
+  ]);
   const subcategories = $derived(
     activeCategory ? (categories[activeCategory] ?? []) : []
   );
