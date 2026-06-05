@@ -92,7 +92,7 @@
         style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
-          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
+          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
           class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
           class:opacity-40={store.masterLoading}
         >

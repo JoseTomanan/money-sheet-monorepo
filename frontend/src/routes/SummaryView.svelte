@@ -182,7 +182,7 @@
           <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
           </span>
-          <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
+          <div class="shrink-0 text-right min-w-[72px]"><Money value={d.budget} size={14} weight={500} dim={store.masterLoading} /></div>
         </div>
         <!-- animated bar -->
         <div class="cat-bar-track mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {d.c.pastel};">
