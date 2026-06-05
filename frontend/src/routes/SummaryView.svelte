@@ -62,18 +62,12 @@
   </div>
   <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
     <div>
-      <div class="h-[8px] w-[50px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-      <div class="h-[26px] w-[130px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
+      <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-[15px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
     </div>
-    <div class="text-right flex flex-col gap-[6px]">
-      <div>
-        <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-        <div class="h-[15px] w-[70px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-1"></div>
-      </div>
-      <div>
-        <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-        <div class="h-[15px] w-[70px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-1"></div>
-      </div>
+    <div class="text-right">
+      <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] ml-auto"></div>
+      <div class="h-[15px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
     </div>
   </div>
   <div class="flex gap-2 px-4 pt-[14px] pb-2">
@@ -101,30 +95,16 @@
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
   </div>
 
-  <!-- On Hand card -->
-  <div class="onhand-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
+  <!-- Incoming / Outgoing card -->
+  <div class="io-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
     style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset); animation: rise-in 400ms ease-out 80ms both;">
-    <!-- currency watermark -->
-    <span class="absolute right-3 bottom-1 font-mono font-bold text-[72px] leading-none select-none pointer-events-none" style="color: var(--accent); opacity: 0.06;" aria-hidden="true">{store.config.currency || '₱'}</span>
-    <div class="onhand-left">
-      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">On Hand</div>
-      <div
-        class="onhand-amount font-mono tabular-nums mt-1 text-[26px] font-medium text-foreground tracking-[-0.6px]"
-        class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
-        class:opacity-40={store.masterLoading}
-      >
-        {peso(store.master.onHand, store.config.currency)}
-      </div>
+    <div class="io-incoming">
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
+      <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />
     </div>
-    <div class="onhand-right text-right mt-1 flex flex-col gap-[6px]">
-      <div>
-        <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
-        <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />
-      </div>
-      <div>
-        <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Outgoing ↓</div>
-        <Money value={monthOutgoing} size={15} weight={500} negColor={false} dim={store.masterLoading} />
-      </div>
+    <div class="io-outgoing text-right">
+      <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Outgoing ↓</div>
+      <Money value={monthOutgoing} size={15} weight={500} negColor={false} dim={store.masterLoading} />
     </div>
   </div>
 
