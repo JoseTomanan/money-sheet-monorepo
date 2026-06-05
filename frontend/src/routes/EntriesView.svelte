@@ -390,7 +390,7 @@
   }
   .add-entry-card.standalone {
     border-radius: var(--radius-md);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), 0 1px 2px rgba(13, 148, 136, 0.08), 0 4px 12px rgba(13, 148, 136, 0.16);
+    box-shadow: 0 1px 2px rgba(20, 18, 14, 0.06), 0 4px 12px rgba(20, 18, 14, 0.08);
   }
 
   .segmented button:hover:not(.text-accent) { background: var(--muted); }
