@@ -22,4 +22,3 @@ test-results/
 
 # Ad-hoc verification screenshots
 *.png
-!.github/screenshots/*.png
