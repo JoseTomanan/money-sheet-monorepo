@@ -10,61 +10,67 @@ import { buildEntry, getMainCategory } from "./domain";
 
 export const isMockMode = import.meta.env.VITE_MOCK === "true";
 
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 let entries: Entry[] = [
-  // 2026-05-06
-  { id: 1,  date: "2026-05-06", tag: "Groceries",   mainCategory: "FOOD",      description: "weekly grocery run",        direction: "O", amount: 720 },
-  { id: 2,  date: "2026-05-06", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "jeepney fare to uni",       direction: "O", amount: 40 },
-  // 2026-05-07
-  { id: 3,  date: "2026-05-07", tag: "Dining",       mainCategory: "FOOD",      description: "lunch with friends",        direction: "O", amount: 185 },
-  { id: 4,  date: "2026-05-07", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "movie ticket",              direction: "O", amount: 300 },
-  // 2026-05-08
-  { id: 5,  date: "2026-05-08", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "grab to office",            direction: "O", amount: 130 },
-  { id: 6,  date: "2026-05-08", tag: "Dining",       mainCategory: "FOOD",      description: "merienda at 7/11",          direction: "O", amount: 75 },
-  { id: 7,  date: "2026-05-08", tag: "Pharmacy",     mainCategory: "HEALTH",    description: "vitamins",                  direction: "O", amount: 250 },
-  // 2026-05-09
-  { id: 8,  date: "2026-05-09", tag: "Fuel",         mainCategory: "TRANSIT",   description: "gas fill-up",              direction: "O", amount: 800 },
-  { id: 9,  date: "2026-05-09", tag: "Dining",       mainCategory: "FOOD",      description: "dinner at home base",       direction: "O", amount: 220 },
-  // 2026-05-10
-  { id: 10, date: "2026-05-10", tag: "Groceries",    mainCategory: "FOOD",      description: "fresh produce restock",     direction: "O", amount: 430 },
-  { id: 11, date: "2026-05-10", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "netflix subscription",      direction: "O", amount: 199 },
-  // 2026-05-11 — weekly allowance
-  { id: 12, date: "2026-05-11", tag: "FOOD",         mainCategory: "FOOD",      description: "weekly allowance",          direction: "I", amount: 1500 },
-  { id: 13, date: "2026-05-11", tag: "TRANSIT",      mainCategory: "TRANSIT",   description: "weekly allowance",          direction: "I", amount: 500 },
-  { id: 14, date: "2026-05-11", tag: "Dining",       mainCategory: "FOOD",      description: "sunday brunch",             direction: "O", amount: 340 },
-  // 2026-05-12
-  { id: 15, date: "2026-05-12", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "bus fare back home",         direction: "O", amount: 60 },
-  { id: 16, date: "2026-05-12", tag: "Utilities",    mainCategory: "HOUSING",   description: "electric bill share",       direction: "O", amount: 650 },
-  // 2026-05-13
-  { id: 17, date: "2026-05-13", tag: "Dining",       mainCategory: "FOOD",      description: "team lunch",                direction: "O", amount: 270 },
-  { id: 18, date: "2026-05-13", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "grab to meetup",             direction: "O", amount: 95 },
-  // 2026-05-14
-  { id: 19, date: "2026-05-14", tag: "Groceries",    mainCategory: "FOOD",      description: "midweek snack restock",     direction: "O", amount: 290 },
-  { id: 20, date: "2026-05-14", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "coffee run with coworker",  direction: "O", amount: 160 },
-  // 2026-05-15
-  { id: 21, date: "2026-05-15", tag: "Consultation Fee", mainCategory: "HEALTH", description: "dental cleaning",           direction: "O", amount: 900 },
-  { id: 22, date: "2026-05-15", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "taxi back from clinic",      direction: "O", amount: 180 },
-  // 2026-05-16
-  { id: 23, date: "2026-05-16", tag: "Dining",       mainCategory: "FOOD",      description: "friday pizza",              direction: "O", amount: 410 },
-  { id: 24, date: "2026-05-16", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "board game night snacks",   direction: "O", amount: 220 },
-  // 2026-05-17 — internship payday
-  { id: 25, date: "2026-05-17", tag: "HOUSING",      mainCategory: "HOUSING",   description: "internship payday!",        direction: "I", amount: 4000 },
-  { id: 26, date: "2026-05-17", tag: "FOOD",         mainCategory: "FOOD",      description: "internship payday!",        direction: "I", amount: 8500 },
-  { id: 27, date: "2026-05-17", tag: "TRANSIT",      mainCategory: "TRANSIT",   description: "internship payday!",        direction: "I", amount: 1500 },
-  { id: 28, date: "2026-05-17", tag: "HEALTH",       mainCategory: "HEALTH",    description: "internship payday!",        direction: "I", amount: 2000 },
-  { id: 29, date: "2026-05-17", tag: "FINANCE",      mainCategory: "FINANCE",   description: "internship payday!",        direction: "I", amount: 1000 },
-  { id: 30, date: "2026-05-17", tag: "LIFESTYLE",    mainCategory: "LIFESTYLE", description: "internship payday!",        direction: "I", amount: 2500 },
-  // 2026-05-18
-  { id: 31, date: "2026-05-18", tag: "Groceries",    mainCategory: "FOOD",      description: "weekend grocery haul",      direction: "O", amount: 850 },
-  { id: 32, date: "2026-05-18", tag: "Savings",      mainCategory: "FINANCE",   description: "monthly savings transfer",  direction: "O", amount: 500 },
-  // 2026-05-19
-  { id: 33, date: "2026-05-19", tag: "Dining",       mainCategory: "FOOD",      description: "breakfast at nonos",        direction: "O", amount: 250 },
-  { id: 34, date: "2026-05-19", tag: "Leisure",      mainCategory: "LIFESTYLE", description: "coffee from lunar",         direction: "O", amount: 150 },
-  { id: 35, date: "2026-05-19", tag: "Clothing",     mainCategory: "LIFESTYLE", description: "new clothes from mango",    direction: "O", amount: 1998 },
-  { id: 36, date: "2026-05-19", tag: "Uniform",      mainCategory: "MISC",      description: "polo shirt from company",   direction: "O", amount: 1500 },
-  { id: 37, date: "2026-05-19", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "grab to home",               direction: "O", amount: 350 },
-  // 2026-05-20
-  { id: 38, date: "2026-05-20", tag: "Dining",       mainCategory: "FOOD",      description: "monday breakfast",          direction: "O", amount: 120 },
-  { id: 39, date: "2026-05-20", tag: "Commute Fare", mainCategory: "TRANSIT",  description: "bus to office",              direction: "O", amount: 55 },
+  // 3 weeks ago (days 20–15)
+  { id: 1,  date: daysAgo(20), tag: "Groceries",        mainCategory: "FOOD",      description: "57 cans of anchovies (why)",         direction: "O", amount: 720 },
+  { id: 2,  date: daysAgo(20), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "segway rental, fell immediately",    direction: "O", amount: 40 },
+  { id: 3,  date: daysAgo(19), tag: "Dining",           mainCategory: "FOOD",      description: "ate an entire wheel of cheese",      direction: "O", amount: 185 },
+  { id: 4,  date: daysAgo(19), tag: "Leisure",          mainCategory: "LIFESTYLE", description: "paid to watch paint dry (literally)", direction: "O", amount: 300 },
+  { id: 5,  date: daysAgo(18), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "unicycle to office",                 direction: "O", amount: 130 },
+  { id: 6,  date: daysAgo(18), tag: "Dining",           mainCategory: "FOOD",      description: "soup with exactly 3 noodles",        direction: "O", amount: 75 },
+  { id: 7,  date: daysAgo(18), tag: "Pharmacy",         mainCategory: "HEALTH",    description: "vitamins shaped like dinosaurs",     direction: "O", amount: 250 },
+  { id: 8,  date: daysAgo(17), tag: "Fuel",             mainCategory: "TRANSIT",   description: "refueled the horse",                 direction: "O", amount: 800 },
+  { id: 9,  date: daysAgo(17), tag: "Dining",           mainCategory: "FOOD",      description: "dinner: just bread, 9 loaves",       direction: "O", amount: 220 },
+  { id: 10, date: daysAgo(16), tag: "Groceries",        mainCategory: "FOOD",      description: "bulk purchase of candy corn",        direction: "O", amount: 430 },
+  { id: 11, date: daysAgo(16), tag: "Leisure",          mainCategory: "LIFESTYLE", description: "netflix for my goldfish",             direction: "O", amount: 199 },
+  // weekly allowance — 15 days ago
+  { id: 12, date: daysAgo(15), tag: "FOOD",             mainCategory: "FOOD",      description: "allowance from future self",         direction: "I", amount: 1500 },
+  { id: 13, date: daysAgo(15), tag: "TRANSIT",          mainCategory: "TRANSIT",   description: "allowance from future self",         direction: "I", amount: 500 },
+  { id: 14, date: daysAgo(15), tag: "Dining",           mainCategory: "FOOD",      description: "brunch: 4 pancakes, 0 regrets",      direction: "O", amount: 340 },
+  // 2 weeks ago (days 14–8)
+  { id: 15, date: daysAgo(14), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "bus fare (sat on a stranger's lap)", direction: "O", amount: 60 },
+  { id: 16, date: daysAgo(14), tag: "Utilities",        mainCategory: "HOUSING",   description: "electric bill for haunted house",    direction: "O", amount: 650 },
+  { id: 17, date: daysAgo(13), tag: "Dining",           mainCategory: "FOOD",      description: "team lunch (team was imaginary)",    direction: "O", amount: 270 },
+  { id: 18, date: daysAgo(13), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "grab to meetup that was cancelled",  direction: "O", amount: 95 },
+  { id: 19, date: daysAgo(12), tag: "Groceries",        mainCategory: "FOOD",      description: "16 jars of pickles, no reason",      direction: "O", amount: 290 },
+  { id: 20, date: daysAgo(12), tag: "Leisure",          mainCategory: "LIFESTYLE", description: "coffee run, got lost for 2 hours",   direction: "O", amount: 160 },
+  { id: 21, date: daysAgo(11), tag: "Consultation Fee", mainCategory: "HEALTH",    description: "dentist said teeth are 'concerning'", direction: "O", amount: 900 },
+  { id: 22, date: daysAgo(11), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "taxi home, driver was a philosopher", direction: "O", amount: 180 },
+  { id: 23, date: daysAgo(10), tag: "Dining",           mainCategory: "FOOD",      description: "pizza for one, cried a little",      direction: "O", amount: 410 },
+  { id: 24, date: daysAgo(10), tag: "Leisure",          mainCategory: "LIFESTYLE", description: "board game night, no one won",       direction: "O", amount: 220 },
+  // payday from a mysterious benefactor — 9 days ago
+  { id: 25, date: daysAgo(9),  tag: "HOUSING",          mainCategory: "HOUSING",   description: "payment from mysterious benefactor", direction: "I", amount: 4000 },
+  { id: 26, date: daysAgo(9),  tag: "FOOD",             mainCategory: "FOOD",      description: "payment from mysterious benefactor", direction: "I", amount: 8500 },
+  { id: 27, date: daysAgo(9),  tag: "TRANSIT",          mainCategory: "TRANSIT",   description: "payment from mysterious benefactor", direction: "I", amount: 1500 },
+  { id: 28, date: daysAgo(9),  tag: "HEALTH",           mainCategory: "HEALTH",    description: "payment from mysterious benefactor", direction: "I", amount: 2000 },
+  { id: 29, date: daysAgo(9),  tag: "FINANCE",          mainCategory: "FINANCE",   description: "payment from mysterious benefactor", direction: "I", amount: 1000 },
+  { id: 30, date: daysAgo(9),  tag: "LIFESTYLE",        mainCategory: "LIFESTYLE", description: "payment from mysterious benefactor", direction: "I", amount: 2500 },
+  { id: 31, date: daysAgo(8),  tag: "Groceries",        mainCategory: "FOOD",      description: "groceries: just limes, all of them", direction: "O", amount: 850 },
+  { id: 32, date: daysAgo(8),  tag: "Savings",          mainCategory: "FINANCE",   description: "savings (accidentally spent it)",    direction: "O", amount: 500 },
+  // past week (days 7–0)
+  { id: 33, date: daysAgo(7),  tag: "Dining",           mainCategory: "FOOD",      description: "breakfast: cereal with orange juice", direction: "O", amount: 250 },
+  { id: 34, date: daysAgo(7),  tag: "Leisure",          mainCategory: "LIFESTYLE", description: "bought 3 plants, all already dead",  direction: "O", amount: 150 },
+  { id: 35, date: daysAgo(7),  tag: "Clothing",         mainCategory: "LIFESTYLE", description: "shirt that says FAKE DATA on it",    direction: "O", amount: 1998 },
+  { id: 36, date: daysAgo(7),  tag: "Uniform",          mainCategory: "MISC",      description: "wizard costume for the office",      direction: "O", amount: 1500 },
+  { id: 37, date: daysAgo(7),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "grab home, arrived at wrong home",   direction: "O", amount: 350 },
+  { id: 38, date: daysAgo(5),  tag: "Groceries",        mainCategory: "FOOD",      description: "emergency crouton restock",          direction: "O", amount: 380 },
+  { id: 39, date: daysAgo(5),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "bus to office (test data)",          direction: "O", amount: 55 },
+  { id: 40, date: daysAgo(4),  tag: "Dining",           mainCategory: "FOOD",      description: "lunch: mystery meat, no questions",  direction: "O", amount: 210 },
+  { id: 41, date: daysAgo(4),  tag: "Pharmacy",         mainCategory: "HEALTH",    description: "ointment for unspecified condition",  direction: "O", amount: 145 },
+  { id: 42, date: daysAgo(3),  tag: "Fuel",             mainCategory: "TRANSIT",   description: "refueled the horse again",           direction: "O", amount: 500 },
+  { id: 43, date: daysAgo(3),  tag: "Leisure",          mainCategory: "LIFESTYLE", description: "paid to not go to a party",          direction: "O", amount: 169 },
+  { id: 44, date: daysAgo(2),  tag: "Dining",           mainCategory: "FOOD",      description: "dinner: cereal again (different bowl)", direction: "O", amount: 320 },
+  { id: 45, date: daysAgo(2),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "grabbed home, correct home this time", direction: "O", amount: 85 },
+  { id: 46, date: daysAgo(1),  tag: "Groceries",        mainCategory: "FOOD",      description: "full cart, forgot what I needed",    direction: "O", amount: 640 },
+  { id: 47, date: daysAgo(1),  tag: "Utilities",        mainCategory: "HOUSING",   description: "internet bill (for the haunting)",   direction: "O", amount: 999 },
+  { id: 48, date: daysAgo(0),  tag: "Dining",           mainCategory: "FOOD",      description: "THIS IS MOCK DATA — bon appétit",    direction: "O", amount: 120 },
+  { id: 49, date: daysAgo(0),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "THIS IS MOCK DATA — safe travels",   direction: "O", amount: 55 },
 ];
 
 export function mockGetEntries(): Promise<Entry[]> {

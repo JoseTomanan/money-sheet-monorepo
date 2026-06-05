@@ -11,7 +11,7 @@
   import * as Sheet from '$lib/components/ui/sheet';
   import HomeScreen from './routes/HomeScreen.svelte';
   import EntriesView from './routes/EntriesView.svelte';
-  import BudgetsView from './routes/BudgetsView.svelte';
+  import SummaryView from './routes/SummaryView.svelte';
 
   let tab = $state<TabId>('home');
   let scrollArea = $state<HTMLElement | null>(null);
@@ -60,7 +60,7 @@
 {#if connection.current == null}
   <SettingsGate onsaved={() => store.refreshAll()} />
 {:else}
-  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-background">
+  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent">
     {#if store.syncing}
       <span
         class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
@@ -98,7 +98,7 @@
       {:else if tab === 'entries'}
         <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} bind:selectMode={entriesSelectMode} />
       {:else}
-        <BudgetsView onbulkdelete={() => { entriesSelectMode = true; tab = 'entries'; }} />
+        <SummaryView onbulkdelete={() => { entriesSelectMode = true; tab = 'entries'; }} />
       {/if}
     </div>
 
