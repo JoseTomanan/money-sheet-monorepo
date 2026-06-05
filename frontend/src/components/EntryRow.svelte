@@ -29,9 +29,7 @@
 
 {#if entry.direction === 'O'}
   <span
-    class="entry-stripe self-stretch w-[3px] shrink-0"
-    class:rounded-t-full={splitPos.isFirst}
-    class:rounded-b-full={splitPos.isLast}
+    class="entry-stripe self-stretch w-[4.5px] shrink-0 opacity-80"
     class:-mt-3={splitPos.inGroup && !splitPos.isFirst}
     class:-mb-3={splitPos.inGroup && !splitPos.isLast}
     style="background: {catStyle.dot};"
