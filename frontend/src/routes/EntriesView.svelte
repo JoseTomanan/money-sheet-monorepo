@@ -2,6 +2,7 @@
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { countByCategory } from '../lib/aggregations';
   import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import EntryRow from '../components/EntryRow.svelte';
@@ -126,12 +127,12 @@
 
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
 {#if selectMode}
-  <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.06)] max-w-[var(--app-max-width)] mx-auto">
+  <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
     <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
       {selectedIds.size} selected
     </span>
     <button
-      class="delete-sel-btn flex items-center gap-[6px] py-[8px] px-[16px] rounded-[var(--radius-md)] border border-[rgba(193,74,50,0.3)] bg-[rgba(193,74,50,0.08)] text-destructive font-sans text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+      class="delete-sel-btn flex items-center gap-[6px] py-[8px] px-[16px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       disabled={selectedIds.size === 0}
       onclick={() => (confirmOpen = true)}
     >
@@ -248,7 +249,7 @@
             <button
               class="cat-chip-btn shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:justify-start"
               class:active={filterCat === key}
-              style={filterCat === key ? `color: ${c.color};` : ''}
+              style={filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
               onclick={() => (filterCat = filterCat === key ? '' : key)}
             >
               <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {c.dot};"></span>
@@ -303,7 +304,7 @@
                   class:border-border={j > 0}
                   class:border-l-2={local}
                   class:border-local={local}
-                  class:bg-[rgba(193,74,50,0.04)]={selectMode && checked}
+                  class:bg-[var(--destructive-tint-select)]={selectMode && checked}
                   onclick={() => {
                     if (selectMode) {
                       if (selectable) toggle(entry.id);
@@ -390,7 +391,7 @@
   }
   .add-entry-card.standalone {
     border-radius: var(--radius-md);
-    box-shadow: 0 1px 2px rgba(20, 18, 14, 0.06), 0 4px 12px rgba(20, 18, 14, 0.08);
+    box-shadow: var(--shadow-card);
   }
 
   .segmented button:hover:not(.text-accent) { background: var(--muted); }

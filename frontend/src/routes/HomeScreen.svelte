@@ -1,6 +1,7 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { peso, fmtDate, dayOfWeek } from '../lib/format';
   import { dateRunPositions, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import SectionHeader from '../components/SectionHeader.svelte';
@@ -49,7 +50,7 @@
   </div>
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <div class="home-left">
-      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]" style="box-shadow: var(--shadow-hero), var(--ring-inset);">
         <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
       </div>
@@ -88,8 +89,8 @@
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
-        style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
+        style="box-shadow: var(--shadow-hero), var(--ring-inset);">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1"
@@ -143,9 +144,9 @@
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
-            style="background: {c.pastel}; border: 1px solid color-mix(in srgb, {c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
+            style="background: {darkMode.current ? c.soft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
-              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {c.dot};"></span>
+              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
             <div

@@ -83,7 +83,7 @@
     <!-- Scrollable content area -->
     <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip" bind:this={scrollArea} onscroll={handleScroll}>
       {#if store.error}
-        <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[rgba(193,74,50,0.06)] border border-[rgba(193,74,50,0.2)]">
+        <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[var(--destructive-tint-bg)] border border-[var(--destructive-tint-border)]">
           <p class="error-title font-sans text-[15px] font-semibold text-destructive mb-1">Could not load data</p>
           <p class="error-body font-sans text-[13px] text-muted-foreground mb-[14px]">{store.error}</p>
           <div class="flex gap-2">
@@ -105,7 +105,7 @@
     {#if !store.loading && !store.error}
       {#if scrollTop > 200}
         <button
-          class="scroll-top-btn fixed bottom-20 w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-[background,transform] duration-150 hover:bg-muted hover:-translate-y-px right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
+          class="scroll-top-btn fixed bottom-20 w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-[background,transform] duration-150 hover:bg-muted hover:-translate-y-px right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
           onclick={scrollToTop}
           aria-label="Scroll to top"
         >

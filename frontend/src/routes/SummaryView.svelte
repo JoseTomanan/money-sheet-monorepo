@@ -6,6 +6,7 @@
   import RedistributeSheet from '../components/RedistributeSheet.svelte';
   import type { AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { peso } from '../lib/format';
   import { totalOutgoing, outgoingByCategory, outgoingByMonth, incomingByMonth } from '../lib/aggregations';
   import { currentYearMonth } from '../lib/format';
@@ -96,8 +97,8 @@
   </div>
 
   <!-- Incoming / Outgoing card -->
-  <div class="io-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
-    style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+  <div class="io-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
+    style="box-shadow: var(--shadow-hero), var(--ring-inset);">
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
       <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />
@@ -150,7 +151,7 @@
           title="{d.c.label}: {peso(d.spent, store.config.currency)}"
           style="
             {d.spent > 0 ? `flex: ${d.spent};` : ''}
-            background: {d.c.color};
+            background: {darkMode.current ? d.c.darkColor : d.c.color};
           "
         ></div>
       {/each}
@@ -159,7 +160,7 @@
     <div class="dist-legend flex flex-wrap gap-x-[14px] gap-y-2">
       {#each categoryData.filter(d => d.spent > 0) as d}
         <span class="legend-item flex items-center gap-[5px] font-sans text-[11px] text-muted-foreground font-medium">
-          <span class="legend-dot size-[6px] rounded-full shrink-0" style="background: {d.c.dot};"></span>
+          <span class="legend-dot size-[6px] rounded-full shrink-0" style="background: {darkMode.current ? d.c.darkDot : d.c.dot};"></span>
           {d.c.label} {d.pct.toFixed(1)}%
         </span>
       {/each}
@@ -177,7 +178,7 @@
         style="border-bottom: {i < categoryData.length - 1 ? '1px solid var(--border)' : 'none'};"
       >
         <div class="cat-row-main flex items-center gap-[10px]">
-          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.dot};"></span>
+          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {darkMode.current ? d.c.darkDot : d.c.dot};"></span>
           <span class="cat-label flex-1 font-sans text-sm font-medium text-foreground">{d.c.label}</span>
           <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
@@ -185,10 +186,10 @@
           <Money value={d.budget} size={14} weight={500} dim={store.masterLoading} />
         </div>
         <!-- animated bar -->
-        <div class="cat-bar-track mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {d.c.pastel};">
+        <div class="cat-bar-track mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {darkMode.current ? d.c.soft : d.c.pastel};">
           <div
             class="cat-bar-fill h-full rounded-[2px] transition-[width] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"
-            style="width: {$barWidths[d.key] ?? 0}%; background: {d.c.color}cc;"
+            style="width: {$barWidths[d.key] ?? 0}%; background: {darkMode.current ? d.c.darkColor : d.c.color}cc;"
           ></div>
         </div>
       </div>

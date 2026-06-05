@@ -62,7 +62,7 @@
   <div class="sheet-root fixed inset-0 z-[200]">
     <!-- backdrop -->
     <div
-      class="backdrop absolute inset-0 bg-[rgba(26,24,20,0.4)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+      class="backdrop absolute inset-0 bg-[var(--overlay-bg)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
       class:opacity-100={animOpen}
       role="button"
       tabindex="-1"

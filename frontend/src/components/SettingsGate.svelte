@@ -12,7 +12,7 @@
   let { onsaved }: Props = $props();
 </script>
 
-<div class="gate-backdrop fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[500]"></div>
+<div class="gate-backdrop fixed inset-0 bg-[var(--overlay-bg)] backdrop-blur-[2px] z-[500]"></div>
 <div
   class="gate-dialog fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-[400px] rounded-[var(--radius-xl)] z-[501] overflow-hidden"
   style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);"

@@ -9,6 +9,7 @@
   import type { Entry } from '../lib/types';
   import type { SplitPosition } from '../lib/groupEntries';
   import { resolveCategoryStyle } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { fmtDateShort } from '../lib/format';
   import EntryDescBand from './EntryDescBand.svelte';
   import Money from './Money.svelte';
@@ -23,6 +24,8 @@
 
   const dim = $derived(entry.amount === 0);
   const catStyle = $derived(resolveCategoryStyle(entry.mainCategory));
+  const resolvedColor = $derived(darkMode.current ? catStyle.darkColor : catStyle.color);
+  const resolvedDot   = $derived(darkMode.current ? catStyle.darkDot   : catStyle.dot);
 </script>
 
 <span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
@@ -32,7 +35,7 @@
     class="entry-stripe self-stretch w-[4.5px] shrink-0 opacity-80"
     class:-mt-3={splitPos.inGroup && !splitPos.isFirst}
     class:-mb-3={splitPos.inGroup && !splitPos.isLast}
-    style="background: {catStyle.dot};"
+    style="background: {resolvedDot};"
     aria-hidden="true"
   ></span>
 {/if}
@@ -40,7 +43,7 @@
 <EntryDescBand
   description={entry.description}
   pastel={catStyle.pastel}
-  color={catStyle.color}
+  color={resolvedColor}
   strikethrough={dim}
   direction={entry.direction}
 />
