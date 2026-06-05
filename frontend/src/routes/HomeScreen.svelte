@@ -88,8 +88,8 @@
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
-        style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+      <div class="hero-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
+        style="box-shadow: var(--shadow-hero), var(--ring-inset);">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
