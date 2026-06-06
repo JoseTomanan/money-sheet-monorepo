@@ -34,6 +34,18 @@
   }
 
   let selectedWeek = $state(currentWeekKey());
+  let hasAutoAdvanced = $state(false);
+
+  $effect(() => {
+    if (hasAutoAdvanced || store.loading || store.entries.length === 0) return;
+    const cur = currentWeekKey();
+    const hasCurrentWeekEntries = store.entries.some(e => weekStartOf(e.date) === cur);
+    if (!hasCurrentWeekEntries) {
+      const weeks = groupByWeek(store.entries);
+      if (weeks.length > 0) selectedWeek = weeks[weeks.length - 1].key;
+    }
+    hasAutoAdvanced = true;
+  });
 
   const categoryNames = $derived(Object.keys(store.categories).sort());
 

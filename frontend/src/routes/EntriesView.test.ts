@@ -49,6 +49,25 @@ describe("EntriesView week selector", () => {
     expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
   });
 
+  it("defaults to the latest past week when current week has no entries", () => {
+    mockStore.entries = [
+      makeEntry(1, "2026-05-04"), // week of 2026-05-03
+      makeEntry(2, "2026-05-11"), // week of 2026-05-10
+    ];
+    const { container } = render(EntriesView, baseProps());
+    // Should auto-advance to May 10–16 (latest week with entries), not current empty week
+    expect(getWeekTrigger(container)).toHaveTextContent(/may 10/i);
+  });
+
+  it("stays on current week when current week has entries", () => {
+    mockStore.entries = [
+      makeEntry(1, "2026-05-11"), // week of 2026-05-10
+      makeEntry(2, "2026-05-24"), // current week
+    ];
+    const { container } = render(EntriesView, baseProps());
+    expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
+  });
+
   it("opening the popover lists current week and entry week", async () => {
     mockStore.entries = [makeEntry(1, "2026-05-04")]; // week of 2026-05-03
     const { container } = render(EntriesView, baseProps());
