@@ -3,7 +3,7 @@
   import Settings from './Settings.svelte';
   import Wordmark from './Wordmark.svelte';
 
-  const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/TEMPLATE_ID/template/preview';
+  const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/1dW0X378z9MXCqZ9YK2oxCqk3FjX6TUP2h7yLSdjmd6g/template/preview';
 
   interface Props {
     onsaved: () => void;
