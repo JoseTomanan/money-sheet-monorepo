@@ -34,7 +34,7 @@
       </li>
       <li class="flex gap-2">
         <span class="shrink-0 font-semibold text-muted-foreground w-4">2.</span>
-        <span>In your sheet, open the <strong>Autohide</strong> menu → <strong>Run setup</strong> — copy the secret shown.</span>
+        <span>In your sheet, open the <strong>Autohide</strong> menu → <strong>Run setup</strong> — a secret is generated and shown in a dialog; copy it.</span>
       </li>
       <li class="flex gap-2">
         <span class="shrink-0 font-semibold text-muted-foreground w-4">3.</span>
