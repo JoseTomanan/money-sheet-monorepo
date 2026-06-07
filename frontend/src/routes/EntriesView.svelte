@@ -30,7 +30,8 @@
   let filterCat  = $state('');
 
   function currentWeekKey() {
-    return weekStartOf(new Date().toISOString().slice(0, 10));
+    const n = new Date();
+    return weekStartOf(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`);
   }
 
   let selectedWeek = $state(currentWeekKey());
