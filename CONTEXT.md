@@ -49,6 +49,12 @@ The sum of all Category Budgets. Represents total money currently available acro
 ## Connection
 The user-provided configuration required to reach their spreadsheet: a GAS web app URL and an API secret. Stored in the browser's localStorage, scoped to the device. Without a Connection, the app cannot make any API calls. A user configures their Connection once per device via the Settings screen; it can be changed at any time. Structurally: `{ gasUrl: string, apiSecret: string }`.
 
+## Mock Mode
+A runtime demo state in which the app runs entirely on in-memory fixture data (see `mock.ts`) rather than a real spreadsheet. Mock Mode activates automatically for first-time visitors who have no Connection saved — serving as a portfolio showcase. It is suppressed permanently once the user opts out (see Mock Dismissal). All CRUD operations work in Mock Mode but mutations are ephemeral: they live only for the current page session and are discarded on exit or reload.
+
+## Mock Dismissal
+The permanent opt-out from Mock Mode. Recorded as a truthy value under the `ms_mock_dismissed` key in localStorage. Once set, Mock Mode never activates again — even if the Connection is later cleared. Set explicitly when the user clicks "Exit" on the Mock Banner, or implicitly on first boot when a Connection is already present (migration path for existing users).
+
 ## Local Entry
 An Entry that is visible in the app's UI but has not yet been confirmed written to the spreadsheet. Holds a temporary negative integer ID until it syncs and receives a real Entry ID from GAS. Displayed with a visual indicator to distinguish it from confirmed entries. A Local Entry exists because its originating mutation was queued in the Offline Queue rather than successfully sent.
 
