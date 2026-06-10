@@ -80,7 +80,7 @@ describe('RedistributeSheet — submit payload', () => {
     await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
 
     expect(onsubmit).toHaveBeenCalledOnce();
-    const [legs]: [AddEntryPayload[]] = onsubmit.mock.calls[0];
+    const [legs] = onsubmit.mock.calls[0] as [AddEntryPayload[]];
     expect(legs).toHaveLength(2);
 
     const drain  = legs.find(l => l.amount < 0)!;

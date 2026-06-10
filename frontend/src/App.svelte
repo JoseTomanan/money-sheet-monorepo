@@ -63,9 +63,14 @@
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent">
     {#if store.syncing}
       <span
-        class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
+        class="fixed top-[14px] z-50 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)] inline-flex items-center justify-center size-3"
         aria-label="Syncing data"
-      ></span>
+      >
+        <!-- expanding radar ring -->
+        <span class="radar-ring absolute size-full rounded-full bg-accent"></span>
+        <!-- solid dot -->
+        <span class="size-2 rounded-full bg-accent"></span>
+      </span>
     {/if}
 
     <!-- Gear button: fixed top-right -->
