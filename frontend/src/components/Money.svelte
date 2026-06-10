@@ -18,16 +18,8 @@
 
   let { value, size = 17, weight = 500, negColor = true, positive = false, dim = false, animate = false, colorOverride }: Props = $props();
 
-  // Tween the raw numeric value; display is peso(tween) each frame.
-  // Initialise to 0 on first-ever reveal so the 0→value roll plays on cold load;
-  // initialise to current value on subsequent mounts (tab switches) so no re-roll.
-  const tw = tweened(
-    animate && !store.revealed ? 0 : value,
-    { duration: 500, easing: cubicOut }
-  );
+  const tw = tweened(value, { duration: 500, easing: cubicOut });
 
-  // Keep the tween target in sync with the prop — handles both the initial
-  // 0→value roll and later old→new rolls on refresh/mutation.
   $effect(() => {
     if (animate) tw.set(value);
   });
