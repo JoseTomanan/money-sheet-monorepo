@@ -63,14 +63,14 @@ describe("SummaryView skeleton loading", () => {
     expect(queryByText(/loading/i)).not.toBeInTheDocument();
   });
 
-  it("when loading, renders shimmer elements", () => {
+  it("when loading, renders skeleton elements", () => {
     const { container } = render(SummaryView);
-    expect(container.querySelectorAll('[class*="shimmer"]').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
   });
 
-  it("when not loading, renders no shimmer elements", () => {
+  it("when not loading, renders no skeleton elements", () => {
     mockStore.loading = false;
     const { container } = render(SummaryView);
-    expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
+    expect(container.querySelectorAll('.skeleton').length).toBe(0);
   });
 });

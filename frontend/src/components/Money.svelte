@@ -1,5 +1,7 @@
 <!-- Currency display primitive; no shadcn equivalent. -->
 <script lang="ts">
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
   import { peso } from '../lib/format';
   import { store } from '../lib/store.svelte';
 
@@ -10,19 +12,38 @@
     negColor?: boolean;
     positive?: boolean;
     dim?: boolean;
+    animate?: boolean;
+    colorOverride?: string; // skip palette logic, use this color directly
   }
 
-  let { value, size = 17, weight = 500, negColor = true, positive = false, dim = false }: Props = $props();
+  let { value, size = 17, weight = 500, negColor = true, positive = false, dim = false, animate = false, colorOverride }: Props = $props();
+
+  // Tween the raw numeric value; display is peso(tween) each frame.
+  // Initialise to 0 on first-ever reveal so the 0→value roll plays on cold load;
+  // initialise to current value on subsequent mounts (tab switches) so no re-roll.
+  const tw = tweened(
+    animate && !store.revealed ? 0 : value,
+    { duration: 500, easing: cubicOut }
+  );
+
+  // Keep the tween target in sync with the prop — handles both the initial
+  // 0→value roll and later old→new rolls on refresh/mutation.
+  $effect(() => {
+    if (animate) tw.set(value);
+  });
+
+  // For color/weight decisions, use the live tween value so they transition too.
+  const shown = $derived(animate ? $tw : value);
 
   const color = $derived(
-    dim ? 'var(--muted-foreground)'
+    colorOverride ? colorOverride
+    : dim ? 'var(--muted-foreground)'
     : positive ? 'var(--positive)'
-    : negColor && value < 0 ? 'var(--destructive)'
-    : negColor && value > 0 ? 'inherit'
+    : negColor && shown < 0 ? 'var(--destructive)'
     : 'inherit'
   );
 
-  const effectiveWeight = $derived(weight + (positive || (negColor && value < 0) ? 100 : 0));
+  const effectiveWeight = $derived(weight + (positive || (negColor && shown < 0) ? 100 : 0));
 </script>
 
 <span style="
@@ -32,4 +53,4 @@
   font-weight: {effectiveWeight};
   color: {color};
   letter-spacing: -0.2px;
-">{positive ? '+' : ''}{peso(value, store.config.currency)}</span>
+">{positive ? '+' : ''}{peso(shown, store.config.currency)}</span>

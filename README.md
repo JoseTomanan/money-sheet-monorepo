@@ -26,11 +26,11 @@ Google Sheets acts as the database. A Google Apps Script web app is deployed as 
 
 ### 1. Copy the template
 
-Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/TEMPLATE_ID/template/preview) and click **Use Template**. This creates your own copy with all three sheets pre-configured (INCOMING/OUTGOING, MASTER, Categories) and the GAS script already attached.
+Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/1dW0X378z9MXCqZ9YK2oxCqk3FjX6TUP2h7yLSdjmd6g/template/preview) and click **Use Template**. This creates your own copy with all three sheets pre-configured (INCOMING/OUTGOING, MASTER, Categories) and the GAS script already attached.
 
 ### 2. Run setup
 
-In your new sheet, open the **Money Sheet → Run setup** menu item. This:
+In your new sheet, open the **Autohide → Run setup** menu item. This:
 - Generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
 - Creates a **Config** sheet with default settings (currency symbol: `₱`).
 
