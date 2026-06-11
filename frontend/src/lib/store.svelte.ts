@@ -1,4 +1,3 @@
-import { tick } from 'svelte';
 import * as api from './api';
 import { ConnectionError } from './api';
 import { readCache, writeCache } from './cache';
@@ -34,7 +33,6 @@ const localIds = $derived(
 );
 let draining = $state(false);
 let syncing = $state(false);
-let revealed = $state(false); // flips true after the first cold-load reveal
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -143,13 +141,7 @@ async function refreshAll(silent = false): Promise<void> {
       errorIsConnection = err instanceof ConnectionError;
     }
   } finally {
-    if (!silent) {
-      loading = false;
-      // Let the DOM update so Money components mount with revealed=false (their 0→value tween),
-      // then flip revealed so subsequent mounts (tab switches) don't re-roll.
-      await tick();
-      if (!revealed) revealed = true;
-    }
+    if (!silent) loading = false;
   }
 }
 
@@ -358,7 +350,6 @@ export const store = {
   get localIds() { return localIds; },
   get draining() { return draining; },
   get syncing() { return syncing; },
-  get revealed() { return revealed; },
   init,
   refreshAll,
   addEntry,
