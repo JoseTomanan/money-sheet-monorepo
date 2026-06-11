@@ -10,7 +10,6 @@
   import { totalOutgoing, outgoingByCategory, outgoingByMonth, incomingByMonth } from '../lib/aggregations';
   import { currentYearMonth } from '../lib/format';
   import Money from '../components/Money.svelte';
-  import Skeleton from '../components/Skeleton.svelte';
   import SectionHeader from '../components/SectionHeader.svelte';
 
   const now = new Date();
@@ -56,36 +55,36 @@
 
 <div class="summary-view p-0" style="padding-bottom: 72px;">
 {#if store.loading}
-  <!-- Skeleton: staggered light-sweep cascade -->
+  <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
-    <Skeleton class="h-[10px] w-[100px]" delay={0} />
-    <Skeleton class="h-[28px] w-[160px] mt-[6px]" delay={60} />
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
   </div>
   <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
     <div>
-      <Skeleton class="h-[8px] w-[60px]" delay={120} />
-      <Skeleton class="h-[15px] w-[100px] mt-2" delay={180} />
+      <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-[15px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
     </div>
     <div class="text-right">
-      <Skeleton class="h-[8px] w-[60px] ml-auto" delay={120} />
-      <Skeleton class="h-[15px] w-[100px] mt-2" delay={180} />
+      <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] ml-auto"></div>
+      <div class="h-[15px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
     </div>
   </div>
   <div class="flex gap-2 px-4 pt-[14px] pb-2">
-    <Skeleton class="h-[36px] w-[130px]" radius="var(--radius-pill)" delay={240} />
+    <div class="h-[36px] w-[130px] rounded-[var(--radius-pill)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
   <div class="px-5 pt-2 pb-2">
-    <Skeleton class="h-[10px] w-[100px]" delay={300} />
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
   <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden">
-    {#each [0, 1, 2, 3, 4] as row}
+    {#each [0, 1, 2, 3, 4] as _}
       <div class="py-[14px] px-4 border-b border-border last:border-0">
         <div class="flex items-center gap-[10px]">
-          <Skeleton class="size-[10px] shrink-0" radius="50%" delay={360 + row * 60} />
-          <Skeleton class="h-[14px] flex-1" delay={360 + row * 60} />
-          <Skeleton class="h-[14px] w-[56px]" delay={360 + row * 60} />
+          <div class="size-[10px] rounded-full bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+          <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+          <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         </div>
-        <Skeleton class="mt-2 ml-5 h-1" radius="2px" delay={360 + row * 60} />
+        <div class="mt-2 ml-5 h-1 rounded-[2px] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
     {/each}
   </div>
@@ -101,11 +100,11 @@
     style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
-      <Money value={monthIncoming} size={15} weight={500} negColor={true} animate />
+      <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />
     </div>
     <div class="io-outgoing text-right">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Outgoing ↓</div>
-      <Money value={monthOutgoing} size={15} weight={500} negColor={false} animate />
+      <Money value={monthOutgoing} size={15} weight={500} negColor={false} dim={store.masterLoading} />
     </div>
   </div>
 
@@ -183,7 +182,7 @@
           <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
           </span>
-          <div class="shrink-0 text-right min-w-[72px]"><Money value={d.budget} size={14} weight={500} animate /></div>
+          <div class="shrink-0 text-right min-w-[72px]"><Money value={d.budget} size={14} weight={500} dim={store.masterLoading} /></div>
         </div>
         <!-- animated bar -->
         <div class="cat-bar-track mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {d.c.pastel};">

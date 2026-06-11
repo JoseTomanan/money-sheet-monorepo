@@ -1,12 +1,10 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
-  import { fmtDate, dayOfWeek } from '../lib/format';
+  import { peso, fmtDate, dayOfWeek } from '../lib/format';
   import { compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
   import SectionHeader from '../components/SectionHeader.svelte';
   import EntryRow from '../components/EntryRow.svelte';
-  import Skeleton from '../components/Skeleton.svelte';
-  import Money from '../components/Money.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
@@ -43,37 +41,37 @@
 
 <div class="home p-0" style="padding-bottom: 72px;">
 {#if store.loading}
-  <!-- Skeleton: staggered light-sweep cascade -->
+  <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
-    <Skeleton class="h-[10px] w-[100px]" delay={0} />
-    <Skeleton class="h-[36px] w-[200px] mt-[6px]" delay={60} />
+    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[36px] w-[200px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
   </div>
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <div class="home-left">
       <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
-        <Skeleton class="h-[8px] w-[60px]" delay={120} />
-        <Skeleton class="h-[44px] w-[180px] mt-2" delay={180} />
+        <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
       </div>
       <div class="px-5 pt-5 pb-2">
-        <Skeleton class="h-[10px] w-[120px]" delay={240} />
+        <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
       <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
-        {#each [0, 1] as row}
+        {#each [0, 1] as _}
           <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
-            <Skeleton class="h-[10px] w-[40px] shrink-0" delay={300 + row * 60} />
-            <Skeleton class="h-[14px] flex-1" delay={300 + row * 60} />
-            <Skeleton class="h-[14px] w-[56px] shrink-0" delay={300 + row * 60} />
+            <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+            <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
           </div>
         {/each}
       </div>
     </div>
     <div class="home-right md:border-l md:border-border md:min-h-full">
       <div class="px-5 pt-5 pb-2">
-        <Skeleton class="h-[10px] w-[100px]" delay={180} />
+        <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
       <div class="flex gap-2 pl-4 py-[2px]">
-        {#each [0, 1, 2, 3, 4] as chip}
-          <Skeleton class="h-[60px] w-[96px] shrink-0" radius="var(--radius-md)" delay={240 + chip * 60} />
+        {#each [0, 1, 2, 3, 4] as _}
+          <div class="h-[60px] w-[96px] shrink-0 rounded-[var(--radius-md)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         {/each}
       </div>
     </div>
@@ -92,8 +90,12 @@
       <div class="hero-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
         style="box-shadow: var(--shadow-hero), var(--ring-inset);">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
-        <div class="hero-amount mt-1 text-right">
-          <Money value={store.master.onHand} size={44} weight={500} negColor={false} animate />
+        <div
+          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
+          class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+          class:opacity-40={store.masterLoading}
+        >
+          {peso(store.master.onHand, store.config.currency)}
         </div>
       </div>
 
@@ -144,8 +146,13 @@
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-foreground">{c.label}</span>
             </div>
-            <div class="cat-amount mt-1 text-right">
-              <Money value={budget} size={13} weight={500} negColor={false} colorOverride={c.color} animate />
+            <div
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right"
+              class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
+              class:opacity-40={store.masterLoading}
+              style="color: {c.color};"
+            >
+              {peso(budget, store.config.currency)}
             </div>
           </div>
         {/each}
