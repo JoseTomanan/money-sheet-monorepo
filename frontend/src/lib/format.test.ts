@@ -1,5 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDate, peso } from './format';
+import { normalizeDate, peso, shiftYearMonth, daysInYearMonth, monthLabel, monthShort } from './format';
+
+describe('shiftYearMonth', () => {
+  it('shifts forward within a year', () => {
+    expect(shiftYearMonth('2026-05', 1)).toBe('2026-06');
+  });
+
+  it('shifts backward within a year', () => {
+    expect(shiftYearMonth('2026-05', -2)).toBe('2026-03');
+  });
+
+  it('crosses year boundary going back', () => {
+    expect(shiftYearMonth('2026-01', -1)).toBe('2025-12');
+    expect(shiftYearMonth('2026-02', -5)).toBe('2025-09');
+  });
+
+  it('crosses year boundary going forward', () => {
+    expect(shiftYearMonth('2025-12', 1)).toBe('2026-01');
+  });
+
+  it('returns same month for zero delta', () => {
+    expect(shiftYearMonth('2026-05', 0)).toBe('2026-05');
+  });
+});
+
+describe('daysInYearMonth', () => {
+  it('handles 31- and 30-day months', () => {
+    expect(daysInYearMonth('2026-05')).toBe(31);
+    expect(daysInYearMonth('2026-04')).toBe(30);
+  });
+
+  it('handles February and leap years', () => {
+    expect(daysInYearMonth('2026-02')).toBe(28);
+    expect(daysInYearMonth('2028-02')).toBe(29);
+  });
+});
+
+describe('monthLabel / monthShort', () => {
+  it('formats a long month label', () => {
+    expect(monthLabel('2026-06')).toBe('June 2026');
+  });
+
+  it('formats a short month name', () => {
+    expect(monthShort('2026-06')).toBe('Jun');
+  });
+});
 
 describe('normalizeDate', () => {
   it('passes through YYYY-MM-DD unchanged', () => {
