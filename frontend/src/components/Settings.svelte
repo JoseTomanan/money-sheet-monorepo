@@ -26,12 +26,13 @@
   }
 
   async function handleSave() {
-    // Commit the new values so validateConnection() uses them
-    setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
     errorMsg = '';
     saving = true;
     try {
-      await validateConnection();
+      await validateConnection(gasUrl.trim(), apiSecret.trim());
+      // Only commit after validation succeeds — committing first would unmount
+      // SettingsGate before the error can be shown (connection.current becomes non-null).
+      setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
       onsaved();
     } catch (err) {
       errorMsg = err instanceof UnauthorizedError
