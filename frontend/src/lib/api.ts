@@ -13,6 +13,7 @@ import { dedupeEntries } from "./dedupe";
 
 export class ConnectionError extends Error {}
 export class ConnectionMissingError extends ConnectionError {}
+export class UnauthorizedError extends ConnectionError {}
 
 async function gasGet<T>(action: string): Promise<T> {
   const conn = connection.current;
@@ -33,7 +34,7 @@ async function gasGet<T>(action: string): Promise<T> {
   } catch {
     throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
   }
-  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
+  if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
   if (json.error) throw new Error(String(json.error));
   return json as T;
 }
@@ -60,9 +61,22 @@ async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
   } catch {
     throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
   }
-  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
+  if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
   if (json.error) throw new Error(String(json.error));
   return json as T;
+}
+
+export async function validateConnection(): Promise<void> {
+  if (mock.isMockMode) return;
+  try {
+    await gasPost({ action: "validate" });
+  } catch (err) {
+    // Older deployments don't have the "validate" action — reaching "unknown action"
+    // means the secret was already accepted (we passed the auth gate), so treat it as valid.
+    if (err instanceof UnauthorizedError) throw err;
+    if (err instanceof Error && err.message === "unknown action") return;
+    throw err;
+  }
 }
 
 export async function getEntries(): Promise<Entry[]> {
