@@ -53,3 +53,31 @@ export function yearMonth(iso: string): string {
 export function currentYearMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
+
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'] as const;
+
+/** "YYYY-MM" → "June 2026" */
+export function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTHS_LONG[m - 1]} ${y}`;
+}
+
+/** "YYYY-MM" → "Jun" */
+export function monthShort(ym: string): string {
+  return MONTHS_SHORT[Number(ym.slice(5, 7)) - 1];
+}
+
+/** "YYYY-MM" shifted by delta months (delta may be negative) → "YYYY-MM" */
+export function shiftYearMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const t = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(t / 12);
+  const nm = (t - ny * 12) + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
+/** Number of days in a "YYYY-MM" month */
+export function daysInYearMonth(ym: string): number {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
