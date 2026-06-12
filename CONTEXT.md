@@ -72,3 +72,6 @@ A single summary row. Shows ON HAND plus the Budget for each Category. Entirely 
 
 ### Categories sheet
 The Subcategory-to-Category mapping table. Column B = Subcategory name, Column C = parent Category (merged cell spanning all subcategories of that Category). Adding a subcategory here automatically propagates to VLOOKUP formulas in INCOMING/OUTGOING.
+
+### Config sheet
+A 2-column key-value sheet (Column A = key, Column B = value). Holds user-configurable app settings that are spreadsheet-scoped rather than device-scoped. Read by the `getConfig` GAS action and surfaced to the frontend as a flat `Record<string, string>`. Known keys: `currency` (currency symbol, default `₱`), `nickname` (display name, default empty), `week_start` (first day of the week, `"Sunday"` or `"Monday"`, default `"Sunday"`). Constrained-choice keys use Google Sheets dropdown chip validation on the value cell. The frontend falls back to defaults when a key is absent or the sheet doesn't exist (legacy spreadsheets). New spreadsheets get the Config sheet pre-seeded by `ensureConfigSheet` during setup.
