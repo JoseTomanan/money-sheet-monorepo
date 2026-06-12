@@ -1,5 +1,5 @@
 import * as api from './api';
-import { ConnectionError } from './api';
+import { ConnectionError, UnauthorizedError } from './api';
 import { readCache, writeCache } from './cache';
 import { readQueue, writeQueue, enqueue } from './queue';
 import type { QueueItem } from './queue';
@@ -25,6 +25,7 @@ let masterLoading = $state(false);
 let toastMsg = $state<string | null>(null);
 let toastAction = $state<{ label: string; run: () => void } | null>(null);
 let toastIsConnection = $state(false);
+let toastVariant = $state<'default' | 'destructive'>('default');
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
 let queue = $state<QueueItem[]>(readQueue());
@@ -51,12 +52,18 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
   ]);
 }
 
-function showToast(msgOrErr: unknown, action?: { label: string; run: () => void }): void {
+function showToast(
+  msgOrErr: unknown,
+  action?: { label: string; run: () => void },
+  variant: 'default' | 'destructive' = 'default',
+): void {
   toastMsg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
   toastAction = action ?? null;
   toastIsConnection = msgOrErr instanceof ConnectionError;
-  if (!action) {
-    setTimeout(() => { toastMsg = null; toastIsConnection = false; }, 3000);
+  toastVariant = variant;
+  // Destructive (auth) toasts stay until dismissed — they require user action.
+  if (!action && variant !== 'destructive') {
+    setTimeout(() => { toastMsg = null; toastIsConnection = false; toastVariant = 'default'; }, 3000);
   }
 }
 
@@ -104,13 +111,17 @@ async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
     syncQueue();
 
     const ok = results.filter((r) => r.status === 'fulfilled').length;
-    if (ok === results.length) {
+    const authErr = results
+      .filter((r) => r.status === 'rejected')
+      .map((r) => (r as PromiseRejectedResult).reason)
+      .find((e) => e instanceof UnauthorizedError);
+    if (authErr) {
+      showToast(authErr, undefined, 'destructive');
+    } else if (ok === results.length) {
       toastMsg = null;
       toastAction = null;
-      await refreshAll(true);
-    } else {
-      await refreshAll(true);
     }
+    await refreshAll(true);
   } finally {
     masterLoading = false;
   }
@@ -179,10 +190,11 @@ async function addSingle(payload: AddEntryPayload): Promise<void> {
     addPending(real.id);
     await refreshAll(true);
     removePending(real.id);
-  } catch {
+  } catch (err) {
     enqueue({ op: 'add', tempId, payload });
     syncQueue();
     removePending(tempId);
+    if (err instanceof UnauthorizedError) showToast(err, undefined, 'destructive');
   } finally {
     masterLoading = false;
   }
@@ -218,6 +230,7 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
       enqueue({ op: 'edit', id, patch });
       syncQueue();
       // Entry stays with its optimistic state
+      if (err instanceof UnauthorizedError) showToast(err, undefined, 'destructive');
     } else {
       entries = entries.map((e) => (e.id === id ? prev : e));
       showToast(err);
@@ -250,6 +263,7 @@ async function deleteEntry(id: number): Promise<void> {
       enqueue({ op: 'delete', id });
       syncQueue();
       // Entry stays visible as a Local Entry
+      if (err instanceof UnauthorizedError) showToast(err, undefined, 'destructive');
     } else {
       showToast(err);
     }
@@ -288,6 +302,7 @@ async function deleteEntries(ids: number[]): Promise<void> {
         const err = (results[i] as PromiseRejectedResult).reason;
         if (err instanceof ConnectionError) {
           enqueue({ op: 'delete', id });
+          if (err instanceof UnauthorizedError) showToast(err, undefined, 'destructive');
         } else {
           failCount++;
         }
@@ -321,7 +336,8 @@ async function drainQueue(): Promise<void> {
         }
         queue = queue.slice(1);
         writeQueue(queue);
-      } catch {
+      } catch (err) {
+        if (err instanceof UnauthorizedError) showToast(err, undefined, 'destructive');
         break;
       }
     }
@@ -345,6 +361,7 @@ export const store = {
   get toastMsg() { return toastMsg; },
   get toastAction() { return toastAction; },
   get toastIsConnection() { return toastIsConnection; },
+  get toastVariant() { return toastVariant; },
   get pendingIds() { return pendingIds; },
   get deletePendingIds() { return deletePendingIds; },
   get localIds() { return localIds; },
@@ -357,5 +374,5 @@ export const store = {
   deleteEntry,
   deleteEntries,
   drainQueue,
-  dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; },
+  dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; toastVariant = 'default'; },
 };
