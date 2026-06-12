@@ -13,6 +13,7 @@ import { dedupeEntries } from "./dedupe";
 
 export class ConnectionError extends Error {}
 export class ConnectionMissingError extends ConnectionError {}
+export class UnauthorizedError extends ConnectionError {}
 
 async function gasGet<T>(action: string): Promise<T> {
   const conn = connection.current;
@@ -33,7 +34,7 @@ async function gasGet<T>(action: string): Promise<T> {
   } catch {
     throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
   }
-  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
+  if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
   if (json.error) throw new Error(String(json.error));
   return json as T;
 }
@@ -60,9 +61,34 @@ async function gasPost<T>(body: Record<string, unknown>): Promise<T> {
   } catch {
     throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
   }
-  if (json.error === "unauthorized") throw new ConnectionError("unauthorized");
+  if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
   if (json.error) throw new Error(String(json.error));
   return json as T;
+}
+
+export async function validateConnection(gasUrl: string, apiSecret: string): Promise<void> {
+  if (mock.isMockMode) return;
+  let res: Response;
+  try {
+    res = await fetch(gasUrl, {
+      method: "POST",
+      mode: "cors",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "validate", secret: apiSecret }),
+    });
+  } catch (e) {
+    throw new ConnectionError(e instanceof Error ? e.message : String(e));
+  }
+  let json: Record<string, unknown>;
+  try {
+    json = JSON.parse(await res.text()) as Record<string, unknown>;
+  } catch {
+    throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
+  }
+  if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
+  // "unknown action" means the secret passed the auth gate on an older deployment — treat as valid.
+  if (json.error && json.error !== "unknown action") throw new Error(String(json.error));
 }
 
 export async function getEntries(): Promise<Entry[]> {

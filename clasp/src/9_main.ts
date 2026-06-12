@@ -27,6 +27,8 @@ function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.Tex
       return apiJson({ error: "unauthorized" });
     }
 
+    if (action === "validate") return apiJson({ ok: true });
+
     if (action === "addEntry") {
       const entry = addEntry({
         date: String(body.date),
