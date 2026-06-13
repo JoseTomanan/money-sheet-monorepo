@@ -3,6 +3,7 @@ import { ConnectionError, UnauthorizedError } from './api';
 import { readCache, writeCache } from './cache';
 import { readQueue, writeQueue, enqueue } from './queue';
 import type { QueueItem } from './queue';
+import { localEntryIdsFromQueue } from './offlineQueue';
 import { getMainCategory, buildEntry } from './domain';
 import { dedupeEntries } from './dedupe';
 import type {
@@ -29,9 +30,7 @@ let toastVariant = $state<'default' | 'destructive'>('default');
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
 let queue = $state<QueueItem[]>(readQueue());
-const localIds = $derived(
-  new Set<number>(queue.flatMap((item) => (item.op === 'add' ? [item.tempId] : [item.id])))
-);
+const localIds = $derived(localEntryIdsFromQueue(queue));
 let draining = $state(false);
 let syncing = $state(false);
 
