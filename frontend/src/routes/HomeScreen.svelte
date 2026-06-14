@@ -113,10 +113,8 @@
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
           {#each todayEntries as entry, i (entry.id)}
-            {@const dim = entry.amount === 0}
             <div
               class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3"
-              class:opacity-[0.55]={dim}
               style="border-top: {i === 0 ? 'none' : '1px solid var(--border)'};"
             >
               <EntryRow {entry} splitPos={todaySplitPos[i]} />

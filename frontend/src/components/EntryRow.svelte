@@ -21,7 +21,6 @@
 
   let { entry, splitPos, local = false }: Props = $props();
 
-  const dim = $derived(entry.amount === 0);
   const catStyle = $derived(resolveCategoryStyle(entry.mainCategory));
 </script>
 
@@ -41,7 +40,6 @@
   description={entry.description}
   pastel={catStyle.pastel}
   color={catStyle.color}
-  strikethrough={dim}
   direction={entry.direction}
 />
 
@@ -55,6 +53,5 @@
     weight={500}
     negColor={entry.direction === 'I' && entry.amount < 0}
     positive={entry.direction === 'I' && entry.amount >= 0}
-    {dim}
   />
 </div>
