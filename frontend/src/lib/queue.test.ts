@@ -109,4 +109,18 @@ describe("queue", () => {
     clearQueue();
     expect(readQueue()).toEqual([]);
   });
+
+  it("readQueue returns [] when localStorage has corrupted JSON", () => {
+    localStorage.setItem("ms_queue", "{invalid-json}");
+    expect(readQueue()).toEqual([]);
+  });
+
+  it("enqueue edit after delete on same id: appends as safety fallback", () => {
+    enqueue(DELETE_REAL);
+    enqueue(EDIT_REAL);
+    const q = readQueue();
+    expect(q).toHaveLength(2);
+    expect(q[0]).toEqual(DELETE_REAL);
+    expect(q[1]).toEqual(EDIT_REAL);
+  });
 });

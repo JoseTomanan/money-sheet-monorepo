@@ -67,6 +67,24 @@ describe("MockAdapter — validateConnection", () => {
   });
 });
 
+// ── Cycle N: updateEntry and deleteEntry ──────────────────────────────────
+
+describe("MockAdapter — updateEntry", () => {
+  it("resolves to undefined for an existing entry", async () => {
+    const adapter = new MockAdapter();
+    const entries = await adapter.getEntries();
+    await expect(adapter.updateEntry(entries[0].id, { description: "updated" })).resolves.toBeUndefined();
+  });
+});
+
+describe("MockAdapter — deleteEntry", () => {
+  it("resolves to undefined for an existing entry", async () => {
+    const adapter = new MockAdapter();
+    const entries = await adapter.getEntries();
+    await expect(adapter.deleteEntry(entries[0].id)).resolves.toBeUndefined();
+  });
+});
+
 // ── Additional: getCategories, getMaster, getConfig ───────────────────────
 
 describe("MockAdapter — read methods return expected shapes", () => {

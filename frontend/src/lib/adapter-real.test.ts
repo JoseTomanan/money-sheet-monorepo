@@ -62,6 +62,16 @@ describe("RealAdapter — error classification", () => {
     expect(err).not.toBeInstanceOf(ConnectionError);
     expect(err.message).toBe("Entry 5 not found");
   });
+
+  it("non-JSON POST response throws ConnectionError (gasPost catch branch)", async () => {
+    const adapter = new RealAdapter(() => FAKE_CONN);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      text: () => Promise.resolve("<!DOCTYPE html><body>Gateway Error</body>"),
+    }));
+    await expect(
+      adapter.addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 })
+    ).rejects.toBeInstanceOf(ConnectionError);
+  });
 });
 
 // ── Cycle 3: connection values used at call time ───────────────────────────
@@ -131,6 +141,16 @@ describe("RealAdapter — validateConnection", () => {
   it("throws ConnectionError on network failure", async () => {
     const adapter = new RealAdapter(() => FAKE_CONN);
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
+    await expect(
+      adapter.validateConnection(FAKE_CONN.gasUrl, FAKE_CONN.apiSecret)
+    ).rejects.toBeInstanceOf(ConnectionError);
+  });
+
+  it("non-JSON response throws ConnectionError", async () => {
+    const adapter = new RealAdapter(() => FAKE_CONN);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      text: () => Promise.resolve("<!DOCTYPE html><body>Gateway Error</body>"),
+    }));
     await expect(
       adapter.validateConnection(FAKE_CONN.gasUrl, FAKE_CONN.apiSecret)
     ).rejects.toBeInstanceOf(ConnectionError);

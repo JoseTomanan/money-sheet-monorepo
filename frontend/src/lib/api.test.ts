@@ -159,6 +159,23 @@ describe("api — setAdapter replaces the active adapter", () => {
     expect(result).toEqual([fakeEntry]);
   });
 
+  it("validateConnection delegates to the active adapter", async () => {
+    const { api } = await freshMods();
+    const fake = {
+      getEntries: vi.fn().mockResolvedValue([]),
+      getMaster: vi.fn().mockResolvedValue({ onHand: 0, budgets: {} }),
+      getCategories: vi.fn().mockResolvedValue({}),
+      getConfig: vi.fn().mockResolvedValue({ currency: "₱" }),
+      addEntry: vi.fn(),
+      updateEntry: vi.fn(),
+      deleteEntry: vi.fn(),
+      validateConnection: vi.fn().mockResolvedValue(undefined),
+    };
+    api.setAdapter(fake);
+    await api.validateConnection("https://x.y", "s3cr3t");
+    expect(fake.validateConnection).toHaveBeenCalledWith("https://x.y", "s3cr3t");
+  });
+
   it("injected adapter receives calls for mutations", async () => {
     const { api } = await freshMods();
     const fake = {

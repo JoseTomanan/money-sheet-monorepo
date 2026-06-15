@@ -1022,3 +1022,47 @@ describe("refreshAll preserves local state", () => {
     expect(store.localIds.has(1)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// deleteEntries — multi-delete (Slice 10)
+// ---------------------------------------------------------------------------
+
+describe("store — deleteEntries", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.refreshAll(); // seeds entries: [{ id: 1, description: "fresh" }]
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("removes confirmed remote entries from store on success", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        const qs = url.split("?")[1] || "";
+        const action = new URLSearchParams(qs).get("action");
+        const data = action === "getEntries" ? { entries: [] } : gasGetBody(url);
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(data)) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    }));
+    await store.deleteEntries([1]);
+    expect(store.entries.some((e) => e.id === 1)).toBe(false);
+  });
+
+  it("is a no-op when none of the given IDs match entries", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    await store.deleteEntries([999, 888]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(store.entries).toEqual(freshEntries);
+  });
+});
