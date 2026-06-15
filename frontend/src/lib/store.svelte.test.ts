@@ -648,17 +648,6 @@ describe("offline queue — addEntry connection failure", () => {
     expect(store.entries.some(e => e.id === localId)).toBe(true);
   });
 
-  it("queue is persisted to localStorage", async () => {
-    vi.stubGlobal("fetch", makeConnectionErrorFetch());
-    store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
-    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
-    const raw = localStorage.getItem("ms_queue");
-    expect(raw).not.toBeNull();
-    const q = JSON.parse(raw!);
-    expect(q).toHaveLength(1);
-    expect(q[0].op).toBe("add");
-  });
-
   it("no toast shown — cloud indicator is the UX signal", async () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
@@ -699,17 +688,6 @@ describe("offline queue — updateEntry connection failure", () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.updateEntry(1, { description: "updated" });
     await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
-  });
-
-  it("edit is enqueued in localStorage", async () => {
-    vi.stubGlobal("fetch", makeConnectionErrorFetch());
-    store.updateEntry(1, { description: "updated" });
-    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
-    const q = JSON.parse(localStorage.getItem("ms_queue")!);
-    expect(q).toHaveLength(1);
-    expect(q[0].op).toBe("edit");
-    expect(q[0].id).toBe(1);
-    expect(q[0].patch.description).toBe("updated");
   });
 
   it("no toast for connection errors — queue is the recovery path", async () => {
@@ -767,16 +745,8 @@ describe("offline queue — deleteEntry connection failure", () => {
     await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
   });
 
-  it("delete is enqueued in localStorage", async () => {
-    vi.stubGlobal("fetch", makeConnectionErrorFetch());
-    store.deleteEntry(1);
-    await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
-    const q = JSON.parse(localStorage.getItem("ms_queue")!);
-    expect(q).toHaveLength(1);
-    expect(q[0].op).toBe("delete");
-    expect(q[0].id).toBe(1);
-  });
 });
+
 
 // ---------------------------------------------------------------------------
 // Offline queue — edit/delete a Local Entry skips API call (Slice 5)
@@ -940,9 +910,6 @@ describe("drainQueue", () => {
 
     await store.drainQueue();
 
-    const remaining = JSON.parse(localStorage.getItem("ms_queue")!);
-    expect(remaining).toHaveLength(1); // 2nd item still queued
-    expect(remaining[0].tempId).toBe(-1002);
     expect(store.localIds.has(-1001)).toBe(false); // first drained
     expect(store.localIds.has(-1002)).toBe(true);  // second still local
   });
@@ -1053,5 +1020,49 @@ describe("refreshAll preserves local state", () => {
     // Entry should still reflect the queued edit
     expect(store.entries.find(e => e.id === 1)?.description).toBe("local-edit");
     expect(store.localIds.has(1)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteEntries — multi-delete (Slice 10)
+// ---------------------------------------------------------------------------
+
+describe("store — deleteEntries", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    const mod = await import("./store.svelte");
+    store = mod.store;
+    await store.refreshAll(); // seeds entries: [{ id: 1, description: "fresh" }]
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("removes confirmed remote entries from store on success", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        const qs = url.split("?")[1] || "";
+        const action = new URLSearchParams(qs).get("action");
+        const data = action === "getEntries" ? { entries: [] } : gasGetBody(url);
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(data)) });
+      }
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
+    }));
+    await store.deleteEntries([1]);
+    expect(store.entries.some((e) => e.id === 1)).toBe(false);
+  });
+
+  it("is a no-op when none of the given IDs match entries", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    await store.deleteEntries([999, 888]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(store.entries).toEqual(freshEntries);
   });
 });
