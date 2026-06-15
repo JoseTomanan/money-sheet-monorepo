@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions } from "./groupEntries";
+import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions, weekStartOf, weekLabel } from "./groupEntries";
 import type { Entry } from "./types";
 
 function entry(id: number, date: string, description = ""): Entry {
@@ -286,5 +286,114 @@ describe("compareEntriesForDisplay", () => {
       const today     = entry(1,     "2026-06-01");
       expect(compareEntriesForDisplay(yesterday, today)).toBeLessThan(0);
     });
+  });
+});
+
+// ── Canonical week-start: pure date-string helpers ─────────────────────────
+// These tests mirror clasp/src/lib/weeks.test.ts "weekStartOfStr" suite.
+// Both packages must produce identical results for the same calendar date.
+// To verify TZ-independence run: TZ=UTC npx vitest run and TZ=Asia/Manila npx vitest run
+
+describe("weekStartOf — canonical Sunday-start", () => {
+  it("Sunday is its own week start", () => {
+    expect(weekStartOf("2025-05-11")).toBe("2025-05-11");
+  });
+
+  it("Saturday falls back to the preceding Sunday", () => {
+    expect(weekStartOf("2025-05-17")).toBe("2025-05-11");
+  });
+
+  it("Wednesday falls back to the preceding Sunday", () => {
+    expect(weekStartOf("2025-05-14")).toBe("2025-05-11");
+  });
+
+  it("Monday maps to that Sunday", () => {
+    expect(weekStartOf("2025-05-12")).toBe("2025-05-11");
+  });
+
+  // Boundary: Dec 31 / Jan 1 crossings
+  it("Dec 31, 2025 (Wednesday) maps to week of Dec 28, 2025", () => {
+    expect(weekStartOf("2025-12-31")).toBe("2025-12-28");
+  });
+
+  it("Jan 1, 2026 (Thursday) maps to week of Dec 28, 2025", () => {
+    expect(weekStartOf("2026-01-01")).toBe("2025-12-28");
+  });
+
+  it("Jan 4, 2026 (Sunday) is its own week start", () => {
+    expect(weekStartOf("2026-01-04")).toBe("2026-01-04");
+  });
+
+  it("Dec 28, 2025 (Sunday) is its own week start", () => {
+    expect(weekStartOf("2025-12-28")).toBe("2025-12-28");
+  });
+
+  // All seven weekdays in one week (Sun May 11 – Sat May 17, 2025)
+  it.each([
+    ["2025-05-11", "2025-05-11"], // Sun
+    ["2025-05-12", "2025-05-11"], // Mon
+    ["2025-05-13", "2025-05-11"], // Tue
+    ["2025-05-14", "2025-05-11"], // Wed
+    ["2025-05-15", "2025-05-11"], // Thu
+    ["2025-05-16", "2025-05-11"], // Fri
+    ["2025-05-17", "2025-05-11"], // Sat
+  ])("date %s belongs to week starting %s", (date, expectedStart) => {
+    expect(weekStartOf(date)).toBe(expectedStart);
+  });
+});
+
+describe("weekStartOf — timezone independence", () => {
+  // Dates that would differ if parsed as local midnight in different TZs.
+  // weekStartOf must return the same result regardless of TZ=UTC or TZ=Asia/Manila.
+  it("Dec 31, 2025 always maps to Dec 28, 2025", () => {
+    expect(weekStartOf("2025-12-31")).toBe("2025-12-28");
+  });
+
+  it("Jan 1, 2026 always maps to Dec 28, 2025", () => {
+    expect(weekStartOf("2026-01-01")).toBe("2025-12-28");
+  });
+});
+
+describe("weekStartOf — multi-year range coverage (2024–2026)", () => {
+  const cases: [string, string][] = [
+    // Year-boundary week: Dec 29, 2024 (Sun) → Jan 4, 2025 (Sat)
+    ["2024-12-29", "2024-12-29"], // Sun
+    ["2024-12-30", "2024-12-29"], // Mon
+    ["2024-12-31", "2024-12-29"], // Tue
+    ["2025-01-01", "2024-12-29"], // Wed — belongs to 2024's last week
+    ["2025-01-04", "2024-12-29"], // Sat — still Dec 29 week
+    ["2025-01-05", "2025-01-05"], // Sun — new week starts
+    // Year-boundary week: Dec 28, 2025 (Sun) → Jan 3, 2026 (Sat)
+    ["2025-12-28", "2025-12-28"], // Sun
+    ["2025-12-31", "2025-12-28"], // Wed
+    ["2026-01-01", "2025-12-28"], // Thu
+    ["2026-01-03", "2025-12-28"], // Sat
+    ["2026-01-04", "2026-01-04"], // Sun — new week starts
+    // Mid-year samples
+    ["2024-06-15", "2024-06-09"], // Sat → Sun Jun 9
+    ["2025-03-15", "2025-03-09"], // Sat → Sun Mar 9
+    ["2025-07-04", "2025-06-29"], // Fri → Sun Jun 29
+    ["2026-11-01", "2026-11-01"], // Sun
+  ];
+  it.each(cases)("weekStartOf(%s) === %s", (date, expected) => {
+    expect(weekStartOf(date)).toBe(expected);
+  });
+});
+
+describe("weekLabel — format matches clasp weekLabelFromStr", () => {
+  it("same-month week: May 11 – 17, 2025", () => {
+    expect(weekLabel("2025-05-11")).toBe("May 11 – 17, 2025");
+  });
+
+  it("cross-month week: Apr 27 – May 3, 2025", () => {
+    expect(weekLabel("2025-04-27")).toBe("Apr 27 – May 3, 2025");
+  });
+
+  it("year-boundary week: Dec 28 – Jan 3, 2026 (year of Saturday)", () => {
+    expect(weekLabel("2025-12-28")).toBe("Dec 28 – Jan 3, 2026");
+  });
+
+  it("week label after year boundary: Jan 4 – 10, 2026", () => {
+    expect(weekLabel("2026-01-04")).toBe("Jan 4 – 10, 2026");
   });
 });
