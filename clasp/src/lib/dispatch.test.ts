@@ -503,3 +503,68 @@ describe("success response shapes", () => {
     expect(res.code).toBe("not_found");
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// Backwards-compatible error envelope — legacy `error` field
+// ──────────────────────────────────────────────────────────────
+
+describe("error envelope backwards compatibility", () => {
+  it("auth errors carry the legacy 'unauthorized' sentinel in `error`", () => {
+    const deps = makeDeps();
+    const res = dispatch({ action: "addEntry", secret: "wrong", body: {} }, deps);
+    expect(res.ok).toBe(false);
+    expect((res as any).error).toBe("unauthorized");
+    expect(res.code).toBe("auth");
+  });
+
+  it("non-auth errors mirror the message in the legacy `error` field", () => {
+    const deps = makeDeps();
+    const res = dispatch(
+      {
+        action: "addEntry",
+        secret: "correct-secret",
+        body: { date: "nope", tag: "Dining", direction: "O", amount: 1 },
+      },
+      deps
+    );
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("validation");
+    expect((res as any).error).toBe((res as any).message);
+    expect((res as any).error).toBeTruthy();
+  });
+
+  it("unknown action exposes a truthy legacy `error` so the frontend still throws", () => {
+    const deps = makeDeps();
+    const res = dispatch({ action: "bogusAction", secret: undefined, body: {} }, deps);
+    expect(res.ok).toBe(false);
+    expect((res as any).error).toBeTruthy();
+    expect(res.code).toBe("internal");
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// `validate` is the secret-check endpoint — it requires auth
+// ──────────────────────────────────────────────────────────────
+
+describe("validate action", () => {
+  it("rejects a missing secret with an auth error", () => {
+    const deps = makeDeps();
+    const res = dispatch({ action: "validate", secret: undefined, body: {} }, deps);
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("auth");
+    expect((res as any).error).toBe("unauthorized");
+  });
+
+  it("rejects a wrong secret with an auth error", () => {
+    const deps = makeDeps();
+    const res = dispatch({ action: "validate", secret: "wrong", body: {} }, deps);
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("auth");
+  });
+
+  it("accepts the correct secret", () => {
+    const deps = makeDeps();
+    const res = dispatch({ action: "validate", secret: "correct-secret", body: {} }, deps);
+    expect(res.ok).toBe(true);
+  });
+});
