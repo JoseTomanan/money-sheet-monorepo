@@ -3,11 +3,13 @@ import { render, fireEvent } from "@testing-library/svelte";
 import App from "./App.svelte";
 
 const mockSetConnection = vi.hoisted(() => vi.fn());
+const mockExitMockMode = vi.hoisted(() => vi.fn());
 const mockConnection = vi.hoisted(() => ({
   current: { gasUrl: "https://fake.example", apiSecret: "secret" } as
     | { gasUrl: string; apiSecret: string }
     | null,
 }));
+const mockMockMode = vi.hoisted(() => ({ current: false }));
 const mockStore = vi.hoisted(() => ({
   loading: false,
   error: null as string | null,
@@ -28,7 +30,9 @@ const mockStore = vi.hoisted(() => ({
 
 vi.mock("./lib/connection.svelte", () => ({
   connection: mockConnection,
+  mockMode: mockMockMode,
   setConnection: mockSetConnection,
+  exitMockMode: mockExitMockMode,
 }));
 vi.mock("./lib/store.svelte", () => ({ store: mockStore }));
 
@@ -41,6 +45,7 @@ describe("App settings sheet", () => {
       gasUrl: "https://fake.example",
       apiSecret: "secret",
     };
+    mockMockMode.current = false;
   });
 
   it("settings sheet is hidden on initial render", () => {
@@ -66,5 +71,53 @@ describe("App settings sheet", () => {
     await fireEvent.click(getByRole("button", { name: /open settings/i }));
     expect(getByRole("dialog")).toBeInTheDocument();
     expect(document.body.textContent).toContain("Settings");
+  });
+});
+
+// ── Cycles 10–12: Mock Mode branch ────────────────────────────────────────
+
+describe("App — Mock Mode branch", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+    mockStore.error = null;
+    mockStore.toastMsg = null;
+    mockConnection.current = null;
+    mockMockMode.current = true;
+  });
+
+  it("renders MockBanner with 'Mock mode' text when mockMode is active", () => {
+    const { getByText } = render(App);
+    expect(getByText("Mock mode")).toBeInTheDocument();
+  });
+
+  it("does not render SettingsGate when mockMode is active", () => {
+    const { queryByLabelText } = render(App);
+    expect(queryByLabelText(/GAS URL/i)).toBeNull();
+  });
+
+  it("clicking Exit in MockBanner calls exitMockMode", async () => {
+    const { getByRole } = render(App);
+    await fireEvent.click(getByRole("button", { name: /exit/i }));
+    expect(mockExitMockMode).toHaveBeenCalledOnce();
+  });
+});
+
+describe("App — SettingsGate shown when mockMode is false and no connection", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+    mockStore.error = null;
+    mockStore.toastMsg = null;
+    mockConnection.current = null;
+    mockMockMode.current = false;
+  });
+
+  it("renders SettingsGate (GAS URL input) when no connection and mock dismissed", () => {
+    const { getByLabelText } = render(App);
+    expect(getByLabelText(/GAS URL/i)).toBeInTheDocument();
+  });
+
+  it("does not render MockBanner when mockMode is false", () => {
+    const { queryByText } = render(App);
+    expect(queryByText("Mock mode")).toBeNull();
   });
 });
