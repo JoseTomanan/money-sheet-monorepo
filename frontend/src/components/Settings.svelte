@@ -1,6 +1,13 @@
 <script lang="ts">
   import { connection, setConnection, generateSetupUrl } from '../lib/connection.svelte';
   import { validateConnection, UnauthorizedError, ConnectionError } from '../lib/api';
+  import { darkMode, type ThemePreference } from '../lib/darkMode.svelte';
+
+  const themeOptions: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: 'System' },
+    { value: 'light',  label: 'Light'  },
+    { value: 'dark',   label: 'Dark'   },
+  ];
 
   interface Props {
     onsaved: () => void;
@@ -119,6 +126,22 @@
       type="button"
     >{copyLabel}</button>
   {/if}
+
+  <div class="appearance-section mt-8">
+    <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-3">Appearance</h2>
+    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-3">Theme</p>
+      <div class="flex gap-2">
+        {#each themeOptions as opt}
+          <button
+            type="button"
+            class="flex-1 py-[9px] rounded-[var(--radius-sm)] font-sans text-[13px] font-semibold border-0 cursor-pointer transition-colors duration-150 {darkMode.preference === opt.value ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}"
+            onclick={() => darkMode.setPreference(opt.value)}
+          >{opt.label}</button>
+        {/each}
+      </div>
+    </div>
+  </div>
 
   <div class="spreadsheet-hints mt-8 space-y-3">
     <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px]">Spreadsheet Settings</h2>
