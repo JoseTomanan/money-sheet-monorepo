@@ -43,7 +43,6 @@
   description={entry.description}
   pastel={catStyle.pastel}
   color={resolvedColor}
-  strikethrough={dim}
   direction={entry.direction}
 />
 
