@@ -134,7 +134,7 @@
   <div class="sheet-root fixed inset-0 z-[200]">
     <!-- backdrop -->
     <div
-      class="backdrop absolute inset-0 bg-[rgba(26,24,20,0.4)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+      class="backdrop absolute inset-0 bg-[var(--overlay-bg)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
       class:opacity-100={animOpen}
       role="button"
       tabindex="-1"
@@ -283,7 +283,7 @@
       {#if entry && ondelete}
         <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
           <button
-            class="delete-btn block mx-4 mt-5 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[rgba(193,74,50,0.3)] bg-[rgba(193,74,50,0.08)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
+            class="delete-btn block mx-4 mt-5 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
             onclick={() => { ondelete!(entry!.id); onclose(); }}
           >Delete entry</button>
         </div>
@@ -294,9 +294,9 @@
 
 <style>
   .active-out {
-    background: rgba(193, 74, 50, 0.12);
-    color: #c14a32;
-    border-color: rgba(193, 74, 50, 0.25);
+    background: var(--destructive-tint-strong);
+    color: var(--destructive);
+    border-color: var(--destructive-tint-border);
   }
   .active-in {
     background: color-mix(in srgb, var(--positive) 12%, transparent);

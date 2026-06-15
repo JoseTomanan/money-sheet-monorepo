@@ -16,7 +16,7 @@
 <Dialog.Root {open} {onOpenChange}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-[200] bg-[rgba(26,24,20,0.4)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="fixed inset-0 z-[200] bg-[var(--overlay-bg)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
     />
     <Dialog.Content
       class={cn(

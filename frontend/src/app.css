@@ -103,7 +103,51 @@
   --shadow-hero:   0 1px 2px rgba(20, 18, 14, 0.04), 0 8px 24px rgba(20, 18, 14, 0.06);
   --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.90);
 
+  /* destructive tint surfaces — used for error cards, delete buttons, selected rows */
+  --destructive-tint-bg:            rgba(193, 74, 50, 0.06);
+  --destructive-tint-border:        rgba(193, 74, 50, 0.20);
+  --destructive-tint-strong:        rgba(193, 74, 50, 0.08);
+  --destructive-tint-border-strong: rgba(193, 74, 50, 0.30);
+  --destructive-tint-select:        rgba(193, 74, 50, 0.04);
+
+  /* sheet/dialog overlay backdrop */
+  --overlay-bg: rgba(26, 24, 20, 0.60);
+
   --app-max-width: 480px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background:        #09090b;
+    --foreground:        #fafafa;
+    --card:              #18181b;
+    --card-foreground:   #fafafa;
+    --muted:             #27272a;
+    --muted-foreground:  #a1a1aa;
+    --border:            #3f3f46;
+    --accent:            #0d9488;
+    --accent-foreground: #ffffff;
+    --destructive:       #d05540;
+    --positive:          #22a84e;
+    --local:             #818cf8;
+
+    --destructive-tint-bg:            rgba(208, 85, 64, 0.12);
+    --destructive-tint-border:        rgba(208, 85, 64, 0.28);
+    --destructive-tint-strong:        rgba(208, 85, 64, 0.16);
+    --destructive-tint-border-strong: rgba(208, 85, 64, 0.40);
+    --destructive-tint-select:        rgba(208, 85, 64, 0.10);
+    --overlay-bg:                     rgba(0, 0, 0, 0.75);
+
+    --shadow-card:   0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
+    --shadow-sheet:  0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
+    --shadow-fab:    0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(20, 184, 166, 0.25);
+    --shadow-tabbar: 0 -1px 0 var(--border);
+    --shadow-hero:   0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
+
+    --gradient-hero: linear-gradient(160deg, #27272a 0%, #18181b 100%);
+    --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --app-bg:        #09090b;
+  }
 }
 
 @media (min-width: 768px)  { :root { --app-max-width: 720px;  } }

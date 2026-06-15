@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Badge } from '$lib/components/ui/badge';
   import { resolveCategoryStyle } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import type { Direction } from '../lib/types';
 
   interface Props {
@@ -19,5 +20,5 @@
 
 <Badge
   variant="secondary"
-  style="background: {catStyle.soft}; color: {catStyle.color}; font-size: {fontSize}px; padding: {padding};"
+  style="background: {catStyle.soft}; color: {darkMode.current ? catStyle.darkColor : catStyle.color}; font-size: {fontSize}px; padding: {padding};"
 >{tag}</Badge>

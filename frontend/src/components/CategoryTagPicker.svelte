@@ -4,6 +4,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { resolveCategoryStyle, CATEGORY_ORDER } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { getMainCategory } from '../lib/domain';
   import type { Direction, CategoryMap } from '../lib/types';
 
@@ -84,13 +85,14 @@
     <!-- Subcategory pills -->
     {#each subcategories as sub}
       {@const isActive = tag === sub}
+      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
         class={catPillClass}
         aria-pressed={isActive}
-        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
+        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
         onclick={() => onselect(sub)}
       >
-        <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
+        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
         {sub}
       </button>
     {/each}
@@ -99,13 +101,14 @@
     {#each sortedCategories as cat}
       {@const s = resolveCategoryStyle(cat)}
       {@const isActive = direction === 'I' ? tag === cat : activeCategory === cat}
+      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
         class={catPillClass}
         aria-pressed={isActive}
-        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : s.color};"
+        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
         onclick={() => handleCategoryClick(cat)}
       >
-        <span class={dotClass} style="background: {isActive ? '#fff' : s.color}"></span>
+        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
         {cat}
       </button>
     {/each}

@@ -17,7 +17,7 @@
 </script>
 
 <div class="tab-bar-outer fixed bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
-  <div class="tab-bar-pill flex items-center justify-around w-full max-w-[var(--app-max-width)] md:max-w-full h-[60px] px-2 pb-[env(safe-area-inset-bottom,0px)] bg-white/[0.92] backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto">
+  <div class="tab-bar-pill flex items-center justify-around w-full max-w-[var(--app-max-width)] md:max-w-full h-[60px] px-2 pb-[env(safe-area-inset-bottom,0px)] bg-card/90 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto">
     {#each tabs as tab}
       <button
         class="tab-btn flex-1 flex flex-col items-center justify-center gap-[2px] py-[6px] bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150"

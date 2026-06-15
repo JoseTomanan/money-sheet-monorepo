@@ -3,6 +3,7 @@
   import RedistributeSheet from '../components/RedistributeSheet.svelte';
   import type { AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
+  import { darkMode } from '../lib/darkMode.svelte';
   import { peso, currentYearMonth, monthLabel, monthShort, shiftYearMonth } from '../lib/format';
   import {
     outgoingByCategory,
@@ -146,6 +147,7 @@
   <!-- Incoming / Outgoing card — readout for the selected month -->
   <div class="io-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
     style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
       <Money value={monthIncoming} size={15} weight={500} negColor={true} dim={store.masterLoading} />
@@ -248,7 +250,7 @@
         class="cat-row py-[14px] px-4 border-b border-border last:border-b-0"
       >
         <div class="cat-row-main flex items-center gap-[10px]">
-          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {d.c.dot}; opacity: {d.spent > 0 ? 1 : 0.45};"></span>
+          <span class="cat-dot size-[10px] rounded-full shrink-0" style="background: {darkMode.current ? d.c.darkDot : d.c.dot}; opacity: {d.spent > 0 ? 1 : 0.45};"></span>
           <span class="cat-label flex-1 font-sans text-sm font-medium {d.spent > 0 ? 'text-foreground' : 'text-muted-foreground'}">{d.c.label}</span>
           <span class="cat-pct font-mono tabular-nums text-[11px] text-muted-foreground min-w-[38px] text-right">
             {d.pct.toFixed(1)}%
@@ -256,10 +258,10 @@
           <div class="shrink-0 text-right min-w-[84px]"><Money value={d.spent} size={14} weight={600} negColor={false} /></div>
         </div>
         <div class="mt-2 ml-5 flex items-center gap-2">
-          <div class="cat-bar-track flex-1 h-1 rounded-[2px] overflow-hidden" style="background: {d.c.pastel};">
+          <div class="cat-bar-track flex-1 h-1 rounded-[2px] overflow-hidden" style="background: {darkMode.current ? d.c.soft : d.c.pastel};">
             <div
               class="cat-bar-fill h-full rounded-[2px] transition-[width] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"
-              style="width: {barWidth(d.spent)}%; background: {d.c.color}; transition-delay: {i * 40}ms;"
+              style="width: {barWidth(d.spent)}%; background: {darkMode.current ? d.c.darkColor : d.c.color}; transition-delay: {i * 40}ms;"
             ></div>
           </div>
           <span class="font-mono tabular-nums text-[10px] text-muted-foreground shrink-0 {store.masterLoading ? 'opacity-50' : ''}">
