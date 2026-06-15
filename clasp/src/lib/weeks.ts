@@ -1,3 +1,44 @@
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/**
+ * Canonical week-start definition (shared with frontend/src/lib/groupEntries.ts).
+ *
+ * Given a calendar date as "YYYY-MM-DD", returns the ISO date string of the
+ * Sunday on or before that date. Computation is purely arithmetic on the
+ * year/month/day components — no Date timezone interpretation, no host-TZ
+ * dependence — so both packages always agree for the same calendar date.
+ */
+export function weekStartOfStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay()); // rewind to Sunday
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Formats a week label from a week-start date string (YYYY-MM-DD).
+ * Produces the same format as frontend's weekLabel():
+ *   "Mon D – D, YYYY"        (same month)
+ *   "Mon D – Mon D, YYYY"    (cross-month)
+ * Year is always the year of the Saturday (end of week).
+ */
+export function weekLabelFromStr(startStr: string): string {
+  const [y, m, d] = startStr.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+
+  const sm = MONTHS[start.getUTCMonth()];
+  const em = MONTHS[end.getUTCMonth()];
+  const sd = start.getUTCDate();
+  const ed = end.getUTCDate();
+  const ey = end.getUTCFullYear();
+
+  return sm === em
+    ? `${sm} ${sd} – ${ed}, ${ey}`
+    : `${sm} ${sd} – ${em} ${ed}, ${ey}`;
+}
+
 export function weekStartSunday(d: Date, tz: string): Date {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
