@@ -75,3 +75,29 @@ The Subcategory-to-Category mapping table. Column B = Subcategory name, Column C
 
 ### Config sheet
 A 2-column key-value sheet (Column A = key, Column B = value). Holds user-configurable app settings that are spreadsheet-scoped rather than device-scoped. Read by the `getConfig` GAS action and surfaced to the frontend as a flat `Record<string, string>`. Known keys: `currency` (currency symbol, default `₱`), `nickname` (display name, default empty), `week_start` (first day of the week, `"Sunday"` or `"Monday"`, default `"Sunday"`). Constrained-choice keys use Google Sheets dropdown chip validation on the value cell. The frontend falls back to defaults when a key is absent or the sheet doesn't exist (legacy spreadsheets). New spreadsheets get the Config sheet pre-seeded by `ensureConfigSheet` during setup.
+
+## Canonical Week-Start Definition
+
+**Week start = the Sunday on or before the Entry's calendar date**, derived purely from the `YYYY-MM-DD` date string's year/month/day components with no host-timezone or browser-timezone dependence.
+
+Both packages implement this identically:
+
+```
+// Given dateStr = "YYYY-MM-DD"
+const [y, m, d] = dateStr.split("-").map(Number);
+const date = new Date(Date.UTC(y, m - 1, d));   // always UTC, never local
+date.setUTCDate(date.getUTCDate() - date.getUTCDay()); // rewind to Sunday
+return date.toISOString().slice(0, 10);           // "YYYY-MM-DD" of week start
+```
+
+- **clasp**: `weekStartOfStr(dateStr)` in `clasp/src/lib/weeks.ts`
+- **frontend**: `weekStartOf(dateStr)` in `frontend/src/lib/groupEntries.ts`
+
+Both functions produce identical output for the same input. Tests covering Dec 31 / Jan 1 crossings, all seven weekdays, and a multi-year range live in the corresponding `*.test.ts` files.
+
+**Week label format** (used in the frontend UI week picker and — via `weekLabelFromStr` — in clasp's spreadsheet separator rows):
+- Same month: `"Mon D – D, YYYY"` (e.g. `"May 11 – 17, 2025"`)
+- Cross-month: `"Mon D – Mon D, YYYY"` (e.g. `"Apr 27 – May 3, 2025"`)
+- Year is always the year of the Saturday (end of week)
+
+**Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem — both are the single-responsibility implementations of this calculation.
