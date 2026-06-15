@@ -8,6 +8,7 @@
   import EntrySheet from './components/EntrySheet.svelte';
   import Settings from './components/Settings.svelte';
   import SettingsGate from './components/SettingsGate.svelte';
+  import { Toast } from '$lib/components/ui/toast';
   import * as Sheet from '$lib/components/ui/sheet';
   import HomeScreen from './routes/HomeScreen.svelte';
   import EntriesView from './routes/EntriesView.svelte';
@@ -63,14 +64,9 @@
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent">
     {#if store.syncing}
       <span
-        class="fixed top-[14px] z-50 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)] inline-flex items-center justify-center size-3"
+        class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
         aria-label="Syncing data"
-      >
-        <!-- expanding radar ring -->
-        <span class="radar-ring absolute size-full rounded-full bg-accent"></span>
-        <!-- solid dot -->
-        <span class="size-2 rounded-full bg-accent"></span>
-      </span>
+      ></span>
     {/if}
 
     <!-- Gear button: fixed top-right -->
@@ -125,29 +121,15 @@
     {/if}
 
     {#if store.toastMsg}
-      <div
-        class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)] py-3 px-4 rounded-[var(--radius-md)] bg-foreground text-background font-sans text-[13px] font-medium z-[300] animate-[toast-in_200ms_ease-out] flex items-center gap-3"
-        role="alert"
-      >
-        <span class="flex-1">{store.toastMsg}</span>
-        {#if store.toastIsConnection}
-          <button
-            class="shrink-0 font-semibold underline underline-offset-2 bg-transparent border-0 text-background text-[13px] cursor-pointer p-0"
-            onclick={() => (settingsOpen = true)}
-          >Check Settings</button>
-        {/if}
-        {#if store.toastAction}
-          <button
-            class="shrink-0 font-semibold underline underline-offset-2 bg-transparent border-0 text-background text-[13px] cursor-pointer p-0"
-            onclick={() => store.toastAction!.run()}
-          >{store.toastAction.label}</button>
-        {/if}
-        <button
-          class="shrink-0 bg-transparent border-0 text-background cursor-pointer p-0 opacity-60 leading-none"
-          aria-label="Dismiss"
-          onclick={store.dismissToast}
-        >×</button>
-      </div>
+      <Toast
+        class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)]"
+        message={store.toastMsg}
+        variant={store.toastVariant}
+        isConnection={store.toastIsConnection}
+        action={store.toastAction}
+        onSettings={() => (settingsOpen = true)}
+        onDismiss={store.dismissToast}
+      />
     {/if}
 
     <TabBar active={tab} onchange={(t) => (tab = t)} />

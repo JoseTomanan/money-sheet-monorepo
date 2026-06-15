@@ -6,6 +6,8 @@ import {
   incomingByMonth,
   outgoingByCategory,
   countByCategory,
+  flowByMonth,
+  cumulativeOutgoingByDay,
 } from './aggregations';
 import type { Entry } from './types';
 
@@ -97,6 +99,69 @@ describe('outgoingByCategory', () => {
 
   it('returns empty object for empty array', () => {
     expect(outgoingByCategory([])).toEqual({});
+  });
+});
+
+describe('outgoingByCategory with month filter', () => {
+  it('only counts outgoing entries in the given month', () => {
+    const result = outgoingByCategory(ENTRIES, '2026-05');
+    expect(result['FOOD']).toBe(300);
+    expect(result['TRANSIT']).toBe(300);
+    expect(result['HOUSING']).toBeUndefined(); // April entry excluded
+  });
+
+  it('returns empty object when no entries match the month', () => {
+    expect(outgoingByCategory(ENTRIES, '2025-01')).toEqual({});
+  });
+});
+
+describe('flowByMonth', () => {
+  it('returns one row per month, oldest first, ending at endYm', () => {
+    const result = flowByMonth(ENTRIES, '2026-05', 3);
+    expect(result.map(r => r.ym)).toEqual(['2026-03', '2026-04', '2026-05']);
+  });
+
+  it('computes incoming and outgoing per month', () => {
+    const result = flowByMonth(ENTRIES, '2026-05', 2);
+    expect(result[0]).toEqual({ ym: '2026-04', incoming: 0, outgoing: 500 });
+    expect(result[1]).toEqual({ ym: '2026-05', incoming: 1400, outgoing: 600 });
+  });
+
+  it('spans year boundaries', () => {
+    const result = flowByMonth([], '2026-01', 3);
+    expect(result.map(r => r.ym)).toEqual(['2025-11', '2025-12', '2026-01']);
+  });
+
+  it('returns zero rows for empty entries', () => {
+    const result = flowByMonth([], '2026-05', 2);
+    expect(result.every(r => r.incoming === 0 && r.outgoing === 0)).toBe(true);
+  });
+});
+
+describe('cumulativeOutgoingByDay', () => {
+  it('returns one slot per day of the month', () => {
+    expect(cumulativeOutgoingByDay(ENTRIES, '2026-05')).toHaveLength(31);
+    expect(cumulativeOutgoingByDay(ENTRIES, '2026-04')).toHaveLength(30);
+  });
+
+  it('accumulates outgoing spend day by day', () => {
+    const result = cumulativeOutgoingByDay(ENTRIES, '2026-05');
+    expect(result[0]).toBe(100);  // May 1
+    expect(result[1]).toBe(300);  // +200 on May 2
+    expect(result[2]).toBe(600);  // +300 on May 3
+    expect(result[30]).toBe(600); // flat for the rest of the month
+  });
+
+  it('ignores incoming entries and other months', () => {
+    const result = cumulativeOutgoingByDay(ENTRIES, '2026-05');
+    expect(result[10]).toBe(600); // May 10/11 incoming entries not added
+    const april = cumulativeOutgoingByDay(ENTRIES, '2026-04');
+    expect(april[29]).toBe(500); // only the rent entry
+  });
+
+  it('returns all zeros for a month with no outgoing', () => {
+    const result = cumulativeOutgoingByDay(ENTRIES, '2025-12');
+    expect(result.every(v => v === 0)).toBe(true);
   });
 });
 

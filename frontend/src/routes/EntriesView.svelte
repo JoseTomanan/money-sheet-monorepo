@@ -287,7 +287,6 @@
             {@const splitPos = splitRunPositions(dateGroup)}
             <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden">
               {#each dateGroup as entry, j (entry.id)}
-                {@const dim = entry.amount === 0}
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const local = store.localIds.has(entry.id)}
@@ -296,7 +295,6 @@
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
                   class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
-                  class:opacity-[0.55]={dim}
                   class:animate-[shimmer_1s_ease-in-out_infinite]={pending && !deletePending}
                   class:opacity-50={deletePending}
                   class:pointer-events-none={pending || deletePending}

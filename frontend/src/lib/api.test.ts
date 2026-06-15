@@ -130,3 +130,68 @@ describe("api — uses Connection values at call time", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(FAKE_GAS_URL);
   });
 });
+
+// ── Cycle 9: setAdapter injection ─────────────────────────────────────────
+
+describe("api — setAdapter replaces the active adapter", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("gateway delegates to the injected adapter after setAdapter", async () => {
+    const { api } = await freshMods();
+    const fakeEntry = { id: 99, date: "2026-01-01", tag: "Food", mainCategory: "FOOD", description: "fake", direction: "O" as const, amount: 50 };
+    const fake = {
+      getEntries: vi.fn().mockResolvedValue([fakeEntry]),
+      getMaster: vi.fn().mockResolvedValue({ onHand: 0, budgets: {} }),
+      getCategories: vi.fn().mockResolvedValue({}),
+      getConfig: vi.fn().mockResolvedValue({ currency: "₱" }),
+      addEntry: vi.fn().mockResolvedValue(fakeEntry),
+      updateEntry: vi.fn().mockResolvedValue(undefined),
+      deleteEntry: vi.fn().mockResolvedValue(undefined),
+      validateConnection: vi.fn().mockResolvedValue(undefined),
+    };
+    api.setAdapter(fake);
+    const result = await api.getEntries();
+    expect(fake.getEntries).toHaveBeenCalledOnce();
+    expect(result).toEqual([fakeEntry]);
+  });
+
+  it("validateConnection delegates to the active adapter", async () => {
+    const { api } = await freshMods();
+    const fake = {
+      getEntries: vi.fn().mockResolvedValue([]),
+      getMaster: vi.fn().mockResolvedValue({ onHand: 0, budgets: {} }),
+      getCategories: vi.fn().mockResolvedValue({}),
+      getConfig: vi.fn().mockResolvedValue({ currency: "₱" }),
+      addEntry: vi.fn(),
+      updateEntry: vi.fn(),
+      deleteEntry: vi.fn(),
+      validateConnection: vi.fn().mockResolvedValue(undefined),
+    };
+    api.setAdapter(fake);
+    await api.validateConnection("https://x.y", "s3cr3t");
+    expect(fake.validateConnection).toHaveBeenCalledWith("https://x.y", "s3cr3t");
+  });
+
+  it("injected adapter receives calls for mutations", async () => {
+    const { api } = await freshMods();
+    const fake = {
+      getEntries: vi.fn().mockResolvedValue([]),
+      getMaster: vi.fn().mockResolvedValue({ onHand: 0, budgets: {} }),
+      getCategories: vi.fn().mockResolvedValue({}),
+      getConfig: vi.fn().mockResolvedValue({ currency: "₱" }),
+      addEntry: vi.fn().mockResolvedValue({ id: 1, date: "2026-01-01", tag: "Food", mainCategory: "FOOD", description: "t", direction: "O" as const, amount: 10 }),
+      updateEntry: vi.fn().mockResolvedValue(undefined),
+      deleteEntry: vi.fn().mockResolvedValue(undefined),
+      validateConnection: vi.fn().mockResolvedValue(undefined),
+    };
+    api.setAdapter(fake);
+    await api.addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
+    await api.deleteEntry(1);
+    expect(fake.addEntry).toHaveBeenCalledOnce();
+    expect(fake.deleteEntry).toHaveBeenCalledWith(1);
+  });
+});

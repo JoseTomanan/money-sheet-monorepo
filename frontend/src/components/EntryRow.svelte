@@ -22,7 +22,6 @@
 
   let { entry, splitPos, local = false }: Props = $props();
 
-  const dim = $derived(entry.amount === 0);
   const catStyle = $derived(resolveCategoryStyle(entry.mainCategory));
   const resolvedColor = $derived(darkMode.current ? catStyle.darkColor : catStyle.color);
   const resolvedDot   = $derived(darkMode.current ? catStyle.darkDot   : catStyle.dot);
@@ -58,6 +57,5 @@
     weight={500}
     negColor={entry.direction === 'I' && entry.amount < 0}
     positive={entry.direction === 'I' && entry.amount >= 0}
-    {dim}
   />
 </div>

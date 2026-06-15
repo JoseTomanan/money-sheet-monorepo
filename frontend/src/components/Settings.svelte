@@ -1,5 +1,6 @@
 <script lang="ts">
   import { connection, setConnection, generateSetupUrl } from '../lib/connection.svelte';
+  import { validateConnection, UnauthorizedError, ConnectionError } from '../lib/api';
 
   interface Props {
     onsaved: () => void;
@@ -11,8 +12,10 @@
   let apiSecret = $state(connection.current?.apiSecret ?? '');
   let showSecret = $state(false);
   let copyLabel = $state('Copy setup link');
+  let saving = $state(false);
+  let errorMsg = $state('');
 
-  let saveDisabled = $derived(gasUrl.trim() === '' || apiSecret.trim() === '');
+  let saveDisabled = $derived(saving || gasUrl.trim() === '' || apiSecret.trim() === '');
 
   async function handleCopySetupLink() {
     const url = generateSetupUrl();
@@ -22,9 +25,24 @@
     setTimeout(() => { copyLabel = 'Copy setup link'; }, 2000);
   }
 
-  function handleSave() {
-    setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
-    onsaved();
+  async function handleSave() {
+    errorMsg = '';
+    saving = true;
+    try {
+      await validateConnection(gasUrl.trim(), apiSecret.trim());
+      // Only commit after validation succeeds — committing first would unmount
+      // SettingsGate before the error can be shown (connection.current becomes non-null).
+      setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
+      onsaved();
+    } catch (err) {
+      errorMsg = err instanceof UnauthorizedError
+        ? "Secret rejected — make sure the secret and the GAS URL are from the same copy of the sheet."
+        : err instanceof ConnectionError
+          ? "Couldn't reach that URL — check the GAS web-app URL and try again."
+          : "Something went wrong. Check the URL and secret and try again.";
+    } finally {
+      saving = false;
+    }
   }
 </script>
 
@@ -88,7 +106,11 @@
     class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent text-white font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
     onclick={handleSave}
     disabled={saveDisabled}
-  >Save</button>
+  >{saving ? 'Checking…' : 'Save'}</button>
+
+  {#if errorMsg}
+    <p class="font-sans text-[13px] text-destructive mt-3 leading-snug">{errorMsg}</p>
+  {/if}
 
   {#if connection.current}
     <button

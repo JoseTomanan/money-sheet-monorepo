@@ -47,3 +47,14 @@ export interface UpdateEntryPatch {
 export type EntryMutation =
   | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
   | { type: 'edit'; id: number; patch: UpdateEntryPatch };
+
+export interface GatewayAdapter {
+  getEntries(): Promise<Entry[]>;
+  getMaster(): Promise<MasterRow>;
+  getCategories(): Promise<CategoryMap>;
+  getConfig(): Promise<Config>;
+  addEntry(payload: AddEntryPayload): Promise<Entry>;
+  updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
+  deleteEntry(id: number): Promise<void>;
+  validateConnection(gasUrl: string, apiSecret: string): Promise<void>;
+}

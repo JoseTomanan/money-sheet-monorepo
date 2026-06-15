@@ -1,63 +1,41 @@
+// HTTP entry points. All routing, auth, payload validation, and the response
+// envelope live in the pure `dispatch` module (src/lib/dispatch.ts) so they can
+// be unit-tested without a GAS deployment. These functions only build the
+// dependency bundle (the GAS-API bound side) and serialize the response.
+
+function apiDeps(): DispatchDeps {
+  return {
+    secret: PropertiesService.getScriptProperties().getProperty("API_SECRET") ?? "",
+    getCategories: () => getCategories(),
+    getMaster: () => getMaster(),
+    getEntries: () => getEntries(),
+    getConfig: () => getConfig(),
+    getEntryById: (id) => getEntries().find((e) => e.id === id) ?? null,
+    addEntry: (payload) => addEntry(payload),
+    updateEntry: (id, patch) => updateEntry(id, patch),
+    deleteEntry: (id) => deleteEntry(id),
+  };
+}
+
 function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput {
-  const action = e.parameter.action;
-  try {
-    if (action === "getEntries") return apiJson({ entries: getEntries() });
-    if (action === "getMaster") return apiJson({ master: getMaster() });
-    if (action === "getCategories") return apiJson({ categories: getCategories() });
-    if (action === "getConfig") return apiJson({ config: getConfig() });
-    return apiJson({ error: "unknown action" });
-  } catch (err) {
-    return apiJson({ error: String(err) });
-  }
+  const res = dispatch(
+    { action: e.parameter.action, secret: e.parameter.secret, body: e.parameter },
+    apiDeps()
+  );
+  return apiJson(res);
 }
 
 function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
+  let body: Record<string, unknown>;
   try {
-    const body = JSON.parse(e.postData.contents);
-    const action: string = body.action;
-
-    // Read-only actions — no secret required (POST avoids CORS preflight issues)
-    if (action === "getEntries") return apiJson({ entries: getEntries() });
-    if (action === "getMaster") return apiJson({ master: getMaster() });
-    if (action === "getCategories") return apiJson({ categories: getCategories() });
-    if (action === "getConfig") return apiJson({ config: getConfig() });
-    // Write actions — shared-secret auth required
-    const secret = PropertiesService.getScriptProperties().getProperty("API_SECRET");
-    if (!secret || body.secret !== secret) {
-      return apiJson({ error: "unauthorized" });
-    }
-
-    if (action === "addEntry") {
-      const entry = addEntry({
-        date: String(body.date),
-        tag: String(body.tag),
-        description: String(body.description || ""),
-        direction: (body.direction === "I" ? "I" : "O") as Direction,
-        amount: Number(body.amount) || 0,
-      });
-      return apiJson({ ok: true, entry });
-    }
-
-    if (action === "updateEntry") {
-      const patch: UpdateEntryPatch = {};
-      if (body.date !== undefined) patch.date = String(body.date);
-      if (body.tag !== undefined) patch.tag = String(body.tag);
-      if (body.description !== undefined) patch.description = String(body.description);
-      if (body.direction !== undefined) patch.direction = (body.direction === "I" ? "I" : "O") as Direction;
-      if (body.amount !== undefined) patch.amount = Number(body.amount);
-      updateEntry(Number(body.id), patch);
-      return apiJson({ ok: true });
-    }
-
-    if (action === "deleteEntry") {
-      deleteEntry(Number(body.id));
-      return apiJson({ ok: true });
-    }
-
-    return apiJson({ error: "unknown action" });
+    body = JSON.parse(e.postData.contents) as Record<string, unknown>;
   } catch (err) {
-    return apiJson({ error: String(err) });
+    const message = String(err);
+    return apiJson({ ok: false, error: message, code: "internal", message });
   }
+  const action = String(body.action ?? "");
+  const secret = body.secret === undefined ? undefined : String(body.secret);
+  return apiJson(dispatch({ action, secret, body }, apiDeps()));
 }
 
 function apiJson(obj: object): GoogleAppsScript.Content.TextOutput {

@@ -1,13 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent } from "@testing-library/svelte";
+import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import Settings from "./Settings.svelte";
 
 const mockSetConnection = vi.hoisted(() => vi.fn());
 const mockConnection = vi.hoisted(() => ({ current: null as { gasUrl: string; apiSecret: string } | null }));
+const mockValidateConnection = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("../lib/connection.svelte", () => ({
   connection: mockConnection,
   setConnection: mockSetConnection,
+}));
+
+vi.mock("../lib/api", () => ({
+  validateConnection: mockValidateConnection,
+  UnauthorizedError: class UnauthorizedError extends Error {},
+  ConnectionError: class ConnectionError extends Error {},
 }));
 
 function baseProps(overrides: Record<string, unknown> = {}) {
@@ -87,8 +94,8 @@ describe("Settings form", () => {
     const { getByLabelText, getByRole } = render(Settings, baseProps({ onsaved }));
     await fireEvent.input(getByLabelText(/GAS URL/i), { target: { value: "https://fake.example" } });
     await fireEvent.input(getByLabelText(/API Secret/i), { target: { value: "secret" } });
-    await fireEvent.click(getByRole("button", { name: /save/i }));
-    expect(onsaved).toHaveBeenCalledOnce();
+    await fireEvent.click(getByRole("button", { name: /save|checking/i }));
+    await waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
   });
 
   it("prefills inputs from connection.current when set", () => {

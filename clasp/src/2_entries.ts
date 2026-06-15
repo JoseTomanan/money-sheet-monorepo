@@ -100,42 +100,42 @@ interface UpdateEntryPatch {
 }
 
 function updateEntry(id: number, patch: UpdateEntryPatch): void {
-  const sh = getIOSheet();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) throw new Error(`Entry ${id} not found`);
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(10_000);
+  try {
+    const sh = getIOSheet();
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) throw new Error(`Entry ${id} not found`);
 
-  const ids = sh.getRange(2, COL.ID, lastRow - 1, 1).getValues();
-  let targetRow = -1;
-  for (let i = 0; i < ids.length; i++) {
-    if (Number(ids[i][0]) === id) {
-      targetRow = i + 2;
-      break;
-    }
+    const idValues = sh.getRange(2, COL.ID, lastRow - 1, 1).getValues().map((r) => r[0]);
+    const targetRow = findRowByEntryId(idValues, id);
+    if (targetRow === null) throw new Error(`Entry ${id} not found`);
+
+    if (patch.date !== undefined) sh.getRange(targetRow, COL.DATE).setValue(patch.date);
+    if (patch.tag !== undefined) sh.getRange(targetRow, COL.TAG).setValue(patch.tag);
+    if (patch.description !== undefined) sh.getRange(targetRow, COL.DESC).setValue(patch.description);
+    if (patch.direction !== undefined) sh.getRange(targetRow, COL.DIR).setValue(patch.direction);
+    if (patch.amount !== undefined) sh.getRange(targetRow, COL.AMOUNT).setValue(patch.amount);
+    // Never touch D (MAIN_CAT) or H (ID)
+  } finally {
+    lock.releaseLock();
   }
-  if (targetRow === -1) throw new Error(`Entry ${id} not found`);
-
-  if (patch.date !== undefined) sh.getRange(targetRow, COL.DATE).setValue(patch.date);
-  if (patch.tag !== undefined) sh.getRange(targetRow, COL.TAG).setValue(patch.tag);
-  if (patch.description !== undefined) sh.getRange(targetRow, COL.DESC).setValue(patch.description);
-  if (patch.direction !== undefined) sh.getRange(targetRow, COL.DIR).setValue(patch.direction);
-  if (patch.amount !== undefined) sh.getRange(targetRow, COL.AMOUNT).setValue(patch.amount);
-  // Never touch D (MAIN_CAT) or H (ID)
 }
 
 function deleteEntry(id: number): void {
-  const sh = getIOSheet();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) throw new Error(`Entry ${id} not found`);
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(10_000);
+  try {
+    const sh = getIOSheet();
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) throw new Error(`Entry ${id} not found`);
 
-  const ids = sh.getRange(2, COL.ID, lastRow - 1, 1).getValues();
-  let targetRow = -1;
-  for (let i = 0; i < ids.length; i++) {
-    if (Number(ids[i][0]) === id) {
-      targetRow = i + 2;
-      break;
-    }
+    const idValues = sh.getRange(2, COL.ID, lastRow - 1, 1).getValues().map((r) => r[0]);
+    const targetRow = findRowByEntryId(idValues, id);
+    if (targetRow === null) throw new Error(`Entry ${id} not found`);
+
+    sh.deleteRow(targetRow);
+  } finally {
+    lock.releaseLock();
   }
-  if (targetRow === -1) throw new Error(`Entry ${id} not found`);
-
-  sh.deleteRow(targetRow);
 }
