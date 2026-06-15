@@ -137,3 +137,85 @@ describe("importFromUrl", () => {
     expect(connection.current).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// mockMode
+// ---------------------------------------------------------------------------
+
+describe("mockMode", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("mockMode.current is true when no connection and no dismissal flag", async () => {
+    const { mockMode } = await freshConnection();
+    expect(mockMode.current).toBe(true);
+  });
+
+  it("mockMode.current is false when ms_mock_dismissed is set", async () => {
+    const { mockMode } = await freshConnection(() => {
+      localStorage.setItem("ms_mock_dismissed", "1");
+    });
+    expect(mockMode.current).toBe(false);
+  });
+
+  it("mockMode.current is false when a connection exists", async () => {
+    const { mockMode } = await freshConnection(() => {
+      localStorage.setItem("ms_connection", JSON.stringify(FAKE));
+    });
+    expect(mockMode.current).toBe(false);
+  });
+
+  it("silently writes ms_mock_dismissed when a connection exists and flag is absent", async () => {
+    await freshConnection(() => {
+      localStorage.setItem("ms_connection", JSON.stringify(FAKE));
+    });
+    expect(localStorage.getItem("ms_mock_dismissed")).toBe("1");
+  });
+
+  it("does NOT write ms_mock_dismissed for a first-time visitor with no connection", async () => {
+    await freshConnection();
+    expect(localStorage.getItem("ms_mock_dismissed")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// exitMockMode
+// ---------------------------------------------------------------------------
+
+describe("exitMockMode", () => {
+  let reloadSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    reloadSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, reload: reloadSpy },
+    });
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("sets ms_mock_dismissed to '1'", async () => {
+    const { exitMockMode } = await freshConnection();
+    exitMockMode();
+    expect(localStorage.getItem("ms_mock_dismissed")).toBe("1");
+  });
+
+  it("removes ms_cache from localStorage", async () => {
+    localStorage.setItem("ms_cache", JSON.stringify({ entries: [] }));
+    const { exitMockMode } = await freshConnection();
+    exitMockMode();
+    expect(localStorage.getItem("ms_cache")).toBeNull();
+  });
+
+  it("calls window.location.reload()", async () => {
+    const { exitMockMode } = await freshConnection();
+    exitMockMode();
+    expect(reloadSpy).toHaveBeenCalledOnce();
+  });
+});

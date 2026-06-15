@@ -1,6 +1,7 @@
 import type { Connection } from "./types";
 
 const LS_KEY = "ms_connection";
+const LS_MOCK_DISMISSED = "ms_mock_dismissed";
 
 function readFromStorage(): Connection | null {
   if (import.meta.env.VITE_MOCK === "true") return { gasUrl: "mock://noop", apiSecret: "mock" };
@@ -16,10 +17,23 @@ function readFromStorage(): Connection | null {
   }
 }
 
-let current = $state<Connection | null>(readFromStorage());
+const _initial = readFromStorage();
+let current = $state<Connection | null>(_initial);
+
+// Migration: existing users who have a Connection but no dismissal flag get the
+// flag written silently so they never see Mock Mode after this feature ships.
+if (_initial != null && !localStorage.getItem(LS_MOCK_DISMISSED)) {
+  localStorage.setItem(LS_MOCK_DISMISSED, "1");
+}
+
+let mockActive = $state(!localStorage.getItem(LS_MOCK_DISMISSED) && _initial == null);
 
 export const connection = {
   get current() { return current; },
+};
+
+export const mockMode = {
+  get current() { return mockActive; },
 };
 
 export function setConnection(c: Connection): void {
@@ -35,6 +49,12 @@ export function importFromUrl(): void {
     setConnection({ gasUrl, apiSecret });
     history.replaceState(null, '', window.location.pathname + window.location.hash);
   }
+}
+
+export function exitMockMode(): void {
+  localStorage.setItem(LS_MOCK_DISMISSED, "1");
+  localStorage.removeItem("ms_cache");
+  window.location.reload();
 }
 
 export function generateSetupUrl(): string {
