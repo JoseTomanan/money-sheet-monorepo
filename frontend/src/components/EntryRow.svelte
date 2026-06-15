@@ -41,7 +41,6 @@
 
 <EntryDescBand
   description={entry.description}
-  pastel={catStyle.pastel}
   color={resolvedColor}
   direction={entry.direction}
 />

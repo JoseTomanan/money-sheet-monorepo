@@ -5,7 +5,6 @@ import EntryDescBand from "./EntryDescBand.svelte";
 function baseProps(overrides = {}) {
   return {
     description: "Test entry",
-    pastel: "#eee",
     color: "#333",
     ...overrides,
   };
