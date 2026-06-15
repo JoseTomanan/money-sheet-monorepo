@@ -23,13 +23,19 @@
  *
  * ### Error
  * ```json
- * { "ok": false, "code": ErrorCode, "message": string }
+ * { "ok": false, "error": string, "code": ErrorCode, "message": string }
  * ```
  * Machine-readable error codes:
  * - `"auth"`       — missing or wrong shared secret
  * - `"validation"` — payload shape or domain invariant violated
  * - `"not_found"`  — referenced Entry ID does not exist
  * - `"internal"`   — unexpected runtime error or unknown action
+ *
+ * The legacy `error` string is retained for backwards compatibility with the
+ * current frontend, which keys off `json.error` (and the sentinel
+ * `json.error === "unauthorized"`). `code`/`message` are the structured fields
+ * new clients should read. For auth failures `error` is `"unauthorized"`; for
+ * all other failures `error` mirrors `message`.
  */
 
 // ──────────────────────────────────────────────────────────────
@@ -75,7 +81,7 @@ export type ApiResponse =
   | { ok: true; config: unknown }
   | { ok: true; entry: EntryData }
   | { ok: true }
-  | { ok: false; code: ErrorCode; message: string };
+  | { ok: false; error: string; code: ErrorCode; message: string };
 
 export interface DispatchRequest {
   action: string;
@@ -103,7 +109,10 @@ export interface DispatchDeps {
 // ──────────────────────────────────────────────────────────────
 
 function err(code: ErrorCode, message: string): ApiResponse {
-  return { ok: false, code, message };
+  // `error` keeps the legacy wire contract the current frontend depends on:
+  // the "unauthorized" sentinel for auth failures, otherwise the human message.
+  const error = code === "auth" ? "unauthorized" : message;
+  return { ok: false, error, code, message };
 }
 
 /** Build a flat set of all known subcategories from the CategoryMap. */
@@ -265,15 +274,19 @@ function validateUpdatePayload(
 // Auth check
 // ──────────────────────────────────────────────────────────────
 
-const READ_ACTIONS = new Set(["getEntries", "getMaster", "getCategories", "getConfig", "validate"]);
-const WRITE_ACTIONS = new Set(["addEntry", "updateEntry", "deleteEntry"]);
+// Public reads — no secret required (ADR-0002).
+const READ_ACTIONS = new Set(["getEntries", "getMaster", "getCategories", "getConfig"]);
+// Actions gated behind the shared secret. `validate` is the secret-check
+// endpoint itself, so it must be authenticated even though it mutates nothing —
+// the frontend's connection check relies on a wrong secret being rejected here.
+const AUTH_ACTIONS = new Set(["validate", "addEntry", "updateEntry", "deleteEntry"]);
 
 function isKnownAction(action: string): boolean {
-  return READ_ACTIONS.has(action) || WRITE_ACTIONS.has(action);
+  return READ_ACTIONS.has(action) || AUTH_ACTIONS.has(action);
 }
 
 function requiresAuth(action: string): boolean {
-  return WRITE_ACTIONS.has(action);
+  return AUTH_ACTIONS.has(action);
 }
 
 // ──────────────────────────────────────────────────────────────
