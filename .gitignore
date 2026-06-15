@@ -13,6 +13,7 @@
 .claude/todos/
 .claude/statsig/
 .claude/store/
+.claude/worktrees/
 
 # Playwright MCP snapshots
 .playwright-mcp/
