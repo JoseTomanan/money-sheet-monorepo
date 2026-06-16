@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { store } from './lib/store.svelte';
-  import { connection } from './lib/connection.svelte';
+  import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
   import type { Entry, EntryMutation } from './lib/types';
+  import MockBanner from './components/MockBanner.svelte';
   import TabBar, { type TabId } from './components/TabBar.svelte';
   import Fab from './components/Fab.svelte';
   import EntrySheet from './components/EntrySheet.svelte';
@@ -54,14 +55,17 @@
   let settingsOpen = $state(false);
 
   onMount(() => {
-    if (connection.current) store.init();
+    if (mockMode.current || connection.current) store.init();
   });
 </script>
 
-{#if connection.current == null}
+{#if connection.current == null && !mockMode.current}
   <SettingsGate onsaved={() => store.refreshAll()} />
 {:else}
-  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent">
+  {#if mockMode.current}
+    <MockBanner onExit={exitMockMode} />
+  {/if}
+  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent" class:pt-8={mockMode.current}>
     {#if store.syncing}
       <span
         class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"

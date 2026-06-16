@@ -7,7 +7,7 @@ import type {
   UpdateEntryPatch,
   GatewayAdapter,
 } from "./types";
-import { connection } from "./connection.svelte";
+import { connection, mockMode } from "./connection.svelte";
 import { isMockMode } from "./mock";
 import { RealAdapter } from "./adapter-real";
 import { MockAdapter } from "./adapter-mock";
@@ -15,7 +15,7 @@ import { MockAdapter } from "./adapter-mock";
 export { ConnectionError, ConnectionMissingError, UnauthorizedError } from "./adapter-real";
 export type { GatewayAdapter } from "./types";
 
-let _adapter: GatewayAdapter = isMockMode
+let _adapter: GatewayAdapter = (isMockMode || mockMode.current)
   ? new MockAdapter()
   : new RealAdapter(() => connection.current);
 
