@@ -316,13 +316,14 @@
   .delete-wrap {
     max-height: 0;
     overflow: hidden;
-    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     pointer-events: none;
-    transition: max-height 300ms cubic-bezier(.2,.7,.2,1), opacity 220ms ease;
+    transition: max-height 300ms cubic-bezier(.2,.7,.2,1);
   }
   .delete-wrap-visible {
     max-height: 80px;
-    opacity: 1;
     pointer-events: auto;
   }
 </style>
