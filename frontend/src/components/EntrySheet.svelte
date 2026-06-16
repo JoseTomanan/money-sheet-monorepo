@@ -16,6 +16,7 @@
     type SplitState,
   } from '../lib/splitEntry';
   import { isFormula, evaluateFormula } from '../lib/formula';
+  import { startDrag, moveDrag, endDrag, type DragState } from '../lib/dragGesture';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
 
   interface Props {
@@ -42,6 +43,10 @@
   let splitMode = $state(false);
   let split     = $state<SplitState>(initSplitState());
 
+  let activeDrag = $state<DragState | null>(null);
+  let dragOffset = $state(0);
+  let springTimer: ReturnType<typeof setTimeout> | null = null;
+
   $effect(() => {
     if (open) {
       date        = entry?.date ?? today;
@@ -52,6 +57,9 @@
       amountError = '';
       splitMode   = false;
       split       = initSplitState();
+      activeDrag  = null;
+      dragOffset  = 0;
+      if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
   });
@@ -77,12 +85,62 @@
       : (!tag || !amount || !!amountError || !isValidTag(tag, direction, categories))
   );
   const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
+
+  // During drag: apply the live offset with no transition so it tracks the finger exactly.
+  // After release (snap-back, not dismiss): keep the transition style only, letting the browser
+  // animate from the last drag position back to the element's natural translateY(0).
+  // dragOffset resets 320ms later (after spring completes) so the style stays long enough.
+  const contentStyle = $derived(
+    activeDrag
+      ? `transform: translateY(${Math.max(0, dragOffset)}px); transition: none;`
+      : dragOffset > 0
+        ? 'transition: transform 320ms cubic-bezier(.2,.7,.2,1);'
+        : undefined
+  );
+
+  function onHandlePointerDown(e: PointerEvent) {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (springTimer) { clearTimeout(springTimer); springTimer = null; }
+    activeDrag = startDrag(e.clientY, 'default');
+  }
+
+  function onHandlePointerMove(e: PointerEvent) {
+    if (!activeDrag) return;
+    activeDrag = moveDrag(activeDrag, e.clientY);
+    dragOffset = activeDrag.offsetY;
+  }
+
+  function onHandlePointerUp(e: PointerEvent) {
+    if (!activeDrag) return;
+    const result = endDrag(activeDrag);
+    activeDrag = null; // removes transform from contentStyle, leaving only the spring transition
+    if (result.action === 'dismiss') {
+      dragOffset = 0;
+      onclose();
+    } else {
+      // Spring back: dragOffset stays nonzero briefly so the transition can animate back to 0.
+      // 'expanded' snap is deferred — delete button is always visible, so treat it as default.
+      springTimer = setTimeout(() => {
+        dragOffset = 0;
+        springTimer = null;
+      }, 320);
+    }
+  }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && onclose()}>
-  <!-- handle (decorative; drag-to-reveal deferred) -->
-  <div class="flex justify-center pt-[14px] pb-[10px]">
-    <div class="w-9 h-1 rounded-[2px] bg-border"></div>
+<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle}>
+  <!-- handle — drag down to dismiss; drag-up-to-reveal-delete is deferred -->
+  <div
+    class="flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
+    role="separator"
+    aria-label="Drag down to dismiss"
+    onpointerdown={onHandlePointerDown}
+    onpointermove={onHandlePointerMove}
+    onpointerup={onHandlePointerUp}
+    onpointercancel={onHandlePointerUp}
+  >
+    <div class="w-9 h-1 rounded-[2px] bg-border pointer-events-none"></div>
   </div>
 
   <Sheet.Header>

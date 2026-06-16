@@ -218,3 +218,29 @@ body::before {
 
 /* shimmer keyframe — used via animate-[shimmer_1s_ease-in-out_infinite] */
 @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+
+/* tailwindcss-animate primitives — bits-ui/shadcn components rely on these utility classes.
+   Tailwind v4 does not bundle tailwindcss-animate, so we define them here.
+   Centering via inset-x-0 mx-auto (not translateX) keeps the Y-axis clean for slide keyframes. */
+@keyframes tw-enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+               scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1)
+               rotate(var(--tw-enter-rotate, 0));
+  }
+}
+@keyframes tw-exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0)
+               scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), 1)
+               rotate(var(--tw-exit-rotate, 0));
+  }
+}
+@utility animate-in  { animation-name: tw-enter; animation-duration: 280ms; animation-timing-function: cubic-bezier(.2,.7,.2,1); animation-fill-mode: both; }
+@utility animate-out { animation-name: tw-exit;  animation-duration: 220ms; animation-timing-function: ease;                     animation-fill-mode: both; }
+@utility fade-in-0             { --tw-enter-opacity: 0;    }
+@utility fade-out-0            { --tw-exit-opacity:  0;    }
+@utility slide-in-from-bottom  { --tw-enter-translate-y: 100%; }
+@utility slide-out-to-bottom   { --tw-exit-translate-y:  100%; }
