@@ -136,23 +136,30 @@
       onclose();
     } else {
       snap = result.to;
-      // Two-frame snap-back: Frame 1 (this render) sets snapping=true with the current dragOffset
-      // so the browser has an explicit "from" transform. Frame 2 (rAF) zeros dragOffset so the
-      // browser animates translateY(offset) → translateY(0) via the CSS transition.
-      // The snap state change also triggers the delete-wrap reveal/collapse simultaneously.
-      snapping = true;
-      requestAnimationFrame(() => {
+      if (result.to === 'default' && dragOffset > 0) {
+        // Collapsing (user dragged down): skip the animated spring-back. The sheet is already below
+        // rest, so a translateY→0 animation would move upward — opposing the collapse direction.
+        // Let the delete-wrap max-height transition carry the visual motion instead.
         dragOffset = 0;
-        springTimer = setTimeout(() => {
-          snapping    = false;
-          springTimer = null;
-        }, 320);
-      });
+        snapping   = false;
+      } else {
+        // Two-frame snap-back: Frame 1 sets snapping=true with the current dragOffset so the
+        // browser has an explicit "from" transform. Frame 2 (rAF) zeros dragOffset so the browser
+        // animates translateY(offset) → translateY(0) via the CSS transition.
+        snapping = true;
+        requestAnimationFrame(() => {
+          dragOffset = 0;
+          springTimer = setTimeout(() => {
+            snapping    = false;
+            springTimer = null;
+          }, 320);
+        });
+      }
     }
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle}>
+<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} class="pb-0">
   <!-- handle — drag down to dismiss, drag up to reveal Delete button -->
   <div
     class="flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
@@ -293,6 +300,7 @@
         class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
         onclick={() => { ondelete!(entry!.id); onclose(); }}
       >Delete entry</button>
+      <div class="h-8"></div>
     </div>
   {/if}
 </Sheet.Root>
@@ -323,7 +331,7 @@
     transition: max-height 300ms cubic-bezier(.2,.7,.2,1);
   }
   .delete-wrap-visible {
-    max-height: 80px;
+    max-height: 112px;
     pointer-events: auto;
   }
 </style>
