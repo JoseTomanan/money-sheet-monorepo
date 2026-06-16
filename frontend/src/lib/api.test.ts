@@ -7,11 +7,21 @@ const FAKE_CONN = { gasUrl: FAKE_GAS_URL, apiSecret: FAKE_SECRET };
 
 async function freshMods(preSet?: () => void) {
   localStorage.clear();
+  // Simulate a returning user (dismissed mock mode) so these tests exercise RealAdapter.
+  localStorage.setItem("ms_mock_dismissed", "1");
   if (preSet) preSet();
   vi.resetModules();
   const connMod = await import("./connection.svelte");
   const apiMod = await import("./api");
   return { connection: connMod.connection, setConnection: connMod.setConnection, api: apiMod };
+}
+
+async function freshModsFirstVisitor() {
+  localStorage.clear();
+  vi.resetModules();
+  const connMod = await import("./connection.svelte");
+  const apiMod = await import("./api");
+  return { connection: connMod.connection, api: apiMod };
 }
 
 async function freshModsWithConn() {
@@ -131,7 +141,24 @@ describe("api — uses Connection values at call time", () => {
   });
 });
 
-// ── Cycle 9: setAdapter injection ─────────────────────────────────────────
+// ── Cycle 9: runtime Mock Mode wires MockAdapter for first-time visitors ──
+
+describe("api — first-time visitor (no connection, no dismissal flag) uses MockAdapter", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.resetModules();
+  });
+
+  it("getEntries resolves with mock fixture data (no network call)", async () => {
+    const { api } = await freshModsFirstVisitor();
+    const entries = await api.getEntries();
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries[0]).toHaveProperty("id");
+    expect(entries[0]).toHaveProperty("direction");
+  });
+});
+
+// ── setAdapter injection ───────────────────────────────────────────────────
 
 describe("api — setAdapter replaces the active adapter", () => {
   afterEach(() => {
