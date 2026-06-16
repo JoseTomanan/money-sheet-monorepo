@@ -16,7 +16,7 @@
     type SplitState,
   } from '../lib/splitEntry';
   import { isFormula, evaluateFormula } from '../lib/formula';
-  import { startDrag, moveDrag, endDrag, type DragState } from '../lib/dragGesture';
+  import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '../lib/dragGesture';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
 
   interface Props {
@@ -43,6 +43,7 @@
   let splitMode = $state(false);
   let split     = $state<SplitState>(initSplitState());
 
+  let snap        = $state<Snap>('default');
   let activeDrag  = $state<DragState | null>(null);
   let dragOffset  = $state(0);
   let snapping    = $state(false);
@@ -59,6 +60,7 @@
       amountError = '';
       splitMode   = false;
       split       = initSplitState();
+      snap        = 'default';
       activeDrag  = null;
       dragOffset  = 0;
       snapping    = false;
@@ -93,16 +95,16 @@
   // During drag: track finger exactly with no transition.
   // Snap-back: hold the explicit transform value (snapping=true) so the browser has a "from"
   // state when dragOffset is zeroed in the next rAF — this is what makes the CSS transition fire.
-  // Dismiss: same two-frame trick but animates to window.innerHeight instead of 0.
-  // animation-duration:0s suppresses the Dialog's built-in slide-out-to-bottom so it doesn't
-  // snap back to origin before playing its own exit animation.
+  // Dismiss: hold transform at the release point (transition:none) so the Dialog's own
+  // slide-out-to-bottom exit animation uses it as the implicit "from" value, continuing
+  // naturally from where the finger left off rather than snapping back to origin first.
   const contentStyle = $derived(
     activeDrag
       ? `transform: translateY(${Math.max(0, dragOffset)}px); transition: none;`
       : snapping
         ? `transform: translateY(${dragOffset}px); transition: transform 320ms cubic-bezier(.2,.7,.2,1);`
         : dismissing
-          ? `transform: translateY(${dragOffset}px); transition: transform 280ms cubic-bezier(.4,0,1,1); animation-duration: 0s;`
+          ? `transform: translateY(${dragOffset}px); transition: none;`
           : undefined
   );
 
@@ -112,12 +114,12 @@
     if (springTimer) { clearTimeout(springTimer); springTimer = null; }
     snapping   = false;
     dragOffset = 0;
-    activeDrag = startDrag(e.clientY, 'default');
+    activeDrag = startDrag(e.clientY, snap, e.timeStamp);
   }
 
   function onHandlePointerMove(e: PointerEvent) {
     if (!activeDrag) return;
-    activeDrag = moveDrag(activeDrag, e.clientY);
+    activeDrag = moveDrag(activeDrag, e.clientY, e.timeStamp);
     dragOffset = activeDrag.offsetY;
   }
 
@@ -126,23 +128,18 @@
     const result = endDrag(activeDrag);
     activeDrag = null;
     if (result.action === 'dismiss') {
-      // Two-frame dismiss: Frame 1 keeps dragOffset at the finger position so the browser has
-      // an explicit "from" transform. Frame 2 (rAF) animates to window.innerHeight (off-screen).
-      // We call onclose() after the animation so the sheet flies out from where the finger released,
-      // not from the top. animation-duration:0s in contentStyle suppresses the Dialog's own exit
-      // animation, which would otherwise snap the sheet back to origin first.
+      // Hold the drag transform so the Dialog's slide-out-to-bottom exit animation starts from
+      // the finger release point. CSS animations use the underlying inline style as the implicit
+      // "from" value when the 0% keyframe doesn't specify the property, so the sheet continues
+      // moving downward rather than snapping back to origin before animating out.
       dismissing = true;
-      requestAnimationFrame(() => {
-        dragOffset = window.innerHeight;
-        springTimer = setTimeout(() => {
-          springTimer = null;
-          onclose();
-        }, 280);
-      });
+      onclose();
     } else {
+      snap = result.to;
       // Two-frame snap-back: Frame 1 (this render) sets snapping=true with the current dragOffset
       // so the browser has an explicit "from" transform. Frame 2 (rAF) zeros dragOffset so the
       // browser animates translateY(offset) → translateY(0) via the CSS transition.
+      // The snap state change also triggers the delete-wrap reveal/collapse simultaneously.
       snapping = true;
       requestAnimationFrame(() => {
         dragOffset = 0;
@@ -156,11 +153,11 @@
 </script>
 
 <Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle}>
-  <!-- handle — drag down to dismiss; drag-up-to-reveal-delete is deferred -->
+  <!-- handle — drag down to dismiss, drag up to reveal Delete button -->
   <div
     class="flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
     role="separator"
-    aria-label="Drag down to dismiss"
+    aria-label="Drag to resize or dismiss"
     onpointerdown={onHandlePointerDown}
     onpointermove={onHandlePointerMove}
     onpointerup={onHandlePointerUp}
@@ -291,10 +288,12 @@
   {/if}
 
   {#if entry && ondelete}
-    <button
-      class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
-      onclick={() => { ondelete!(entry!.id); onclose(); }}
-    >Delete entry</button>
+    <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
+      <button
+        class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
+        onclick={() => { ondelete!(entry!.id); onclose(); }}
+      >Delete entry</button>
+    </div>
   {/if}
 </Sheet.Root>
 
@@ -313,5 +312,17 @@
     background: color-mix(in srgb, var(--positive) 12%, transparent);
     color: var(--positive);
     border-color: color-mix(in srgb, var(--positive) 25%, transparent);
+  }
+  .delete-wrap {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 300ms cubic-bezier(.2,.7,.2,1), opacity 220ms ease;
+  }
+  .delete-wrap-visible {
+    max-height: 80px;
+    opacity: 1;
+    pointer-events: auto;
   }
 </style>
