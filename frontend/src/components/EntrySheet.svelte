@@ -43,8 +43,10 @@
   let splitMode = $state(false);
   let split     = $state<SplitState>(initSplitState());
 
-  let activeDrag = $state<DragState | null>(null);
-  let dragOffset = $state(0);
+  let activeDrag  = $state<DragState | null>(null);
+  let dragOffset  = $state(0);
+  let snapping    = $state(false);
+  let dismissing  = $state(false);
   let springTimer: ReturnType<typeof setTimeout> | null = null;
 
   $effect(() => {
@@ -59,6 +61,8 @@
       split       = initSplitState();
       activeDrag  = null;
       dragOffset  = 0;
+      snapping    = false;
+      dismissing  = false;
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
@@ -86,22 +90,28 @@
   );
   const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
 
-  // During drag: apply the live offset with no transition so it tracks the finger exactly.
-  // After release (snap-back, not dismiss): keep the transition style only, letting the browser
-  // animate from the last drag position back to the element's natural translateY(0).
-  // dragOffset resets 320ms later (after spring completes) so the style stays long enough.
+  // During drag: track finger exactly with no transition.
+  // Snap-back: hold the explicit transform value (snapping=true) so the browser has a "from"
+  // state when dragOffset is zeroed in the next rAF — this is what makes the CSS transition fire.
+  // Dismiss: same two-frame trick but animates to window.innerHeight instead of 0.
+  // animation-duration:0s suppresses the Dialog's built-in slide-out-to-bottom so it doesn't
+  // snap back to origin before playing its own exit animation.
   const contentStyle = $derived(
     activeDrag
       ? `transform: translateY(${Math.max(0, dragOffset)}px); transition: none;`
-      : dragOffset > 0
-        ? 'transition: transform 320ms cubic-bezier(.2,.7,.2,1);'
-        : undefined
+      : snapping
+        ? `transform: translateY(${dragOffset}px); transition: transform 320ms cubic-bezier(.2,.7,.2,1);`
+        : dismissing
+          ? `transform: translateY(${dragOffset}px); transition: transform 280ms cubic-bezier(.4,0,1,1); animation-duration: 0s;`
+          : undefined
   );
 
   function onHandlePointerDown(e: PointerEvent) {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     if (springTimer) { clearTimeout(springTimer); springTimer = null; }
+    snapping   = false;
+    dragOffset = 0;
     activeDrag = startDrag(e.clientY, 'default');
   }
 
@@ -114,17 +124,33 @@
   function onHandlePointerUp(e: PointerEvent) {
     if (!activeDrag) return;
     const result = endDrag(activeDrag);
-    activeDrag = null; // removes transform from contentStyle, leaving only the spring transition
+    activeDrag = null;
     if (result.action === 'dismiss') {
-      dragOffset = 0;
-      onclose();
+      // Two-frame dismiss: Frame 1 keeps dragOffset at the finger position so the browser has
+      // an explicit "from" transform. Frame 2 (rAF) animates to window.innerHeight (off-screen).
+      // We call onclose() after the animation so the sheet flies out from where the finger released,
+      // not from the top. animation-duration:0s in contentStyle suppresses the Dialog's own exit
+      // animation, which would otherwise snap the sheet back to origin first.
+      dismissing = true;
+      requestAnimationFrame(() => {
+        dragOffset = window.innerHeight;
+        springTimer = setTimeout(() => {
+          springTimer = null;
+          onclose();
+        }, 280);
+      });
     } else {
-      // Spring back: dragOffset stays nonzero briefly so the transition can animate back to 0.
-      // 'expanded' snap is deferred — delete button is always visible, so treat it as default.
-      springTimer = setTimeout(() => {
+      // Two-frame snap-back: Frame 1 (this render) sets snapping=true with the current dragOffset
+      // so the browser has an explicit "from" transform. Frame 2 (rAF) zeros dragOffset so the
+      // browser animates translateY(offset) → translateY(0) via the CSS transition.
+      snapping = true;
+      requestAnimationFrame(() => {
         dragOffset = 0;
-        springTimer = null;
-      }, 320);
+        springTimer = setTimeout(() => {
+          snapping    = false;
+          springTimer = null;
+        }, 320);
+      });
     }
   }
 </script>
