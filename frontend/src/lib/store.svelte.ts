@@ -98,9 +98,16 @@ async function submitLegs(legs: AddEntryPayload[]): Promise<void> {
   for (const id of tempIds) addPending(id);
   masterLoading = true;
   try {
-    const outcomes = await Promise.all(
-      legs.map((leg, i) => submitAdd(tempIds[i], leg, () => withTimeout(api.addEntry(leg))))
+    // The main leg (index 0) must land — and get its ID — before any '^^' ditto leg is
+    // sent: GAS assigns IDs in lock-acquisition order, not request-array order, so a ditto
+    // leg racing the main leg could win a lower ID, breaking splitRunPositions' "main leg
+    // first" grouping. Once the main leg is confirmed, the ditto legs carry no such
+    // ordering constraint among themselves and can be submitted concurrently.
+    const mainOutcome = await submitAdd(tempIds[0], legs[0], () => withTimeout(api.addEntry(legs[0])));
+    const dittoOutcomes = await Promise.all(
+      legs.slice(1).map((leg, i) => submitAdd(tempIds[i + 1], leg, () => withTimeout(api.addEntry(leg))))
     );
+    const outcomes = [mainOutcome, ...dittoOutcomes];
 
     for (let i = 0; i < outcomes.length; i++) {
       const tempId = tempIds[i];

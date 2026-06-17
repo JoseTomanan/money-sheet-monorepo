@@ -532,6 +532,91 @@ describe("addEntry — split (array) path", () => {
     await vi.waitFor(() => expect(store.localIds.size).toBe(1));
     expect(store.entries.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("submits legs sequentially: leg[1]'s POST is not sent until leg[0]'s POST resolves", async () => {
+    let postIdx = 0;
+    let secondLegPosted = false;
+    let resolveFirstLeg!: (value: { text: () => Promise<string> }) => void;
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      const i = postIdx++;
+      if (i === 0) {
+        return new Promise((resolve) => { resolveFirstLeg = resolve; });
+      }
+      secondLegPosted = true;
+      const entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "^^", direction: "O", amount: 20 };
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+    }));
+
+    const addPromise = store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
+    ]);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(secondLegPosted).toBe(false);
+
+    const mainEntry = { id: 100, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 };
+    resolveFirstLeg({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: mainEntry })) });
+
+    await addPromise;
+    expect(secondLegPosted).toBe(true);
+  });
+
+  it("ditto legs (after the main leg lands) are submitted concurrently, not one-at-a-time", async () => {
+    let postIdx = 0;
+    let leg1Posted = false;
+    let leg2Posted = false;
+    let resolveMain!: (value: { text: () => Promise<string> }) => void;
+    let resolveLeg1!: (value: { text: () => Promise<string> }) => void;
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      const i = postIdx++;
+      if (i === 0) {
+        return new Promise((resolve) => { resolveMain = resolve; });
+      }
+      if (i === 1) {
+        leg1Posted = true;
+        return new Promise((resolve) => { resolveLeg1 = resolve; });
+      }
+      leg2Posted = true;
+      const entry = { id: 102, date: "2026-01-01", tag: "Rent", mainCategory: "FOOD", description: "^^", direction: "O", amount: 30 };
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+    }));
+
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const addPromise = store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
+      { date: "2026-01-01", tag: "Rent", description: "^^", direction: "O", amount: 30 },
+    ]);
+
+    await flush();
+    expect(leg1Posted).toBe(false);
+    expect(leg2Posted).toBe(false);
+
+    const mainEntry = { id: 100, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 };
+    resolveMain({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: mainEntry })) });
+
+    await flush();
+    // leg2 must be posted even though leg1's own request is still unresolved —
+    // proves they were dispatched together, not awaited one-after-another.
+    expect(leg1Posted).toBe(true);
+    expect(leg2Posted).toBe(true);
+
+    const leg1Entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "^^", direction: "O", amount: 20 };
+    resolveLeg1({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: leg1Entry })) });
+
+    await addPromise;
+  });
 });
 
 // ---------------------------------------------------------------------------
