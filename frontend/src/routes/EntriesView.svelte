@@ -111,6 +111,8 @@
   }
 </script>
 
+
+
 <div class="entries-view p-0">
 {#if store.localIds.size > 0 && !selectMode}
   <div class="sync-bar fixed bottom-[72px] inset-x-0 z-10 flex justify-center pb-2 pointer-events-none">
@@ -280,12 +282,12 @@
     {:else}
       {#each weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
-        <div class="week-group flex flex-col gap-[6px] mb-4">
+        <div class="week-group flex flex-col gap-[6px] mb-6">
           <div class="week-label font-display text-[11px] font-bold tracking-[0.8px] uppercase text-muted-foreground pt-1 pb-[2px] px-[2px]">{group.label}</div>
           {#each dateGroups as dateGroup, di (dateGroup[0].date)}
             {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
             {@const splitPos = splitRunPositions(dateGroup)}
-            <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden">
+            <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden space-y-px">
               {#each dateGroup as entry, j (entry.id)}
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
@@ -299,7 +301,6 @@
                   class:opacity-50={deletePending}
                   class:pointer-events-none={pending || deletePending}
                   class:cursor-default={pending || deletePending}
-                  class:border-t={j > 0}
                   class:border-border={j > 0}
                   class:border-l-2={local}
                   class:border-local={local}
