@@ -300,9 +300,9 @@
         class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
         onclick={() => { ondelete!(entry!.id); onclose(); }}
       >Delete entry</button>
-      <div class="h-8"></div>
     </div>
   {/if}
+  <div class="h-8"></div>
 </Sheet.Root>
 
 <style>
@@ -331,7 +331,7 @@
     transition: max-height 300ms cubic-bezier(.2,.7,.2,1);
   }
   .delete-wrap-visible {
-    max-height: 112px;
+    max-height: 80px;
     pointer-events: auto;
   }
 </style>
