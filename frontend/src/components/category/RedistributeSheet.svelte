@@ -5,9 +5,9 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
-  import { isFormula, evaluateFormula } from '../lib/formula';
-  import { store } from '../lib/store.svelte';
-  import type { CategoryMap, AddEntryPayload } from '../lib/types';
+  import { isFormula, evaluateFormula } from '../../lib/formula';
+  import { store } from '../../lib/store.svelte';
+  import type { CategoryMap, AddEntryPayload } from '../../lib/types';
 
   interface Props {
     open: boolean;

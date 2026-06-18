@@ -3,10 +3,10 @@
      Incoming: Category row only; tapping a Category calls onselect immediately. -->
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { resolveCategoryStyle, CATEGORY_ORDER } from '../lib/theme';
-  import { darkMode } from '../lib/darkMode.svelte';
-  import { getMainCategory } from '../lib/domain';
-  import type { Direction, CategoryMap } from '../lib/types';
+  import { resolveCategoryStyle, CATEGORY_ORDER } from '../../lib/theme';
+  import { darkMode } from '../../lib/darkMode.svelte';
+  import { getMainCategory } from '../../lib/domain';
+  import type { Direction, CategoryMap } from '../../lib/types';
 
   interface Props {
     direction: Direction;

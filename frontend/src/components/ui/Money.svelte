@@ -1,7 +1,7 @@
 <!-- Currency display primitive; no shadcn equivalent. -->
 <script lang="ts">
-  import { peso } from '../lib/format';
-  import { store } from '../lib/store.svelte';
+  import { peso } from '../../lib/format';
+  import { store } from '../../lib/store.svelte';
 
   interface Props {
     value: number;

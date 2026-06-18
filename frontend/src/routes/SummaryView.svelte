@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
-  import RedistributeSheet from '../components/RedistributeSheet.svelte';
+  import RedistributeSheet from '../components/category/RedistributeSheet.svelte';
   import type { AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
@@ -12,8 +12,8 @@
     flowByMonth,
     cumulativeOutgoingByDay,
   } from '../lib/aggregations';
-  import Money from '../components/Money.svelte';
-  import SectionHeader from '../components/SectionHeader.svelte';
+  import Money from '../components/ui/Money.svelte';
+  import SectionHeader from '../components/ui/SectionHeader.svelte';
   import FlowChart from '../components/charts/FlowChart.svelte';
   import PaceChart from '../components/charts/PaceChart.svelte';
 

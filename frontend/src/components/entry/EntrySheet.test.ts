@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, waitFor, fireEvent } from "@testing-library/svelte";
 import EntrySheet from "./EntrySheet.svelte";
-import type { CategoryMap, Entry } from "../lib/types";
+import type { CategoryMap, Entry } from "../../lib/types";
 
 const CATEGORIES: CategoryMap = {
   Food: ["Dining", "Groceries"],

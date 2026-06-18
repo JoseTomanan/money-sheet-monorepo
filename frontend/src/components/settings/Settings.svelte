@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { connection, setConnection, generateSetupUrl } from '../lib/connection.svelte';
-  import { validateConnection, UnauthorizedError, ConnectionError } from '../lib/api';
-  import { darkMode, type ThemePreference } from '../lib/darkMode.svelte';
+  import { connection, setConnection, generateSetupUrl } from '../../lib/connection.svelte';
+  import { validateConnection, UnauthorizedError, ConnectionError } from '../../lib/api';
+  import { darkMode, type ThemePreference } from '../../lib/darkMode.svelte';
 
   const themeOptions: { value: ThemePreference; label: string }[] = [
     { value: 'system', label: 'System' },

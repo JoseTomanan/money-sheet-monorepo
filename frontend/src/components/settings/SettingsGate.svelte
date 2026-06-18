@@ -1,7 +1,7 @@
 <!-- First-launch non-dismissible gate dialog; could map to shadcn Dialog but is out of scope for issue #39 (Sheet + Badge only). -->
 <script lang="ts">
   import Settings from './Settings.svelte';
-  import Wordmark from './Wordmark.svelte';
+  import Wordmark from '../ui/Wordmark.svelte';
 
   const TEMPLATE_URL = 'https://docs.google.com/spreadsheets/d/1dW0X378z9MXCqZ9YK2oxCqk3FjX6TUP2h7yLSdjmd6g/template/preview';
 

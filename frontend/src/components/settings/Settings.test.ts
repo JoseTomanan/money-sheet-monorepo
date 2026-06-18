@@ -6,12 +6,12 @@ const mockSetConnection = vi.hoisted(() => vi.fn());
 const mockConnection = vi.hoisted(() => ({ current: null as { gasUrl: string; apiSecret: string } | null }));
 const mockValidateConnection = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
-vi.mock("../lib/connection.svelte", () => ({
+vi.mock("../../lib/connection.svelte", () => ({
   connection: mockConnection,
   setConnection: mockSetConnection,
 }));
 
-vi.mock("../lib/api", () => ({
+vi.mock("../../lib/api", () => ({
   validateConnection: mockValidateConnection,
   UnauthorizedError: class UnauthorizedError extends Error {},
   ConnectionError: class ConnectionError extends Error {},

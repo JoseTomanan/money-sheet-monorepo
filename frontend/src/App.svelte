@@ -3,12 +3,12 @@
   import { store } from './lib/store.svelte';
   import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
   import type { Entry, EntryMutation } from './lib/types';
-  import MockBanner from './components/MockBanner.svelte';
-  import TabBar, { type TabId } from './components/TabBar.svelte';
-  import Fab from './components/Fab.svelte';
-  import EntrySheet from './components/EntrySheet.svelte';
-  import Settings from './components/Settings.svelte';
-  import SettingsGate from './components/SettingsGate.svelte';
+  import MockBanner from './components/ui/MockBanner.svelte';
+  import TabBar, { type TabId } from './components/ui/TabBar.svelte';
+  import Fab from './components/ui/Fab.svelte';
+  import EntrySheet from './components/entry/EntrySheet.svelte';
+  import Settings from './components/settings/Settings.svelte';
+  import SettingsGate from './components/settings/SettingsGate.svelte';
   import { Toast } from '$lib/components/ui/toast';
   import * as Sheet from '$lib/components/ui/sheet';
   import HomeScreen from './routes/HomeScreen.svelte';

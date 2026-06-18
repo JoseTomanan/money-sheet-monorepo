@@ -4,8 +4,8 @@
   import { darkMode } from '../lib/darkMode.svelte';
   import { peso, fmtDate, dayOfWeek } from '../lib/format';
   import { compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
-  import SectionHeader from '../components/SectionHeader.svelte';
-  import EntryRow from '../components/EntryRow.svelte';
+  import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import EntryRow from '../components/entry/EntryRow.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
