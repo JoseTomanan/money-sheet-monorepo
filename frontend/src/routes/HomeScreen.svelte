@@ -109,7 +109,7 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] overflow-hidden space-y-px">
+        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] overflow-hidden space-y-0.5">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}

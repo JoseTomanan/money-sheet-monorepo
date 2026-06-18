@@ -282,12 +282,12 @@
     {:else}
       {#each weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
-        <div class="week-group flex flex-col gap-[6px] mb-6">
+        <div class="week-group flex flex-col gap-[8px] mb-4">
           <div class="week-label font-display text-[11px] font-bold tracking-[0.8px] uppercase text-muted-foreground pt-1 pb-[2px] px-[2px]">{group.label}</div>
           {#each dateGroups as dateGroup, di (dateGroup[0].date)}
             {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
             {@const splitPos = splitRunPositions(dateGroup)}
-            <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden space-y-px">
+            <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden space-y-0.5">
               {#each dateGroup as entry, j (entry.id)}
                 {@const pending = store.pendingIds.has(entry.id)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
