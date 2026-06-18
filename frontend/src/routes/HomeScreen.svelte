@@ -109,14 +109,13 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] bg-card overflow-hidden">
+        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] overflow-hidden space-y-px">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
           {#each todayEntries as entry, i (entry.id)}
             <div
-              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3"
-              style="border-top: {i === 0 ? 'none' : '1px solid var(--border)'};"
+              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card"
             >
               <EntryRow {entry} splitPos={todaySplitPos[i]} />
             </div>
