@@ -1,4 +1,4 @@
-# ADR-0006: Prefer Shadcn Svelte Components Over Bespoke AI-Generated Ones
+# ADR-0007: Prefer Shadcn Svelte Components Over Bespoke AI-Generated Ones
 
 **Status:** Accepted
 
