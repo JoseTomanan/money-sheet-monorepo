@@ -60,7 +60,7 @@
 
 <!-- Label (single line — reads "Subcategory" when drilled in, "Category" otherwise) -->
 {#if !compact}
-  <div class="picker-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
+  <div class="picker-label label-overline px-5 pt-[14px] pb-[6px]">
     {direction === 'O' && activeCategory ? 'Subcategory' : 'Category'}
   </div>
 {/if}

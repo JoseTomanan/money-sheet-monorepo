@@ -56,10 +56,10 @@
 <div class="settings-content px-4 pt-4 pb-8">
   <h2 class="settings-title font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-5">Connection Settings</h2>
 
-  <div class="field-card mt-0 py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+  <div class="field-card mt-0">
     <label
       for="settings-gas-url"
-      class="field-label block text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1"
+      class="field-label label-overline block mb-1"
     >GAS URL</label>
     <input
       id="settings-gas-url"
@@ -73,11 +73,11 @@
     />
   </div>
 
-  <div class="field-card mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)] flex items-center gap-2">
+  <div class="field-card mt-[10px] flex items-center gap-2">
     <div class="flex-1 min-w-0">
       <label
         for="settings-api-secret"
-        class="field-label block text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1"
+        class="field-label label-overline block mb-1"
       >API Secret</label>
       <input
         id="settings-api-secret"
@@ -129,8 +129,8 @@
 
   <div class="appearance-section mt-8">
     <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-3">Appearance</h2>
-    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
-      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-3">Theme</p>
+    <div class="field-card">
+      <p class="label-overline mb-3">Theme</p>
       <div class="flex gap-2">
         {#each themeOptions as opt}
           <button
@@ -146,13 +146,13 @@
   <div class="spreadsheet-hints mt-8 space-y-3">
     <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px]">Spreadsheet Settings</h2>
 
-    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
-      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Currency symbol</p>
+    <div class="field-card">
+      <p class="label-overline mb-1">Currency symbol</p>
       <p class="font-sans text-[13px] text-muted-foreground leading-snug">Set in the <strong class="text-foreground font-semibold">Config</strong> sheet of your spreadsheet — change the value in the <em>currency</em> row. Picked up automatically on next load.</p>
     </div>
 
-    <div class="py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
-      <p class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Subcategories</p>
+    <div class="field-card">
+      <p class="label-overline mb-1">Subcategories</p>
       <p class="font-sans text-[13px] text-muted-foreground leading-snug">Add or remove subcategories by editing the <strong class="text-foreground font-semibold">Categories</strong> sheet directly. Changes are picked up automatically.</p>
     </div>
   </div>
