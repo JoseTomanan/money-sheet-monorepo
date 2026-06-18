@@ -79,14 +79,14 @@
   const barWidth = (spent: number) => (appear ? (spent / maxSpent) * 100 : 0);
 </script>
 
-<div class="summary-view p-0" style="padding-bottom: 72px;">
+<div class="summary-view p-0 pb-[72px]">
 {#if store.loading}
   <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
     <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
     <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
   </div>
-  <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
+  <div class="card mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between">
     <div>
       <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       <div class="h-[15px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
@@ -102,10 +102,10 @@
   <div class="px-5 pt-2 pb-2">
     <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
-  <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 p-4">
+  <div class="card mx-4 p-4">
     <div class="h-[110px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
-  <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] overflow-hidden">
+  <div class="card mx-4 mt-[14px] overflow-hidden">
     {#each [0, 1, 2, 3, 4] as _}
       <div class="py-[14px] px-4 border-b border-border last:border-0">
         <div class="flex items-center gap-[10px]">
@@ -145,8 +145,7 @@
   </div>
 
   <!-- Incoming / Outgoing card — readout for the selected month -->
-  <div class="io-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden"
-    style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);">
+  <div class="io-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden">
 
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
@@ -161,7 +160,7 @@
   <!-- Actions strip -->
   <div class="actions-strip flex gap-2 px-4 pt-[14px] pb-2">
     <button
-      class="action-chip flex items-center gap-[6px] py-[8px] px-[14px] rounded-[var(--radius-pill)] bg-card shadow-[var(--shadow-card)] border-0 cursor-pointer font-sans text-[13px] font-semibold text-foreground"
+      class="action-chip btn-pill flex items-center gap-[6px] bg-card shadow-[var(--shadow-card)] text-foreground"
       onclick={() => (redistOpen = true)}
       aria-label="Redistribute"
     >
@@ -172,7 +171,7 @@
       Redistribute
     </button>
     <button
-      class="action-chip flex items-center gap-[6px] py-[8px] px-[14px] rounded-[var(--radius-pill)] bg-card shadow-[var(--shadow-card)] border-0 cursor-pointer font-sans text-[13px] font-semibold text-destructive"
+      class="action-chip btn-pill flex items-center gap-[6px] bg-card shadow-[var(--shadow-card)] text-destructive"
       onclick={onbulkdelete}
       aria-label="Bulk delete entries"
     >
@@ -193,7 +192,7 @@
       <SectionHeader>
         {#snippet children()}Flow{/snippet}
       </SectionHeader>
-      <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 px-4 pt-3 pb-3 flex-1">
+      <div class="card mx-4 px-4 pt-3 pb-3 flex-1">
         <FlowChart data={flow} selected={selectedYm} onselect={(ym) => (selectedYm = ym)} />
       </div>
     </div>
@@ -211,7 +210,7 @@
           {/if}
         {/snippet}
       </SectionHeader>
-      <div class="bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 px-4 pt-3 pb-3 flex-1">
+      <div class="card mx-4 px-4 pt-3 pb-3 flex-1">
         <PaceChart
           current={paceCur}
           previous={pacePrevShown}
@@ -227,7 +226,7 @@
   <SectionHeader>
     {#snippet children()}Where it went{/snippet}
   </SectionHeader>
-  <div class="cat-list bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 overflow-hidden md:grid md:grid-cols-2">
+  <div class="cat-list card mx-4 overflow-hidden md:grid md:grid-cols-2">
     <!-- distribution strip -->
     <div class="px-4 pt-4 pb-1 md:col-span-2">
       {#if monthOutgoing > 0}

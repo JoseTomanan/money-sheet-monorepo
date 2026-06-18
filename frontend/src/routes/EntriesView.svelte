@@ -165,7 +165,7 @@
   <div class="mx-4 mb-3">
     <div class="h-[32px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
-  <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
+  <div class="card mx-4 overflow-hidden">
     {#each [0, 1, 2, 3, 4, 5] as _}
       <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
         <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>

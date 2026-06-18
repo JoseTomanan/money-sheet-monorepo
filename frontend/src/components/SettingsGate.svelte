@@ -14,8 +14,7 @@
 
 <div class="gate-backdrop fixed inset-0 bg-[var(--overlay-bg)] backdrop-blur-[2px] z-[500]"></div>
 <div
-  class="gate-dialog fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-[400px] md:max-w-[520px] max-h-[calc(100dvh-32px)] rounded-[var(--radius-xl)] z-[501] overflow-y-auto"
-  style="background: var(--gradient-hero); box-shadow: var(--shadow-hero), var(--ring-inset);"
+  class="gate-dialog card-hero fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-32px)] max-w-[400px] md:max-w-[520px] max-h-[calc(100dvh-32px)] rounded-[var(--radius-xl)] z-[501] overflow-y-auto"
   role="dialog"
   aria-modal="true"
   aria-labelledby="gate-title"
