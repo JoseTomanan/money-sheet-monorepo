@@ -73,7 +73,7 @@
 
     <!-- sheet -->
     <div
-      class="sheet absolute bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] max-h-[90dvh] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8 overflow-y-auto overflow-x-clip"
+      class="sheet sheet-modal"
       style="transform: {animOpen ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(100%)'}; transition: transform 320ms cubic-bezier(.2,.7,.2,1);"
     >
       <!-- handle -->
@@ -96,8 +96,8 @@
       </div>
 
       <!-- Amount input -->
-      <div class="mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
-        <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">Amount to move</div>
+      <div class="card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center">
+        <div class="label-overline mb-2">Amount to move</div>
         <div class="flex justify-center items-baseline gap-1">
           <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
           <input
@@ -130,9 +130,7 @@
       </div>
 
       <!-- Source picker -->
-      <div class="px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
-        From (source)
-      </div>
+      <div class="label-overline px-5 pt-[14px] pb-[6px]">From (source)</div>
       {#key open}
         <CategoryTagPicker
           direction="I"
@@ -143,9 +141,7 @@
       {/key}
 
       <!-- Target picker -->
-      <div class="px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
-        To (target)
-      </div>
+      <div class="label-overline px-5 pt-[14px] pb-[6px]">To (target)</div>
       {#key open}
         <CategoryTagPicker
           direction="I"

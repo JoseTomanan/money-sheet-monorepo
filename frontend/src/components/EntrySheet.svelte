@@ -145,7 +145,7 @@
 
     <!-- sheet -->
     <div
-      class="sheet absolute bottom-0 left-1/2 w-full max-w-[var(--app-max-width)] max-h-[90dvh] bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8 overflow-y-auto overflow-x-clip"
+      class="sheet sheet-modal"
       class:open={animOpen}
       style="transform: {animOpen ? sheetTransform : 'translateX(-50%) translateY(100%)'}; transition: {sheetTransition};"
     >
@@ -213,8 +213,8 @@
         />
       {:else}
         <!-- single amount input -->
-        <div class="amount-card mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
-          <div class="amount-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
+        <div class="amount-card card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center">
+          <div class="amount-label label-overline mb-2">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
           <div class="amount-row flex justify-center items-baseline gap-1">
             <span class="peso-prefix font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
             <input
@@ -248,8 +248,8 @@
       {/if}
 
       <!-- description -->
-      <div class="field-card mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
-        <div class="field-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
+      <div class="field-card mx-4 mt-[10px]">
+        <div class="field-label label-overline mb-1">Description</div>
         <input
           type="text"
           class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
@@ -259,8 +259,8 @@
       </div>
 
       <!-- date -->
-      <div class="field-card mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
-        <div class="field-label text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Date</div>
+      <div class="field-card mx-4 mt-[10px]">
+        <div class="field-label label-overline mb-1">Date</div>
         <div class="date-row flex items-center justify-between">
           <span class="date-display font-mono text-[15px] text-foreground tabular-nums">{fmtDate(date)} · {dayOfWeek(date)}</span>
           <input type="date" class="date-input text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={date} />
