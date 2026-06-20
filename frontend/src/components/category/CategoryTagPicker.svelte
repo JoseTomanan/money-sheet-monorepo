@@ -3,10 +3,10 @@
      Incoming: Category row only; tapping a Category calls onselect immediately. -->
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { resolveCategoryStyle, CATEGORY_ORDER } from '../lib/theme';
-  import { darkMode } from '../lib/darkMode.svelte';
-  import { getMainCategory } from '../lib/domain';
-  import type { Direction, CategoryMap } from '../lib/types';
+  import { resolveCategoryStyle, CATEGORY_ORDER } from '../../lib/theme';
+  import { darkMode } from '../../lib/darkMode.svelte';
+  import { getMainCategory } from '../../lib/domain';
+  import type { Direction, CategoryMap } from '../../lib/types';
 
   interface Props {
     direction: Direction;
@@ -52,15 +52,15 @@
   // Pill size classes (full vs compact)
   const catPillClass = $derived(
     compact
-      ? 'shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
-      : 'shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
+      ? 'tag-pill shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
+      : 'tag-pill shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap'
   );
   const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0' : 'size-[6px] rounded-full shrink-0');
 </script>
 
 <!-- Label (single line — reads "Subcategory" when drilled in, "Category" otherwise) -->
 {#if !compact}
-  <div class="picker-label px-5 pt-[14px] pb-[6px] text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground">
+  <div class="picker-label label-overline px-5 pt-[14px] pb-[6px]">
     {direction === 'O' && activeCategory ? 'Subcategory' : 'Category'}
   </div>
 {/if}

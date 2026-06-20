@@ -219,6 +219,12 @@ body::before {
 /* shimmer keyframe — used via animate-[shimmer_1s_ease-in-out_infinite] */
 @keyframes shimmer { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 
+/* toast-in — used via animate-[toast-in_220ms_ease_forwards] */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* tailwindcss-animate primitives — bits-ui/shadcn components rely on these utility classes.
    Tailwind v4 does not bundle tailwindcss-animate, so we define them here.
    Centering via inset-x-0 mx-auto (not translateX) keeps the Y-axis clean for slide keyframes. */
@@ -244,3 +250,42 @@ body::before {
 @utility fade-out-0            { --tw-exit-opacity:  0;    }
 @utility slide-in-from-bottom  { --tw-enter-translate-y: 100%; }
 @utility slide-out-to-bottom   { --tw-exit-translate-y:  100%; }
+
+/* ─── Shared utility classes ─────────────────────────────────────────────── */
+
+@utility card {
+  @apply bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)];
+}
+
+@utility field-card {
+  @apply py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)];
+}
+
+@utility label-overline {
+  @apply text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground;
+}
+
+@utility btn-pill {
+  @apply py-[8px] px-[14px] rounded-[var(--radius-pill)] border-0 cursor-pointer font-sans text-[13px] font-semibold;
+}
+
+@utility sheet-modal {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  max-width: var(--app-max-width);
+  max-height: 90dvh;
+  background-color: var(--color-background);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  box-shadow: var(--shadow-sheet);
+  padding-bottom: 2rem;
+  overflow-y: auto;
+  overflow-x: clip;
+}
+
+@utility card-hero {
+  background: var(--gradient-hero);
+  box-shadow: var(--shadow-hero), var(--ring-inset);
+}

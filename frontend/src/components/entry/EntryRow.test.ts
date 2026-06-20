@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import EntryRow from './EntryRow.svelte';
-import type { Entry } from '../lib/types';
-import type { SplitPosition } from '../lib/groupEntries';
+import type { Entry } from '../../lib/types';
+import type { SplitPosition } from '../../lib/groupEntries';
 
 const SOLO_POS: SplitPosition = { inGroup: false, isFirst: true, isLast: true };
 

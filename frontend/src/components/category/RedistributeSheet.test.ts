@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import RedistributeSheet from './RedistributeSheet.svelte';
-import type { CategoryMap, AddEntryPayload } from '../lib/types';
+import type { CategoryMap, AddEntryPayload } from '../../lib/types';
 
 const CATEGORIES: CategoryMap = {
   HOUSING: ['Rent', 'Utilities'],

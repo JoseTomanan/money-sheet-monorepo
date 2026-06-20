@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Badge } from '$lib/components/ui/badge';
-  import { resolveCategoryStyle } from '../lib/theme';
-  import { darkMode } from '../lib/darkMode.svelte';
-  import type { Direction } from '../lib/types';
+  import { resolveCategoryStyle } from '../../lib/theme';
+  import { darkMode } from '../../lib/darkMode.svelte';
+  import type { Direction } from '../../lib/types';
 
   interface Props {
     tag: string;

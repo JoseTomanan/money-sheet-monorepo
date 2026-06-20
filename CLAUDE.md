@@ -76,7 +76,7 @@ npm run build                # outputs to dist/
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
 - All data fetching is client-side via `fetch()` to the GAS web app URL
 - GAS URL and API secret stored as Vite env vars (`VITE_GAS_URL`, `VITE_API_SECRET`)
-- **CSS rule**: Use Tailwind for everything — raw CSS is only permitted where Tailwind utilities genuinely cannot express the style (keyframe animations, `color-mix()` expressions, `::-webkit-scrollbar` pseudo-element rules, or multi-property transitions with different durations). Component `<style>` blocks should be empty or near-empty. `app.css` contains only `@font-face` declarations, `:root` design tokens, global resets, and unavoidable `@keyframes`.
+- **CSS rule**: Use Tailwind for everything — see `docs/adr/0006` for the full rules. Short version: component `<style>` blocks should be empty or near-empty; `app.css` is the home for all `@keyframes`, `@utility` blocks (shared Tailwind combos extracted via `@apply`), `:root` tokens, and global resets. Use `group-*`/`peer-*` variants for parent→child hover/state instead of reactive JS variables. Inline `style=` is only permitted for runtime-computed values (colors from data, animation transforms, chart dimensions).
 
 ## Deployment
 
@@ -88,6 +88,7 @@ npm run build                # outputs to dist/
 - `docs/adr/0001` — Unified INCOMING/OUTGOING sheet (vs per-month sheets)
 - `docs/adr/0002` — GAS HTTP API + shared-secret write auth
 - `docs/adr/0003` — Plain Svelte 5 + Vite, no SvelteKit
+- `docs/adr/0006` — Tailwind CSS usage rules (utilities, `@apply`, `group-*`, inline `style=`)
 
 ## Agent skills
 

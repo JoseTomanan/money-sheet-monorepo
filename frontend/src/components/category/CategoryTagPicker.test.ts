@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import CategoryTagPicker from "./CategoryTagPicker.svelte";
-import type { CategoryMap } from "../lib/types";
+import type { CategoryMap } from "../../lib/types";
 
 const CATEGORIES: CategoryMap = {
   FOOD: ["Groceries", "Dining"],

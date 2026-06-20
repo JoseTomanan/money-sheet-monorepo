@@ -177,7 +177,7 @@ test.describe("mobile 390px — layout unchanged", () => {
   test("EntrySheet split mode: sheet has overflow-x clipped to prevent horizontal page scroll", async ({ page }) => {
     // Open the entry sheet
     await page.getByRole("button", { name: "Add entry", exact: true }).click();
-    await page.locator(".sheet.open").waitFor({ state: "visible" });
+    await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
     // Enable split mode
     await page.locator(".split-toggle-btn").click();

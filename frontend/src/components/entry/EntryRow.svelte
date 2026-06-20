@@ -6,13 +6,13 @@
      They cancel that padding so the stripe reaches the row's padding-box edge, letting
      adjacent split-run segments appear to meet across the 1px divider. -->
 <script lang="ts">
-  import type { Entry } from '../lib/types';
-  import type { SplitPosition } from '../lib/groupEntries';
-  import { resolveCategoryStyle } from '../lib/theme';
-  import { darkMode } from '../lib/darkMode.svelte';
-  import { fmtDateShort } from '../lib/format';
+  import type { Entry } from '../../lib/types';
+  import type { SplitPosition } from '../../lib/groupEntries';
+  import { resolveCategoryStyle } from '../../lib/theme';
+  import { darkMode } from '../../lib/darkMode.svelte';
+  import { fmtDateShort } from '../../lib/format';
   import EntryDescBand from './EntryDescBand.svelte';
-  import Money from './Money.svelte';
+  import Money from '../ui/Money.svelte';
 
   interface Props {
     entry: Entry;

@@ -8,7 +8,7 @@ async function waitForAppReady(page: Page) {
 async function openNewEntrySheet(page: Page) {
   await page.locator(".tab-bar-pill").getByRole("button", { name: "Entries" }).click();
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -77,9 +77,10 @@ test("formula resolves correctly and entry can be saved", async ({ page }) => {
   await expect(input).toHaveValue("15.00");
 
   await page.locator(".field-input").first().fill("formula test entry");
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
   await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await expect(page.locator(".entry-card", { hasText: "formula test entry" })).toBeVisible();
   await expect(page.locator(".entry-card", { hasText: "formula test entry" })).toContainText("₱15.00");
 });

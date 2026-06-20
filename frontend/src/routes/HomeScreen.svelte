@@ -4,8 +4,8 @@
   import { darkMode } from '../lib/darkMode.svelte';
   import { peso, fmtDate, dayOfWeek } from '../lib/format';
   import { compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
-  import SectionHeader from '../components/SectionHeader.svelte';
-  import EntryRow from '../components/EntryRow.svelte';
+  import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import EntryRow from '../components/entry/EntryRow.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
@@ -40,7 +40,7 @@
   );
 </script>
 
-<div class="home p-0" style="padding-bottom: 72px;">
+<div class="home p-0 pb-[72px]">
 {#if store.loading}
   <!-- Skeleton -->
   <div class="page-header px-5 pt-5 pb-1">
@@ -49,14 +49,14 @@
   </div>
   <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
     <div class="home-left">
-      <div class="hero-card bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+      <div class="hero-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
         <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
       </div>
       <div class="px-5 pt-5 pb-2">
         <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-      <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
+      <div class="card mx-4 overflow-hidden">
         {#each [0, 1] as _}
           <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
             <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
@@ -88,8 +88,7 @@
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card bg-card rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden"
-        style="box-shadow: var(--shadow-hero), var(--ring-inset);">
+      <div class="hero-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
@@ -109,7 +108,7 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section mx-4 rounded-[var(--radius-lg)] shadow-[var(--shadow-card)] overflow-hidden space-y-0.5">
+        <div class="today-section card mx-4 overflow-hidden space-y-0.5">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
@@ -135,18 +134,18 @@
       </SectionHeader>
 
       <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] md:overflow-x-visible md:pb-2 md:mb-0">
-      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(90px,1fr))] md:px-4 md:py-[2px]">
+      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(112px,1fr))] md:px-4 md:py-[2px]">
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
+          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] md:shrink"
             style="background: {darkMode.current ? c.soft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
             <div
-              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right"
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right whitespace-nowrap"
               class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
               class:opacity-40={store.masterLoading}
               style="color: {c.color};"

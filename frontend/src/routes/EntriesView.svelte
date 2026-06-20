@@ -1,11 +1,12 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
-  import type { Entry, AddEntryPayload, UpdateEntryPatch } from '../lib/types';
+  import type { Entry } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
-  import { countByCategory } from '../lib/aggregations';
-  import { groupByWeek, groupEntriesByDate, weekStartOf, weekLabel, compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
-  import EntryRow from '../components/EntryRow.svelte';
+  import { groupEntriesByDate, splitRunPositions } from '../lib/groupEntries';
+  import { createEntriesFilter, currentWeekKey } from '../lib/entriesFilter.svelte';
+  import { createBulkSelect } from '../lib/bulkSelect.svelte';
+  import EntryRow from '../components/entry/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
   import * as Sheet from '$lib/components/ui/sheet';
 
@@ -27,88 +28,18 @@
     }
   });
 
-  let filterDir  = $state<'all' | 'I' | 'O'>('all');
-  let filterCat  = $state('');
-
-  function currentWeekKey() {
-    const n = new Date();
-    return weekStartOf(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`);
-  }
-
-  let selectedWeek = $state(currentWeekKey());
+  const filter = createEntriesFilter();
 
   const categoryNames = $derived(Object.keys(store.categories).sort());
 
-  const filtered = $derived(
-    store.entries
-      .filter((e) => {
-        if (filterDir !== 'all' && e.direction !== filterDir) return false;
-        if (filterCat && e.mainCategory !== filterCat) return false;
-        if (weekStartOf(e.date) !== selectedWeek) return false;
-        return true;
-      })
-      .sort(compareEntriesForDisplay)
-  );
-
-  const weekGroups = $derived(groupByWeek(filtered));
-
-  const selectableWeeks = $derived(() => {
-    const cur = currentWeekKey();
-    const fromEntries = groupByWeek(
-      store.entries.filter(e => filterDir === 'all' || e.direction === filterDir)
-    ).map(g => ({ key: g.key, label: g.label }));
-    const hasCur = fromEntries.some(w => w.key === cur);
-    const all = hasCur ? fromEntries : [...fromEntries, { key: cur, label: weekLabel(cur) }];
-    return all.sort((a, b) => a.key.localeCompare(b.key));
-  });
-
-  $effect(() => {
-    const weeks = selectableWeeks();
-    if (!weeks.some(w => w.key === selectedWeek)) selectedWeek = currentWeekKey();
-  });
-
-  const catCounts = $derived(
-    countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
-  );
-
-  // ── Bulk select state ──────────────────────────────────────────────────────
-  let selectedIds = $state(new Set<number>());
-  let confirmOpen = $state(false);
-
-  // Clear selection whenever select mode exits.
-  $effect(() => { if (!selectMode) selectedIds = new Set(); });
-
-  const selectableIds = $derived(
-    filtered
+  const bulk = createBulkSelect(() =>
+    filter.filtered
       .filter(e => !store.pendingIds.has(e.id) && !store.deletePendingIds.has(e.id))
       .map(e => e.id)
   );
 
-  function toggle(id: number): void {
-    if (selectedIds.has(id)) {
-      selectedIds = new Set([...selectedIds].filter(x => x !== id));
-    } else {
-      selectedIds = new Set([...selectedIds, id]);
-    }
-  }
-
-  function selectAll(): void {
-    selectedIds = new Set(selectableIds);
-  }
-
-  function clearAll(): void {
-    selectedIds = new Set();
-  }
-
-  const allSelected = $derived(
-    selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id))
-  );
-
-  async function confirmDelete(): Promise<void> {
-    confirmOpen = false;
-    await store.deleteEntries([...selectedIds]);
-    selectMode = false;
-  }
+  // Clear selection whenever select mode exits.
+  $effect(() => { if (!selectMode) bulk.clear(); });
 </script>
 
 
@@ -132,12 +63,12 @@
 {#if selectMode}
   <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
     <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
-      {selectedIds.size} selected
+      {bulk.selectedIds.size} selected
     </span>
     <button
       class="delete-sel-btn flex items-center gap-[6px] py-[8px] px-[16px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-      disabled={selectedIds.size === 0}
-      onclick={() => (confirmOpen = true)}
+      disabled={bulk.selectedIds.size === 0}
+      onclick={() => (bulk.confirmOpen = true)}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="3 6 5 6 21 6"/>
@@ -165,7 +96,7 @@
   <div class="mx-4 mb-3">
     <div class="h-[32px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
-  <div class="mx-4 rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] overflow-hidden">
+  <div class="card mx-4 overflow-hidden">
     {#each [0, 1, 2, 3, 4, 5] as _}
       <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
         <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
@@ -183,14 +114,14 @@
   <!-- Page header -->
   <div class="page-header px-5 pt-5 pb-1 md:px-4">
     <WeekPicker
-      weeks={selectableWeeks()}
+      weeks={filter.selectableWeeks()}
       currentWeekKey={currentWeekKey()}
-      value={selectedWeek}
-      onSelect={(k) => (selectedWeek = k)}
+      value={filter.selectedWeek}
+      onSelect={(k) => filter.selectWeek(k)}
     />
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex items-baseline gap-[10px]">
       Entries
-      <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filtered.length}</span>
+      <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filter.filtered.length}</span>
       <!-- Select / Cancel toggle -->
       {#if selectMode}
         <button
@@ -211,10 +142,10 @@
       <div class="flex items-center gap-3 mt-[6px]">
         <button
           class="font-sans text-[12px] font-semibold bg-transparent border-0 cursor-pointer p-0"
-          class:text-accent={!allSelected}
-          class:text-muted-foreground={allSelected}
-          onclick={() => allSelected ? clearAll() : selectAll()}
-        >{allSelected ? 'Clear all' : 'Select all'}</button>
+          class:text-accent={!bulk.allSelected}
+          class:text-muted-foreground={bulk.allSelected}
+          onclick={() => bulk.allSelected ? bulk.clear() : bulk.selectAll()}
+        >{bulk.allSelected ? 'Clear all' : 'Select all'}</button>
       </div>
     {/if}
   </div>
@@ -225,11 +156,11 @@
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
           class="py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150"
-          class:text-accent={filterDir === val}
-          class:text-muted-foreground={filterDir !== val}
+          class:text-accent={filter.filterDir === val}
+          class:text-muted-foreground={filter.filterDir !== val}
           role="radio"
-          aria-checked={filterDir === val}
-          onclick={() => { filterDir = val; filterCat = ''; }}
+          aria-checked={filter.filterDir === val}
+          onclick={() => filter.setDirection(val)}
         >{label}</button>
       {/each}
     </div>
@@ -239,25 +170,25 @@
       <div class="cat-row flex gap-[6px] overflow-x-auto min-w-0 md:flex-col md:overflow-x-visible md:gap-[2px]">
         <button
           class="cat-chip-btn shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:justify-start"
-          class:text-accent={filterCat === ''}
-          class:text-muted-foreground={filterCat !== ''}
-          onclick={() => (filterCat = '')}
+          class:text-accent={filter.filterCat === ''}
+          class:text-muted-foreground={filter.filterCat !== ''}
+          onclick={() => filter.setCategory('')}
         >
           All
-          <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{store.entries.filter(e => filterDir === 'all' || e.direction === filterDir).length}</span>
+          <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{store.entries.filter(e => filter.filterDir === 'all' || e.direction === filter.filterDir).length}</span>
         </button>
         {#each CATEGORY_ORDER as key}
-          {#if categoryNames.includes(key) && catCounts[key] > 0}
+          {#if categoryNames.includes(key) && filter.catCounts[key] > 0}
             {@const c = CATEGORIES[key]}
             <button
               class="cat-chip-btn shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:justify-start"
-              class:active={filterCat === key}
-              style={filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
-              onclick={() => (filterCat = filterCat === key ? '' : key)}
+              class:active={filter.filterCat === key}
+              style={filter.filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
+              onclick={() => filter.setCategory(filter.filterCat === key ? '' : key)}
             >
               <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {c.dot};"></span>
               {c.label}
-              <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{catCounts[key]}</span>
+              <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{filter.catCounts[key]}</span>
             </button>
           {/if}
         {/each}
@@ -272,7 +203,7 @@
 
   <!-- Entry list -->
   <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 md:flex-1 md:ml-2 md:mt-4 md:min-w-0">
-    {#if filtered.length === 0}
+    {#if filter.filtered.length === 0}
       {#if !selectMode}
         <button
           class="entry-card add-entry-card standalone flex font-display font-bold text-[13px] tracking-[0.5px] text-accent"
@@ -280,12 +211,12 @@
         >+ ADD ENTRY</button>
       {/if}
     {:else}
-      {#each weekGroups as group, wi (group.key)}
+      {#each filter.weekGroups as group, wi (group.key)}
         {@const dateGroups = groupEntriesByDate(group.entries)}
         <div class="week-group flex flex-col gap-[8px] mb-4">
           <div class="week-label font-display text-[11px] font-bold tracking-[0.8px] uppercase text-muted-foreground pt-1 pb-[2px] px-[2px]">{group.label}</div>
           {#each dateGroups as dateGroup, di (dateGroup[0].date)}
-            {@const isLatestChunk = wi === weekGroups.length - 1 && di === dateGroups.length - 1}
+            {@const isLatestChunk = wi === filter.weekGroups.length - 1 && di === dateGroups.length - 1}
             {@const splitPos = splitRunPositions(dateGroup)}
             <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden space-y-0.5">
               {#each dateGroup as entry, j (entry.id)}
@@ -293,7 +224,7 @@
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const local = store.localIds.has(entry.id)}
                 {@const selectable = selectMode && !pending && !deletePending}
-                {@const checked = selectedIds.has(entry.id)}
+                {@const checked = bulk.selectedIds.has(entry.id)}
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
                   class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
@@ -307,7 +238,7 @@
                   class:bg-[var(--destructive-tint-select)]={selectMode && checked}
                   onclick={() => {
                     if (selectMode) {
-                      if (selectable) toggle(entry.id);
+                      if (selectable) bulk.toggle(entry.id);
                     } else if (!pending && !deletePending) {
                       onopenedit(entry);
                     }
@@ -317,7 +248,7 @@
                   tabindex="0"
                   onkeydown={(e) => {
                     if (selectMode) {
-                      if ((e.key === 'Enter' || e.key === ' ') && selectable) toggle(entry.id);
+                      if ((e.key === 'Enter' || e.key === ' ') && selectable) bulk.toggle(entry.id);
                     } else if (!pending && !deletePending && e.key === 'Enter') {
                       onopenedit(entry);
                     }
@@ -360,24 +291,24 @@
 </div>
 
 <!-- Confirm-delete dialog -->
-<Sheet.Root open={confirmOpen} onOpenChange={(v) => { if (!v) confirmOpen = false; }}>
+<Sheet.Root open={bulk.confirmOpen} onOpenChange={(v) => { if (!v) bulk.confirmOpen = false; }}>
   <div class="flex justify-center pt-[14px] pb-[10px]">
     <div class="w-9 h-1 rounded-[2px] bg-border"></div>
   </div>
   <Sheet.Header>
-    <Sheet.Title>Delete {selectedIds.size} {selectedIds.size === 1 ? 'entry' : 'entries'}?</Sheet.Title>
+    <Sheet.Title>Delete {bulk.selectedIds.size} {bulk.selectedIds.size === 1 ? 'entry' : 'entries'}?</Sheet.Title>
   </Sheet.Header>
   <div class="px-5 pb-2 pt-1">
-    <p class="font-sans text-[14px] text-muted-foreground">This action cannot be undone. The selected {selectedIds.size === 1 ? 'entry' : 'entries'} will be permanently removed.</p>
+    <p class="font-sans text-[14px] text-muted-foreground">This action cannot be undone. The selected {bulk.selectedIds.size === 1 ? 'entry' : 'entries'} will be permanently removed.</p>
   </div>
   <div class="px-5 pb-6 flex flex-col gap-2 mt-2">
     <button
       class="w-full py-3 rounded-[var(--radius-md)] border-0 bg-destructive text-white font-sans text-[15px] font-semibold cursor-pointer"
-      onclick={confirmDelete}
-    >Delete {selectedIds.size === 1 ? 'entry' : `${selectedIds.size} entries`}</button>
+      onclick={() => bulk.confirmDelete(() => { selectMode = false; })}
+    >Delete {bulk.selectedIds.size === 1 ? 'entry' : `${bulk.selectedIds.size} entries`}</button>
     <button
       class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-foreground font-sans text-[15px] font-medium cursor-pointer"
-      onclick={() => (confirmOpen = false)}
+      onclick={() => (bulk.confirmOpen = false)}
     >Cancel</button>
   </div>
 </Sheet.Root>

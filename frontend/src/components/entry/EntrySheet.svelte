@@ -1,22 +1,12 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import * as Sheet from '$lib/components/ui/sheet';
-  import { isValidTag } from '../lib/domain';
-  import CategoryTagPicker from './CategoryTagPicker.svelte';
-  import { fmtDate, dayOfWeek } from '../lib/format';
-  import { store } from '../lib/store.svelte';
-  import type { CategoryMap, Entry, AddEntryPayload, Direction, EntryMutation } from '../lib/types';
-  import {
-    initSplitState,
-    addLeg,
-    removeLeg,
-    updateLeg,
-    isSplitValid,
-    toAddEntryPayloads,
-    type SplitState,
-  } from '../lib/splitEntry';
-  import { isFormula, evaluateFormula } from '../lib/formula';
-  import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '../lib/dragGesture';
+  import CategoryTagPicker from '../category/CategoryTagPicker.svelte';
+  import { fmtDate, dayOfWeek } from '$lib/format';
+  import { store } from '$lib/store.svelte';
+  import type { CategoryMap, Entry, Direction, EntryMutation } from '$lib/types';
+  import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '$lib/dragGesture';
+  import { createEntryForm } from '$lib/entryForm.svelte';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
 
   interface Props {
@@ -31,17 +21,7 @@
 
   let { open, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
-  const today = new Date().toISOString().slice(0, 10);
-
-  let date        = $state(today);
-  let direction   = $state<Direction>('O');
-  let tag         = $state('');
-  let description = $state('');
-  let amount      = $state('');
-  let amountError = $state('');
-
-  let splitMode = $state(false);
-  let split     = $state<SplitState>(initSplitState());
+  const form = createEntryForm(() => categories);
 
   let snap        = $state<Snap>('default');
   let activeDrag  = $state<DragState | null>(null);
@@ -52,45 +32,21 @@
 
   $effect(() => {
     if (open) {
-      date        = entry?.date ?? today;
-      direction   = entry?.direction ?? defaultDirection;
-      tag         = entry?.tag ?? '';
-      description = entry?.description ?? '';
-      amount      = entry != null ? String(entry.amount) : '';
-      amountError = '';
-      splitMode   = false;
-      split       = initSplitState();
-      snap        = 'default';
-      activeDrag  = null;
-      dragOffset  = 0;
-      snapping    = false;
-      dismissing  = false;
+      form.reset(entry, defaultDirection);
+      snap       = 'default';
+      activeDrag = null;
+      dragOffset = 0;
+      snapping   = false;
+      dismissing = false;
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
   });
 
   function handleSave() {
-    if (splitMode) {
-      onsave({ type: 'add', payload: toAddEntryPayloads(split, { date, description, direction }) });
-    } else {
-      const amt = parseFloat(amount) || 0;
-      const payload: AddEntryPayload = { date, tag, description, direction, amount: amt };
-      if (entry) {
-        onsave({ type: 'edit', id: entry.id, patch: payload });
-      } else {
-        onsave({ type: 'add', payload });
-      }
-    }
+    onsave(form.buildMutation(entry?.id));
     onclose();
   }
-
-  const saveDisabled = $derived(
-    splitMode
-      ? !isSplitValid(split)
-      : (!tag || !amount || !!amountError || !isValidTag(tag, direction, categories))
-  );
-  const title = $derived((entry ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing'));
 
   // During drag: track finger exactly with no transition.
   // Snap-back: hold the explicit transform value (snapping=true) so the browser has a "from"
@@ -174,12 +130,12 @@
   </div>
 
   <Sheet.Header>
-    <button class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
-    <Sheet.Title>{title}</Sheet.Title>
+    <button class="header-btn cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
+    <Sheet.Title>{form.title}</Sheet.Title>
     <button
-      class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      class="header-btn save bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
       onclick={handleSave}
-      disabled={saveDisabled}
+      disabled={form.saveDisabled}
     >Save</button>
   </Sheet.Header>
 
@@ -187,76 +143,55 @@
   <div class="flex gap-2 px-4 pt-[10px] pb-1">
     <button
       class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
-      class:active-out={direction === 'O'}
-      onclick={() => { if (direction !== 'O') { direction = 'O'; tag = ''; splitMode = false; split = initSplitState(); } }}
+      class:active-out={form.direction === 'O'}
+      onclick={() => form.setDirection('O')}
     >Outgoing</button>
     <button
       class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
-      class:active-in={direction === 'I'}
-      onclick={() => { if (direction !== 'I') { direction = 'I'; tag = ''; splitMode = false; split = initSplitState(); } }}
+      class:active-in={form.direction === 'I'}
+      onclick={() => form.setDirection('I')}
     >Incoming</button>
   </div>
 
   <!-- split toggle — only for new entries -->
   {#if !entry}
     <div class="flex items-center justify-between px-5 pt-[10px] pb-[2px]">
-      <span class="text-[13px] font-sans text-muted-foreground">{direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
+      <span class="text-[13px] font-sans text-muted-foreground">{form.direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
       <button
         class="split-toggle-btn py-[5px] px-[14px] rounded-[var(--radius-pill)] border border-border bg-muted text-muted-foreground font-sans text-[13px] font-medium cursor-pointer transition-[background,color] duration-150"
-        class:split-active={splitMode}
-        onclick={() => {
-          splitMode = !splitMode;
-          if (!splitMode) {
-            tag    = '';
-            amount = '';
-            split  = initSplitState();
-          }
-        }}
-      >{splitMode ? 'On' : 'Off'}</button>
+        class:split-active={form.splitMode}
+        onclick={() => form.toggleSplit()}
+      >{form.splitMode ? 'On' : 'Off'}</button>
     </div>
   {/if}
 
-  {#if splitMode}
+  {#if form.splitMode}
     <SplitLegCarousel
-      {split}
-      {direction}
+      split={form.split}
+      direction={form.direction}
       {categories}
-      onupdate={(i, patch) => { split = updateLeg(split, i, patch); }}
-      onremove={(i) => { split = removeLeg(split, i); }}
-      onadd={() => { split = addLeg(split); }}
+      onupdate={(i, patch) => form.updateLeg(i, patch)}
+      onremove={(i) => form.removeLeg(i)}
+      onadd={() => form.addLeg()}
     />
   {:else}
     <!-- single amount input -->
     <div class="mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
-      <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
+      <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{form.direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
       <div class="flex justify-center items-baseline gap-1">
         <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
         <input
           type="text"
           inputmode="decimal"
-          class="w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
-          bind:value={amount}
-          oninput={(e) => {
-            const v = (e.target as HTMLInputElement).value;
-            amount = v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '');
-          }}
-          onblur={() => {
-            if (!isFormula(amount)) { amountError = ''; return; }
-            const result = evaluateFormula(amount);
-            if ('error' in result) {
-              amountError = 'Invalid formula';
-            } else if (result.value <= 0) {
-              amountError = 'Amount must be positive';
-            } else {
-              amount = result.value.toFixed(2);
-              amountError = '';
-            }
-          }}
+          class="amount-input w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
+          value={form.amount}
+          oninput={(e) => form.sanitizeAmountInput((e.target as HTMLInputElement).value)}
+          onblur={() => form.evaluateAmount()}
           placeholder="0.00"
         />
       </div>
-      {#if amountError}
-        <p class="mt-1 text-[12px] font-sans text-destructive">{amountError}</p>
+      {#if form.amountError}
+        <p class="amount-error mt-1 text-[12px] font-sans text-destructive">{form.amountError}</p>
       {/if}
     </div>
   {/if}
@@ -266,9 +201,9 @@
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
     <input
       type="text"
-      class="w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
-      bind:value={description}
-      placeholder={direction === 'I' ? 'e.g. weekly allowance' : 'e.g. lunch at canteen'}
+      class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
+      bind:value={form.description}
+      placeholder={form.direction === 'I' ? 'e.g. weekly allowance' : 'e.g. lunch at canteen'}
     />
   </div>
 
@@ -276,20 +211,20 @@
   <div class="mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Date</div>
     <div class="flex items-center justify-between">
-      <span class="font-mono text-[15px] text-foreground tabular-nums">{fmtDate(date)} · {dayOfWeek(date)}</span>
-      <input type="date" class="text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={date} />
+      <span class="font-mono text-[15px] text-foreground tabular-nums">{fmtDate(form.date)} · {dayOfWeek(form.date)}</span>
+      <input type="date" class="text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={form.date} />
     </div>
   </div>
 
   <!-- single-mode tag picker -->
-  {#if !splitMode}
-    {#key direction}
+  {#if !form.splitMode}
+    {#key form.direction}
       <CategoryTagPicker
-        {direction}
+        direction={form.direction}
         {categories}
-        {tag}
+        tag={form.tag}
         initialTag={entry?.tag ?? ''}
-        onselect={(t) => (tag = t)}
+        onselect={(t) => (form.tag = t)}
       />
     {/key}
   {/if}
@@ -297,7 +232,7 @@
   {#if entry && ondelete}
     <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
       <button
-        class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
+        class="delete-btn block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
         onclick={() => { ondelete!(entry!.id); onclose(); }}
       >Delete entry</button>
     </div>

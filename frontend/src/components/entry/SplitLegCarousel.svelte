@@ -1,10 +1,10 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
-  import type { SplitState, Leg } from '../lib/splitEntry';
-  import { isFormula, evaluateFormula } from '../lib/formula';
-  import type { Direction, CategoryMap } from '../lib/types';
-  import { store } from '../lib/store.svelte';
-  import CategoryTagPicker from './CategoryTagPicker.svelte';
+  import type { SplitState, Leg } from '../../lib/splitEntry';
+  import { isFormula, evaluateFormula } from '../../lib/formula';
+  import type { Direction, CategoryMap } from '../../lib/types';
+  import { store } from '../../lib/store.svelte';
+  import CategoryTagPicker from '../category/CategoryTagPicker.svelte';
 
   interface Props {
     split: SplitState;

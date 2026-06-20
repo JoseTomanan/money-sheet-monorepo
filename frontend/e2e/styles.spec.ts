@@ -28,13 +28,13 @@ test("TabBar outer wrapper is position:fixed", async ({ page }) => {
   expect(pos).toBe("fixed");
 });
 
-test("EntrySheet opens with position:absolute", async ({ page }) => {
+test("EntrySheet opens with position:fixed", async ({ page }) => {
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
   const pos = await page.locator(".sheet").evaluate(
     (el) => getComputedStyle(el).position
   );
-  expect(pos).toBe("absolute");
+  expect(pos).toBe("fixed");
   await page.locator("button.header-btn.cancel").click();
 });
 

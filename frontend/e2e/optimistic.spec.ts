@@ -16,15 +16,25 @@ async function addEntryViaUi(
   const direction = opts.direction ?? "Outgoing";
   await switchTab(page, "Entries");
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
   if (direction === "Incoming") {
     await page.locator("button.dir-btn", { hasText: "Incoming" }).click();
   }
   await page.locator(".amount-input").fill(opts.amount);
   await page.locator(".field-input").first().fill(opts.description);
+  // Outgoing entries drill: click parent category first, then subcategory
+  if (direction === "Outgoing") {
+    const parentCat: Record<string, string> = {
+      Groceries: "FOOD", Dining: "FOOD", Rent: "HOUSING", Utilities: "HOUSING",
+      Leisure: "LIFESTYLE", Entertainment: "LIFESTYLE",
+      "Commute Fare": "TRANSIT", Fuel: "TRANSIT",
+    };
+    const parent = parentCat[opts.tag];
+    if (parent) await page.locator(`.tag-pill`, { hasText: parent }).first().click();
+  }
   await page.locator(".tag-pill", { hasText: opts.tag }).first().click();
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await waitForAppReady(page);
 }
 
@@ -39,13 +49,14 @@ test("adding an entry shows it immediately without a loading spinner", async ({ 
 
   await switchTab(page, "Entries");
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
   await page.locator(".amount-input").fill("50");
   await page.locator(".field-input").first().fill(desc);
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
   await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
 
   await expect(page.locator(".entry-card", { hasText: desc })).toBeVisible();
   await expect(page.locator(".loading-spinner")).not.toBeVisible();
@@ -57,12 +68,12 @@ test("editing an entry updates it immediately without a loading spinner", async 
   await addEntryViaUi(page, { description: desc, amount: "50", tag: "Dining" });
 
   await switchTab(page, "Entries");
-  await page.locator(".entry-desc").first().click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator(".entry-card", { hasText: desc }).locator(".entry-desc").click();
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
   await page.locator(".amount-input").fill("999");
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
 
   await expect(page.locator(".loading-spinner")).not.toBeVisible();
   await expect(page.locator(".entry-card", { hasText: desc })).toContainText("₱999.00");
@@ -74,20 +85,21 @@ test("deleting an entry removes it immediately without a loading spinner", async
 
   await switchTab(page, "Entries");
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
   await page.locator(".amount-input").fill("1");
   await page.locator(".field-input").first().fill(desc);
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
   await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
 
   const card = page.locator(".entry-card", { hasText: desc });
   await expect(card).toBeVisible();
   // Delete is inside the EntrySheet — open it then dispatchEvent to bypass pointer-events
   await card.locator(".entry-desc").dispatchEvent("click");
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
   await page.locator(".delete-btn").dispatchEvent("click");
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
 
   await expect(page.locator(".entry-card", { hasText: desc })).not.toBeVisible();
   await expect(page.locator(".loading-spinner")).not.toBeVisible();
