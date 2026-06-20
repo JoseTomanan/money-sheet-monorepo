@@ -1,7 +1,8 @@
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /**
- * Canonical week-start definition (shared with frontend/src/lib/groupEntries.ts).
+ * Canonical week-start definition, kept in parity with frontend/src/lib/groupEntries.ts weekStartOf.
+ * Parity is enforced by frontend/src/lib/parity.test.ts — a red test there means the two have diverged.
  *
  * Given a calendar date as "YYYY-MM-DD", returns the ISO date string of the
  * Sunday on or before that date. Computation is purely arithmetic on the
