@@ -18,7 +18,7 @@ async function addEntryViaUi(
   const direction = opts.direction ?? "Outgoing";
   await switchTab(page, "Entries");
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
   // Direction
   if (direction === "Incoming") {
@@ -31,12 +31,21 @@ async function addEntryViaUi(
   // Description
   await page.locator(".field-input").first().fill(opts.description);
 
-  // Tag
+  // Tag — Outgoing entries drill: click parent category first, then subcategory
+  if (direction === "Outgoing") {
+    const parentCat: Record<string, string> = {
+      Groceries: "FOOD", Dining: "FOOD", Rent: "HOUSING", Utilities: "HOUSING",
+      Leisure: "LIFESTYLE", Entertainment: "LIFESTYLE",
+      "Commute Fare": "TRANSIT", Fuel: "TRANSIT",
+    };
+    const parent = parentCat[opts.tag];
+    if (parent) await page.locator(`.tag-pill`, { hasText: parent }).first().click();
+  }
   await page.locator(`.tag-pill`, { hasText: opts.tag }).first().click();
 
   // Save
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await waitForAppReady(page);
 }
 
@@ -82,12 +91,12 @@ test("editing an entry updates its amount in the entries list", async ({ page })
 
   // Click the card body to open edit sheet
   await card.locator(".entry-desc").click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
   // Update amount
   await page.locator(".amount-input").fill("777");
   await page.locator("button.header-btn.save").click();
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await waitForAppReady(page);
 
   await expect(page.locator(".entry-card", { hasText: desc })).toContainText("₱777.00");
@@ -104,9 +113,9 @@ test("deleting an entry removes it from the entries list", async ({ page }) => {
 
   // Delete is inside the EntrySheet — open it then dispatchEvent to bypass pointer-events
   await card.locator(".entry-desc").dispatchEvent("click");
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
   await page.locator(".delete-btn").dispatchEvent("click");
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
 
   await expect(page.locator(".entry-card", { hasText: desc })).not.toBeVisible();
 });
