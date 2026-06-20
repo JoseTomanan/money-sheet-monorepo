@@ -108,7 +108,7 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section card mx-4 overflow-hidden space-y-0.5">
+        <div class="today-section card bg-background mx-4 overflow-hidden space-y-0.5">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
