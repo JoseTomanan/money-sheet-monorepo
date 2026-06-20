@@ -20,13 +20,12 @@ export function isLocalEntryId(id: number): boolean {
   return id < 0;
 }
 
-export function getLocalEntryIds(): Set<number> {
-  const q = readQueue();
-  return new Set(q.flatMap((item) => (item.op === 'add' ? [item.tempId] : [item.id])));
+export function localEntryIdsFromQueue(queue: QueueItem[]): Set<number> {
+  return new Set(queue.flatMap((item) => (item.op === 'add' ? [item.tempId] : [item.id])));
 }
 
-export function getQueueItems(): QueueItem[] {
-  return readQueue();
+export function getLocalEntryIds(): Set<number> {
+  return localEntryIdsFromQueue(readQueue());
 }
 
 export async function submitAdd(

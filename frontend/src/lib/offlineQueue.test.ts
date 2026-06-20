@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isLocalEntryId, localEntryIdsFromQueue } from './offlineQueue';
+import { isLocalEntryId, localEntryIdsFromQueue } from './offlineMutation';
 import type { QueueItem } from './queue';
 
 describe('offlineQueue identity helpers', () => {
