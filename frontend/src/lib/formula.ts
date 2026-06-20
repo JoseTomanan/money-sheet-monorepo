@@ -1,5 +1,33 @@
 export type FormulaResult = { value: number } | { error: string };
 
+const FORMULA_INVALID: FormulaResult = { error: "Invalid formula" };
+const FORMULA_NOT_POSITIVE: FormulaResult = { error: "Amount must be positive" };
+
+/**
+ * Evaluates an amount input string and enforces positivity.
+ * Accepts: plain positive numbers ("50", "3.14"), formula strings ("=10+5"),
+ * and arithmetic strings with operators ("10+5", "100-30").
+ * Returns { value } on success, { error } on invalid input or non-positive result.
+ */
+export function evaluateAmountInput(raw: string): FormulaResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return FORMULA_INVALID;
+
+  // Plain number (no operators, no leading =)
+  if (!isFormula(trimmed) && !/[+\-]/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n <= 0) return FORMULA_NOT_POSITIVE;
+    return { value: n };
+  }
+
+  // Formula or arithmetic expression
+  const expr = isFormula(trimmed) ? trimmed : `=${trimmed}`;
+  const result = evaluateFormula(expr);
+  if ('error' in result) return result;
+  if (result.value <= 0) return FORMULA_NOT_POSITIVE;
+  return result;
+}
+
 const FORMULA_ERROR: FormulaResult = { error: "Invalid formula" };
 
 /** Returns true when the (trimmed) string starts with '='. */

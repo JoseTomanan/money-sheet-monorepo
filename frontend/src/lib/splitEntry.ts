@@ -1,4 +1,8 @@
 import type { AddEntryPayload, Direction } from "./types";
+import { evaluateAmountInput } from "./formula";
+
+/** Sentinel description for all-but-first legs of a Split Entry. Detection is purely by this constant — see CONTEXT.md. */
+export const DITTO_DESCRIPTION = '^^';
 
 export interface Leg {
   tag: string;
@@ -32,7 +36,7 @@ export function updateLeg(state: SplitState, index: number, patch: Partial<Leg>)
 
 export function isSplitValid(state: SplitState): boolean {
   return state.legs.every(
-    (leg) => leg.tag.trim() !== "" && !leg.error && parseFloat(leg.amount) > 0
+    (leg) => leg.tag.trim() !== "" && !leg.error && !('error' in evaluateAmountInput(leg.amount))
   );
 }
 
@@ -43,7 +47,7 @@ export function toAddEntryPayloads(
   return state.legs.map((leg, i) => ({
     date: shared.date,
     tag: leg.tag,
-    description: i === 0 ? shared.description : "^^",
+    description: i === 0 ? shared.description : DITTO_DESCRIPTION,
     direction: shared.direction,
     amount: parseFloat(leg.amount),
   }));

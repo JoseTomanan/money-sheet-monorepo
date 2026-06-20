@@ -1,4 +1,5 @@
 import type { Entry } from './types';
+import { DITTO_DESCRIPTION } from './splitEntry';
 
 export interface WeekGroup {
   key: string;
@@ -83,8 +84,8 @@ export interface SplitPosition {
  */
 export function splitRunPositions(entries: Entry[]): SplitPosition[] {
   return entries.map((entry, i) => {
-    const isDitto = entry.description === '^^';
-    const nextIsDitto = i + 1 < entries.length && entries[i + 1].description === '^^';
+    const isDitto = entry.description === DITTO_DESCRIPTION;
+    const nextIsDitto = i + 1 < entries.length && entries[i + 1].description === DITTO_DESCRIPTION;
     return {
       isFirst: !isDitto,
       isLast: !nextIsDitto,

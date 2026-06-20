@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  DITTO_DESCRIPTION,
   initSplitState,
   addLeg,
   removeLeg,
@@ -7,6 +8,21 @@ import {
   isSplitValid,
   toAddEntryPayloads,
 } from "./splitEntry";
+
+describe("DITTO_DESCRIPTION", () => {
+  it("is exported and equals the sentinel '^^' value", () => {
+    expect(DITTO_DESCRIPTION).toBe("^^");
+  });
+
+  it("is what toAddEntryPayloads writes for all-but-first legs", () => {
+    const state = updateLeg(
+      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100" }),
+      1, { tag: "HOUSING", amount: "200" }
+    );
+    const payloads = toAddEntryPayloads(state, { date: "2026-01-01", description: "main", direction: "I" });
+    expect(payloads[1].description).toBe(DITTO_DESCRIPTION);
+  });
+});
 
 describe("initSplitState", () => {
   it("returns exactly 2 empty legs", () => {

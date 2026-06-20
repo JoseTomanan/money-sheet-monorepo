@@ -1,5 +1,5 @@
 import { isValidTag } from './domain';
-import { isFormula, evaluateFormula } from './formula';
+import { evaluateAmountInput } from './formula';
 import {
   initSplitState,
   addLeg,
@@ -59,13 +59,10 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   }
 
   function evaluateAmount(): void {
-    if (!isFormula(amount) && !/[+\-]/.test(amount)) { amountError = ''; return; }
-    const raw = isFormula(amount) ? amount : `=${amount}`;
-    const result = evaluateFormula(raw);
+    if (!amount) { amountError = ''; return; }
+    const result = evaluateAmountInput(amount);
     if ('error' in result) {
-      amountError = 'Invalid formula';
-    } else if (result.value <= 0) {
-      amountError = 'Amount must be positive';
+      amountError = result.error;
     } else {
       amount = result.value.toFixed(2);
       amountError = '';
