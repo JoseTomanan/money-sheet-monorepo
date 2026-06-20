@@ -27,7 +27,7 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   const saveDisabled = $derived(
     splitMode
       ? !isSplitValid(split)
-      : (!tag || !amount || !!amountError || !isValidTag(tag, direction, getCategories()))
+      : (!tag || !amount || !!amountError || /[=+\-]/.test(amount) || !isValidTag(tag, direction, getCategories()))
   );
 
   const title = $derived(
@@ -59,8 +59,9 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   }
 
   function evaluateAmount(): void {
-    if (!isFormula(amount)) { amountError = ''; return; }
-    const result = evaluateFormula(amount);
+    if (!isFormula(amount) && !/[+\-]/.test(amount)) { amountError = ''; return; }
+    const raw = isFormula(amount) ? amount : `=${amount}`;
+    const result = evaluateFormula(raw);
     if ('error' in result) {
       amountError = 'Invalid formula';
     } else if (result.value <= 0) {
@@ -72,7 +73,7 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   }
 
   function sanitizeAmountInput(v: string): void {
-    amount = v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '');
+    amount = v.startsWith('=') ? v : v.replace(/[^0-9.+\-]/g, '');
   }
 
   function setDirection(d: Direction): void {

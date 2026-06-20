@@ -85,6 +85,33 @@ test("formula resolves correctly and entry can be saved", async ({ page }) => {
   await expect(page.locator(".entry-card", { hasText: "formula test entry" })).toContainText("₱15.00");
 });
 
+test("arithmetic 100-50 without = resolves to 50.00 on blur", async ({ page }) => {
+  await openNewEntrySheet(page);
+  const input = page.locator(".amount-input");
+  await input.fill("100-50");
+  await input.blur();
+  await expect(input).toHaveValue("50.00");
+  await expect(page.locator(".amount-error")).not.toBeVisible();
+});
+
+test("arithmetic 100-50 disables Save until blur resolves it", async ({ page }) => {
+  await openNewEntrySheet(page);
+  const input = page.locator(".amount-input");
+  await input.fill("100-50");
+  await expect(page.locator("button.header-btn.save")).toBeDisabled();
+  await input.blur();
+  await expect(input).toHaveValue("50.00");
+});
+
+test("negative amount -5 shows error and disables Save", async ({ page }) => {
+  await openNewEntrySheet(page);
+  const input = page.locator(".amount-input");
+  await input.fill("-5");
+  await input.blur();
+  await expect(page.locator(".amount-error")).toHaveText("Amount must be positive");
+  await expect(page.locator("button.header-btn.save")).toBeDisabled();
+});
+
 test("split-leg: formula error then plain number clears the error", async ({ page }) => {
   await openNewEntrySheet(page);
 
