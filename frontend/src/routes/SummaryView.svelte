@@ -145,7 +145,7 @@
   </div>
 
   <!-- Incoming / Outgoing card — readout for the selected month -->
-  <div class="io-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden">
+  <div class="io-card onhand-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] flex items-center justify-between relative overflow-hidden">
 
     <div class="io-incoming">
       <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">Incoming ↑</div>
@@ -230,7 +230,7 @@
     <!-- distribution strip -->
     <div class="px-4 pt-4 pb-1 md:col-span-2">
       {#if monthOutgoing > 0}
-        <div class="dist-strip flex h-[10px] rounded-full overflow-hidden gap-[2px]">
+        <div class="dist-strip dist-bar flex h-[10px] rounded-full overflow-hidden gap-[2px]">
           {#each categoryData.filter(d => d.spent > 0) as d (d.key)}
             <div
               class="transition-[flex-grow] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"

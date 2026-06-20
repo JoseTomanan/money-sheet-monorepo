@@ -130,10 +130,10 @@
   </div>
 
   <Sheet.Header>
-    <button class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
+    <button class="header-btn cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <button
-      class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      class="header-btn save bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
       onclick={handleSave}
       disabled={form.saveDisabled}
     >Save</button>
@@ -183,7 +183,7 @@
         <input
           type="text"
           inputmode="decimal"
-          class="w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
+          class="amount-input w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
           value={form.amount}
           oninput={(e) => form.sanitizeAmountInput((e.target as HTMLInputElement).value)}
           onblur={() => form.evaluateAmount()}
@@ -191,7 +191,7 @@
         />
       </div>
       {#if form.amountError}
-        <p class="mt-1 text-[12px] font-sans text-destructive">{form.amountError}</p>
+        <p class="amount-error mt-1 text-[12px] font-sans text-destructive">{form.amountError}</p>
       {/if}
     </div>
   {/if}
@@ -201,7 +201,7 @@
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
     <input
       type="text"
-      class="w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
+      class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
       bind:value={form.description}
       placeholder={form.direction === 'I' ? 'e.g. weekly allowance' : 'e.g. lunch at canteen'}
     />
@@ -232,7 +232,7 @@
   {#if entry && ondelete}
     <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
       <button
-        class="block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
+        class="delete-btn block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
         onclick={() => { ondelete!(entry!.id); onclose(); }}
       >Delete entry</button>
     </div>
