@@ -192,7 +192,7 @@
       <SectionHeader>
         {#snippet children()}Flow{/snippet}
       </SectionHeader>
-      <div class="card mx-4 px-4 pt-3 pb-3 flex-1">
+      <div class="card mx-4 px-4 pt-3 pb-3 flex-1 flex flex-col justify-center">
         <FlowChart data={flow} selected={selectedYm} onselect={(ym) => (selectedYm = ym)} />
       </div>
     </div>

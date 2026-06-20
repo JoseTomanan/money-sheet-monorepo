@@ -134,18 +134,18 @@
       </SectionHeader>
 
       <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] md:overflow-x-visible md:pb-2 md:mb-0">
-      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(90px,1fr))] md:px-4 md:py-[2px]">
+      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(112px,1fr))] md:px-4 md:py-[2px]">
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[96px] md:shrink"
+          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] md:shrink"
             style="background: {darkMode.current ? c.soft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
             <div
-              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right"
+              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right whitespace-nowrap"
               class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
               class:opacity-40={store.masterLoading}
               style="color: {c.color};"
