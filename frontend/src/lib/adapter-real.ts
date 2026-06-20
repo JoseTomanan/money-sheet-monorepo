@@ -22,16 +22,15 @@ const DEFAULT_CONFIG: Config = { currency: "₱" };
 export class RealAdapter implements GatewayAdapter {
   constructor(private readonly getConnection: ConnectionSource) {}
 
-  private async gasGet<T>(action: string): Promise<T> {
-    const conn = this.getConnection();
-    if (!conn) throw new ConnectionMissingError("No Connection configured.");
+  // Single deep helper — owns the fetch→parse→error-taxonomy protocol.
+  private async gasRequest<T>(
+    init: RequestInit & { url: string },
+    opts: { tolerateUnknownAction?: boolean } = {},
+  ): Promise<T> {
     let res: Response;
     try {
-      res = await fetch(`${conn.gasUrl}?action=${action}&t=${Date.now()}`, {
-        mode: "cors",
-        redirect: "follow",
-        cache: "no-store",
-      });
+      const { url, ...fetchInit } = init;
+      res = await fetch(url, fetchInit);
     } catch (e) {
       throw new ConnectionError(e instanceof Error ? e.message : String(e));
     }
@@ -41,58 +40,48 @@ export class RealAdapter implements GatewayAdapter {
     } catch {
       throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
     }
-    if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
-    if (json.error) throw new Error(String(json.error));
+    if (json.error === "unauthorized") {
+      throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
+    }
+    if (json.error && !(opts.tolerateUnknownAction && json.error === "unknown action")) {
+      throw new Error(String(json.error));
+    }
     return json as T;
+  }
+
+  private async gasGet<T>(action: string): Promise<T> {
+    const conn = this.getConnection();
+    if (!conn) throw new ConnectionMissingError("No Connection configured.");
+    return this.gasRequest<T>({
+      url: `${conn.gasUrl}?action=${action}&t=${Date.now()}`,
+      mode: "cors",
+      redirect: "follow",
+      cache: "no-store",
+    });
   }
 
   private async gasPost<T>(body: Record<string, unknown>): Promise<T> {
     const conn = this.getConnection();
     if (!conn) throw new ConnectionMissingError("No Connection configured.");
-    let res: Response;
-    try {
-      res = await fetch(conn.gasUrl, {
-        method: "POST",
-        mode: "cors",
-        redirect: "follow",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ ...body, secret: conn.apiSecret }),
-      });
-    } catch (e) {
-      throw new ConnectionError(e instanceof Error ? e.message : String(e));
-    }
-    let json: Record<string, unknown>;
-    try {
-      json = JSON.parse(await res.text()) as Record<string, unknown>;
-    } catch {
-      throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
-    }
-    if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
-    if (json.error) throw new Error(String(json.error));
-    return json as T;
+    return this.gasRequest<T>({
+      url: conn.gasUrl,
+      method: "POST",
+      mode: "cors",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ ...body, secret: conn.apiSecret }),
+    });
   }
 
   async validateConnection(gasUrl: string, apiSecret: string): Promise<void> {
-    let res: Response;
-    try {
-      res = await fetch(gasUrl, {
-        method: "POST",
-        mode: "cors",
-        redirect: "follow",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "validate", secret: apiSecret }),
-      });
-    } catch (e) {
-      throw new ConnectionError(e instanceof Error ? e.message : String(e));
-    }
-    let json: Record<string, unknown>;
-    try {
-      json = JSON.parse(await res.text()) as Record<string, unknown>;
-    } catch {
-      throw new ConnectionError("Response was not valid JSON — check your GAS URL.");
-    }
-    if (json.error === "unauthorized") throw new UnauthorizedError("Secret rejected — your API secret doesn't match this spreadsheet's deployment. Check Settings.");
-    if (json.error && json.error !== "unknown action") throw new Error(String(json.error));
+    await this.gasRequest({
+      url: gasUrl,
+      method: "POST",
+      mode: "cors",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action: "validate", secret: apiSecret }),
+    }, { tolerateUnknownAction: true });
   }
 
   async getEntries(): Promise<Entry[]> {
