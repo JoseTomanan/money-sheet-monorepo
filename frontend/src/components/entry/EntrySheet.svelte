@@ -1,9 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import * as Sheet from '$lib/components/ui/sheet';
-  import CategoryTagPicker from '../category/CategoryTagPicker.svelte';
   import { fmtDate, dayOfWeek } from '$lib/format';
-  import { store } from '$lib/store.svelte';
   import type { CategoryMap, Entry, Direction, EntryMutation } from '$lib/types';
   import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '$lib/dragGesture';
   import { createEntryForm } from '$lib/entryForm.svelte';
@@ -153,48 +151,17 @@
     >Incoming</button>
   </div>
 
-  <!-- split toggle — only for new entries -->
-  {#if !entry}
-    <div class="flex items-center justify-between px-5 pt-[10px] pb-[2px]">
-      <span class="text-[13px] font-sans text-muted-foreground">{form.direction === 'I' ? 'Split across categories' : 'Split across subcategories'}</span>
-      <button
-        class="split-toggle-btn py-[5px] px-[14px] rounded-[var(--radius-pill)] border border-border bg-muted text-muted-foreground font-sans text-[13px] font-medium cursor-pointer transition-[background,color] duration-150"
-        class:split-active={form.splitMode}
-        onclick={() => form.toggleSplit()}
-      >{form.splitMode ? 'On' : 'Off'}</button>
-    </div>
-  {/if}
-
-  {#if form.splitMode}
-    <SplitLegCarousel
-      split={form.split}
-      direction={form.direction}
-      {categories}
-      onupdate={(i, patch) => form.updateLeg(i, patch)}
-      onremove={(i) => form.removeLeg(i)}
-      onadd={() => form.addLeg()}
-    />
-  {:else}
-    <!-- single amount input -->
-    <div class="mx-4 mt-[10px] pt-5 pb-5 px-[22px] rounded-[var(--radius-lg)] bg-card shadow-[var(--shadow-card)] text-center">
-      <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-2">{form.direction === 'I' ? 'Amount received' : 'Amount spent'}</div>
-      <div class="flex justify-center items-baseline gap-1">
-        <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
-        <input
-          type="text"
-          inputmode="decimal"
-          class="amount-input w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
-          value={form.amount}
-          oninput={(e) => form.sanitizeAmountInput((e.target as HTMLInputElement).value)}
-          onblur={() => form.evaluateAmount()}
-          placeholder="0.00"
-        />
-      </div>
-      {#if form.amountError}
-        <p class="amount-error mt-1 text-[12px] font-sans text-destructive">{form.amountError}</p>
-      {/if}
-    </div>
-  {/if}
+  <!-- always carousel — Add leg card shown for new entries only -->
+  <SplitLegCarousel
+    split={form.split}
+    direction={form.direction}
+    {categories}
+    onupdate={(i, patch) => form.updateLeg(i, patch)}
+    onremove={(i) => form.removeLeg(i)}
+    onadd={() => form.addLeg()}
+    showAddCard={!entry}
+    initialTags={entry ? [entry.tag] : undefined}
+  />
 
   <!-- description -->
   <div class="mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
@@ -216,19 +183,6 @@
     </div>
   </div>
 
-  <!-- single-mode tag picker -->
-  {#if !form.splitMode}
-    {#key form.direction}
-      <CategoryTagPicker
-        direction={form.direction}
-        {categories}
-        tag={form.tag}
-        initialTag={entry?.tag ?? ''}
-        onselect={(t) => (form.tag = t)}
-      />
-    {/key}
-  {/if}
-
   {#if entry && ondelete}
     <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
       <button
@@ -247,11 +201,6 @@
     border-color: var(--destructive-tint-border);
   }
   .active-in {
-    background: color-mix(in srgb, var(--positive) 12%, transparent);
-    color: var(--positive);
-    border-color: color-mix(in srgb, var(--positive) 25%, transparent);
-  }
-  .split-toggle-btn.split-active {
     background: color-mix(in srgb, var(--positive) 12%, transparent);
     color: var(--positive);
     border-color: color-mix(in srgb, var(--positive) 25%, transparent);

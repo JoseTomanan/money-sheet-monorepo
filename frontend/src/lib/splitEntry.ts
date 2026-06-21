@@ -16,7 +16,7 @@ export interface SplitState {
 }
 
 export function initSplitState(): SplitState {
-  return { legs: [{ tag: "", amount: "" }, { tag: "", amount: "" }] };
+  return { legs: [{ tag: "", amount: "" }] };
 }
 
 export function addLeg(state: SplitState): SplitState {
@@ -24,7 +24,7 @@ export function addLeg(state: SplitState): SplitState {
 }
 
 export function removeLeg(state: SplitState, index: number): SplitState {
-  if (state.legs.length <= 2) return state;
+  if (state.legs.length <= 1) return state;
   return { legs: state.legs.filter((_, i) => i !== index) };
 }
 

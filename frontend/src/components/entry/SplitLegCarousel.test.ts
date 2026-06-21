@@ -17,15 +17,22 @@ function baseProps(overrides = {}) {
     onupdate: vi.fn(),
     onremove: vi.fn(),
     onadd: vi.fn(),
+    showAddCard: true,
     ...overrides,
   };
 }
 
 describe("SplitLegCarousel", () => {
-  it("renders one card per leg plus an Add leg button", () => {
+  it("renders one card per leg plus an Add leg button when showAddCard=true", () => {
+    // initSplitState now gives 1 leg
     const { getAllByText, getByText } = render(SplitLegCarousel, baseProps());
-    expect(getAllByText(/^Remove$/)).toHaveLength(2);
+    expect(getAllByText(/^Remove$/)).toHaveLength(1);
     expect(getByText("Add leg")).toBeInTheDocument();
+  });
+
+  it("does not render the Add leg button when showAddCard=false", () => {
+    const { queryByText } = render(SplitLegCarousel, baseProps({ showAddCard: false }));
+    expect(queryByText("Add leg")).not.toBeInTheDocument();
   });
 
   it("calls onadd when Add leg is clicked", async () => {
@@ -36,7 +43,7 @@ describe("SplitLegCarousel", () => {
   });
 
   it("calls onremove with the leg index when Remove is clicked", async () => {
-    const split = addLeg(initSplitState()); // 3 legs so Remove is enabled
+    const split = addLeg(initSplitState()); // 2 legs so Remove is enabled
     const props = baseProps({ split });
     const { getAllByText } = render(SplitLegCarousel, props);
     const removes = getAllByText(/^Remove$/);
@@ -44,15 +51,15 @@ describe("SplitLegCarousel", () => {
     expect(props.onremove).toHaveBeenCalledWith(1);
   });
 
-  it("disables Remove buttons when there are exactly 2 legs", () => {
-    const props = baseProps(); // initSplitState has 2 legs
+  it("disables Remove button when there is exactly 1 leg", () => {
+    const props = baseProps(); // initSplitState now gives 1 leg
     const { getAllByText } = render(SplitLegCarousel, props);
     const removes = getAllByText(/^Remove$/);
     removes.forEach((btn) => expect(btn).toBeDisabled());
   });
 
-  it("enables Remove buttons when there are 3 or more legs", () => {
-    const split = addLeg(initSplitState());
+  it("enables Remove buttons when there are 2 or more legs", () => {
+    const split = addLeg(initSplitState()); // 1 → 2 legs
     const props = baseProps({ split });
     const { getAllByText } = render(SplitLegCarousel, props);
     const removes = getAllByText(/^Remove$/);
