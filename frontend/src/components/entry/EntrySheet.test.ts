@@ -157,6 +157,34 @@ describe("EntrySheet — two-step picker edit prefill", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Always-carousel layout tests (no split toggle)
+// ---------------------------------------------------------------------------
+
+describe("EntrySheet — always-carousel layout", () => {
+  it("new entry: no toggle button or toggle label", () => {
+    const { queryByText } = render(EntrySheet, baseProps());
+    expect(queryByText(/Split across/i)).not.toBeInTheDocument();
+    expect(queryByText(/^On$/)).not.toBeInTheDocument();
+    expect(queryByText(/^Off$/)).not.toBeInTheDocument();
+  });
+
+  it("new entry: shows Leg 1 card and Add leg button", () => {
+    const { getByText } = render(EntrySheet, baseProps());
+    expect(getByText("Leg 1")).toBeInTheDocument();
+    expect(getByText("Add leg")).toBeInTheDocument();
+  });
+
+  it("edit entry: shows Leg 1 card but no Add leg button", () => {
+    const { getByText, queryByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry() }),
+    );
+    expect(getByText("Leg 1")).toBeInTheDocument();
+    expect(queryByText("Add leg")).not.toBeInTheDocument();
+  });
+});
+
 describe("EntrySheet — saveDisabled direction/tag validation", () => {
   it("Save enabled for valid Outgoing entry with subcategory tag", async () => {
     const { getByRole } = render(
