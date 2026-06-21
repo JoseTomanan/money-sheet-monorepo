@@ -43,6 +43,7 @@
   description={entry.description}
   color={resolvedColor}
   direction={entry.direction}
+  {splitPos}
 />
 
 <div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
