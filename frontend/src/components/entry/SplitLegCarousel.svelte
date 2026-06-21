@@ -39,11 +39,11 @@
         >Remove</button>
       </div>
       <div class="amount-row flex items-baseline gap-[3px] mb-[10px]">
-        <span class="peso font-mono text-[18px] font-medium text-muted-foreground">{store.config.currency}</span>
+        <span class="peso font-mono text-[36px] font-medium text-muted-foreground">{store.config.currency}</span>
         <input
           type="text"
           inputmode="decimal"
-          class="amount-input bg-transparent border-0 outline-none font-mono text-[26px] font-medium text-foreground tracking-[-0.8px] w-full placeholder:text-muted-foreground"
+          class="amount-input bg-transparent border-0 outline-none font-mono text-[36px] font-medium text-foreground tracking-[-0.8px] w-full text-right placeholder:text-muted-foreground"
           value={leg.amount}
           oninput={(e) => {
             const v = (e.target as HTMLInputElement).value;
@@ -79,9 +79,9 @@
   {/each}
 
   {#if showAddCard}
-    <button class="add-card shrink-0 w-[calc(85%/5)] snap-start mr-4 flex flex-col items-center justify-center gap-[6px] border border-dashed border-border rounded-[var(--radius-lg)] bg-transparent cursor-pointer min-h-[120px] opacity-60 hover:opacity-100 transition-opacity duration-150" onclick={onadd}>
-      <span class="add-plus text-2xl text-muted-foreground leading-none">+</span>
-      <span class="add-label font-sans text-[12px] font-medium text-muted-foreground">Add leg</span>
+    <button class="add-card shrink-0 w-[calc(85%/5)] snap-start mr-4 flex flex-col items-center justify-center gap-[6px] border border-dashed border-accent rounded-[var(--radius-lg)] bg-transparent cursor-pointer min-h-[120px] transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]" onclick={onadd}>
+      <span class="add-plus text-2xl text-accent leading-none">+</span>
+      <span class="add-label font-sans text-[12px] font-medium text-accent">Add leg</span>
     </button>
   {/if}
 </div>
