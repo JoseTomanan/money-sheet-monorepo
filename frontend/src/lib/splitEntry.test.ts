@@ -16,7 +16,7 @@ describe("DITTO_DESCRIPTION", () => {
 
   it("is what toAddEntryPayloads writes for all-but-first legs", () => {
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100" }),
+      updateLeg(addLeg(initSplitState()), 0, { tag: "FOOD", amount: "100" }),
       1, { tag: "HOUSING", amount: "200" }
     );
     const payloads = toAddEntryPayloads(state, { date: "2026-01-01", description: "main", direction: "I" });
@@ -25,26 +25,26 @@ describe("DITTO_DESCRIPTION", () => {
 });
 
 describe("initSplitState", () => {
-  it("returns exactly 2 empty legs", () => {
+  it("returns exactly 1 empty leg", () => {
     const state = initSplitState();
-    expect(state.legs).toHaveLength(2);
+    expect(state.legs).toHaveLength(1);
     expect(state.legs[0]).toEqual({ tag: "", amount: "" });
-    expect(state.legs[1]).toEqual({ tag: "", amount: "" });
   });
 });
 
 describe("addLeg", () => {
   it("appends an empty leg", () => {
     const state = addLeg(initSplitState());
-    expect(state.legs).toHaveLength(3);
-    expect(state.legs[2]).toEqual({ tag: "", amount: "" });
+    expect(state.legs).toHaveLength(2);
+    expect(state.legs[1]).toEqual({ tag: "", amount: "" });
   });
 });
 
 describe("toAddEntryPayloads", () => {
   it("emits one payload per leg sharing date and description, each with direction I", () => {
+    // Build a 2-leg state: init gives 1 leg, addLeg gives 2
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" }),
+      updateLeg(addLeg(initSplitState()), 0, { tag: "FOOD", amount: "500" }),
       1, { tag: "HOUSING", amount: "1500.50" }
     );
     const payloads = toAddEntryPayloads(state, {
@@ -71,7 +71,7 @@ describe("toAddEntryPayloads", () => {
 
   it("emits one payload per leg with direction O; subsequent legs use ^^ description", () => {
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "Dining", amount: "250" }),
+      updateLeg(addLeg(initSplitState()), 0, { tag: "Dining", amount: "250" }),
       1, { tag: "Fuel", amount: "800" }
     );
     const payloads = toAddEntryPayloads(state, {
@@ -97,9 +97,10 @@ describe("toAddEntryPayloads", () => {
   });
 
   it("uses ^^ for all legs after the first in a 3-leg Outgoing split", () => {
+    // 1 → 2 → 3 legs
     const state = addLeg(
       updateLeg(
-        updateLeg(initSplitState(), 0, { tag: "Dining", amount: "200" }),
+        updateLeg(addLeg(initSplitState()), 0, { tag: "Dining", amount: "200" }),
         1, { tag: "Fuel", amount: "500" }
       )
     );
@@ -118,29 +119,38 @@ describe("toAddEntryPayloads", () => {
 
 describe("isSplitValid", () => {
   it("is false when any leg has no tag", () => {
+    // single-leg state: amount set but no tag
     const state = updateLeg(initSplitState(), 0, { amount: "100" });
     expect(isSplitValid(state)).toBe(false);
   });
 
   it("is false when any leg has an unparseable amount", () => {
+    const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "abc" }),
+      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "abc" }),
       1, { tag: "HOUSING", amount: "200" }
     );
     expect(isSplitValid(state)).toBe(false);
   });
 
   it("is false when any leg has amount <= 0", () => {
+    const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "0" }),
+      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "0" }),
       1, { tag: "HOUSING", amount: "200" }
     );
     expect(isSplitValid(state)).toBe(false);
   });
 
-  it("is true when all legs have a tag and a positive amount", () => {
+  it("is true when all legs have a tag and a positive amount (single leg)", () => {
+    const state = updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" });
+    expect(isSplitValid(state)).toBe(true);
+  });
+
+  it("is true when all legs have a tag and a positive amount (two legs)", () => {
+    const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" }),
+      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "500" }),
       1, { tag: "HOUSING", amount: "200" }
     );
     expect(isSplitValid(state)).toBe(true);
@@ -148,16 +158,18 @@ describe("isSplitValid", () => {
 
   it("is false when any leg has a formula error set, even if amount string looks numeric", () => {
     // error flag must be checked independently — parseFloat("100") > 0 would pass without the check
+    const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100", error: "Invalid formula" }),
+      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "100", error: "Invalid formula" }),
       1, { tag: "HOUSING", amount: "200" }
     );
     expect(isSplitValid(state)).toBe(false);
   });
 
   it("is true when all legs are valid and error is explicitly cleared (undefined)", () => {
+    const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
-      updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "100", error: undefined }),
+      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "100", error: undefined }),
       1, { tag: "HOUSING", amount: "200" }
     );
     expect(isSplitValid(state)).toBe(true);
@@ -166,7 +178,8 @@ describe("isSplitValid", () => {
 
 describe("updateLeg", () => {
   it("patches the leg at the given index without affecting others", () => {
-    const state = updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" });
+    const twoLegs = addLeg(initSplitState());
+    const state = updateLeg(twoLegs, 0, { tag: "FOOD", amount: "500" });
     expect(state.legs[0]).toEqual({ tag: "FOOD", amount: "500" });
     expect(state.legs[1]).toEqual({ tag: "", amount: "" });
   });
@@ -174,16 +187,16 @@ describe("updateLeg", () => {
 
 describe("removeLeg", () => {
   it("removes the leg at the given index", () => {
-    const three = addLeg(initSplitState());
-    const state = removeLeg(three, 1);
-    expect(state.legs).toHaveLength(2);
-    expect(state.legs[0]).toEqual(three.legs[0]);
-    expect(state.legs[1]).toEqual(three.legs[2]);
+    // start at 1, add to 2, remove index 1 → back to 1
+    const two = addLeg(initSplitState());
+    const state = removeLeg(two, 1);
+    expect(state.legs).toHaveLength(1);
+    expect(state.legs[0]).toEqual(two.legs[0]);
   });
 
-  it("refuses to drop below 2 legs", () => {
-    const two = initSplitState();
-    const state = removeLeg(two, 0);
-    expect(state).toBe(two);
+  it("refuses to drop below 1 leg", () => {
+    const one = initSplitState();
+    const state = removeLeg(one, 0);
+    expect(state).toBe(one);
   });
 });
