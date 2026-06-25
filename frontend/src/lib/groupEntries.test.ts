@@ -220,6 +220,14 @@ describe("splitRunPositions", () => {
     ]);
   });
 
+  it("ditto leg with trailing text past '^^' still groups (prefix match, not exact equality)", () => {
+    const entries = [entry(1, "2026-05-18", "dinner"), entry(2, "2026-05-18", "^^ extra detail")];
+    expect(splitRunPositions(entries)).toEqual([
+      { isFirst: true,  isLast: false, inGroup: true },
+      { isFirst: false, isLast: true,  inGroup: true },
+    ]);
+  });
+
   it("split group followed by lone entry: split is closed correctly", () => {
     const entries = [
       entry(1, "2026-05-18", "utilities"),
