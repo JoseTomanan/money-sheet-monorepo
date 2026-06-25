@@ -4,6 +4,12 @@ import { evaluateAmountInput } from "./formula";
 /** Sentinel description for all-but-first legs of a Split Entry. Detection is purely by this constant — see CONTEXT.md. */
 export const DITTO_DESCRIPTION = '^^';
 
+/** True when a description marks a non-first Split Entry leg. Looser than equality:
+ *  any description that starts with the ditto marker counts. */
+export function isDitto(description: string): boolean {
+  return description.startsWith(DITTO_DESCRIPTION);
+}
+
 export interface Leg {
   tag: string;
   amount: string;

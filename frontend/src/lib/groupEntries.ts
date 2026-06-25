@@ -1,5 +1,5 @@
 import type { Entry } from './types';
-import { DITTO_DESCRIPTION } from './splitEntry';
+import { isDitto } from './splitEntry';
 
 export interface WeekGroup {
   key: string;
@@ -79,17 +79,17 @@ export interface SplitPosition {
 
 /**
  * Marks Split Entry runs within a display-ordered list.
- * A run is a real-description entry followed by consecutive '^^' ditto legs.
- * Detection is purely by '^^' — entries that merely share a description are not grouped.
+ * A run is a real-description entry followed by consecutive ditto legs — any
+ * description starting with '^^'. Entries that merely share a description are not grouped.
  */
 export function splitRunPositions(entries: Entry[]): SplitPosition[] {
   return entries.map((entry, i) => {
-    const isDitto = entry.description === DITTO_DESCRIPTION;
-    const nextIsDitto = i + 1 < entries.length && entries[i + 1].description === DITTO_DESCRIPTION;
+    const thisIsDitto = isDitto(entry.description);
+    const nextIsDitto = i + 1 < entries.length && isDitto(entries[i + 1].description);
     return {
-      isFirst: !isDitto,
+      isFirst: !thisIsDitto,
       isLast: !nextIsDitto,
-      inGroup: isDitto || nextIsDitto,
+      inGroup: thisIsDitto || nextIsDitto,
     };
   });
 }
