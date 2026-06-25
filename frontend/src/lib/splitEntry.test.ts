@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DITTO_DESCRIPTION,
+  isDitto,
   initSplitState,
   addLeg,
   removeLeg,
@@ -21,6 +22,20 @@ describe("DITTO_DESCRIPTION", () => {
     );
     const payloads = toAddEntryPayloads(state, { date: "2026-01-01", description: "main", direction: "I" });
     expect(payloads[1].description).toBe(DITTO_DESCRIPTION);
+  });
+});
+
+describe("isDitto", () => {
+  it("is true for the bare sentinel and for descriptions starting with it", () => {
+    expect(isDitto("^^")).toBe(true);
+    expect(isDitto("^^ groceries")).toBe(true);
+    expect(isDitto("^^^")).toBe(true);
+  });
+
+  it("is false for descriptions that don't start with the sentinel", () => {
+    expect(isDitto("groceries")).toBe(false);
+    expect(isDitto("")).toBe(false);
+    expect(isDitto(" ^^")).toBe(false);
   });
 });
 
