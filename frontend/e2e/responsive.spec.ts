@@ -179,8 +179,6 @@ test.describe("mobile 390px — layout unchanged", () => {
     await page.getByRole("button", { name: "Add entry", exact: true }).click();
     await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 
-    // Enable split mode
-    await page.locator(".split-toggle-btn").click();
     await page.locator(".carousel").waitFor({ state: "visible" });
 
     // Primary: sheet's overflow-x must be non-scrollable (clipped or hidden), not "auto".

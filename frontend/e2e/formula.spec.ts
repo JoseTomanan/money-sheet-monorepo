@@ -22,7 +22,7 @@ test("formula =10+5 resolves to 15.00 on blur in main amount field", async ({ pa
   await input.fill("=10+5");
   await input.blur();
   await expect(input).toHaveValue("15.00");
-  await expect(page.locator(".amount-error")).not.toBeVisible();
+  await expect(page.locator(".leg-error")).not.toBeVisible();
 });
 
 test("formula =100-SUM(30,20,15) resolves to 35.00 on blur", async ({ page }) => {
@@ -39,8 +39,8 @@ test("malformed formula =10+abc shows inline error and keeps raw value", async (
   await input.fill("=10+abc");
   await input.blur();
   await expect(input).toHaveValue("=10+abc");
-  await expect(page.locator(".amount-error")).toBeVisible();
-  await expect(page.locator(".amount-error")).toHaveText("Invalid formula");
+  await expect(page.locator(".leg-error")).toBeVisible();
+  await expect(page.locator(".leg-error")).toHaveText("Invalid formula");
 });
 
 test("formula error disables Save button", async ({ page }) => {
@@ -56,7 +56,7 @@ test("non-positive formula =5-10 shows error and disables Save", async ({ page }
   const input = page.locator(".amount-input");
   await input.fill("=5-10");
   await input.blur();
-  await expect(page.locator(".amount-error")).toHaveText("Amount must be positive");
+  await expect(page.locator(".leg-error")).toHaveText("Amount must be positive");
   await expect(page.locator("button.header-btn.save")).toBeDisabled();
 });
 
@@ -66,7 +66,7 @@ test("plain numeric input is unaffected by formula logic", async ({ page }) => {
   await input.fill("50.00");
   await input.blur();
   await expect(input).toHaveValue("50.00");
-  await expect(page.locator(".amount-error")).not.toBeVisible();
+  await expect(page.locator(".leg-error")).not.toBeVisible();
 });
 
 test("formula resolves correctly and entry can be saved", async ({ page }) => {
@@ -91,7 +91,7 @@ test("arithmetic 100-50 without = resolves to 50.00 on blur", async ({ page }) =
   await input.fill("100-50");
   await input.blur();
   await expect(input).toHaveValue("50.00");
-  await expect(page.locator(".amount-error")).not.toBeVisible();
+  await expect(page.locator(".leg-error")).not.toBeVisible();
 });
 
 test("arithmetic 100-50 disables Save until blur resolves it", async ({ page }) => {
@@ -108,16 +108,12 @@ test("negative amount -5 shows error and disables Save", async ({ page }) => {
   const input = page.locator(".amount-input");
   await input.fill("-5");
   await input.blur();
-  await expect(page.locator(".amount-error")).toHaveText("Amount must be positive");
+  await expect(page.locator(".leg-error")).toHaveText("Amount must be positive");
   await expect(page.locator("button.header-btn.save")).toBeDisabled();
 });
 
 test("split-leg: formula error then plain number clears the error", async ({ page }) => {
   await openNewEntrySheet(page);
-
-  // Enable split mode
-  await page.locator(".split-toggle-btn").click();
-  await page.locator(".carousel").waitFor({ state: "visible" });
 
   const legInputs = page.locator(".amount-input");
   const firstLeg = legInputs.first();
