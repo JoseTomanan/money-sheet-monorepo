@@ -82,6 +82,23 @@ describe("SplitLegCarousel", () => {
     expect(props.onupdate).toHaveBeenCalledWith(0, { amount: "=10+5" });
   });
 
+  it("passes bare arithmetic operators through oninput without stripping", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "100-50" } });
+    expect(props.onupdate).toHaveBeenCalledWith(0, { amount: "100-50" });
+  });
+
+  it("on blur with bare arithmetic resolves to the computed amount", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "100-50" } });
+    await fireEvent.blur(inputs[0]);
+    expect(props.onupdate).toHaveBeenLastCalledWith(0, { amount: "50.00", error: undefined });
+  });
+
   it("on blur with valid formula calls onupdate with resolved amount and no error", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);

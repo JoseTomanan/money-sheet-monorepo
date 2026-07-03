@@ -1,7 +1,7 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
   import type { SplitState, Leg } from '../../lib/splitEntry';
-  import { isFormula, evaluateFormula } from '../../lib/formula';
+  import { isFormula, evaluateAmountInput } from '../../lib/formula';
   import type { Direction, CategoryMap } from '../../lib/types';
   import { store } from '../../lib/store.svelte';
   import CategoryTagPicker from '../category/CategoryTagPicker.svelte';
@@ -47,16 +47,19 @@
           value={leg.amount}
           oninput={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            onupdate(i, { amount: v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '') });
+            onupdate(i, { amount: v.startsWith('=') ? v : v.replace(/[^0-9.+\-*/()]/g, '') });
           }}
           onblur={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            if (!isFormula(v)) { onupdate(i, { error: undefined }); return; }
-            const result = evaluateFormula(v);
+            const trimmed = v.trim();
+            // Empty field: no error, nothing to resolve.
+            if (!trimmed) { onupdate(i, { error: undefined }); return; }
+            // Bare plain number (no operators, no leading =): leave as typed, clear any stale error.
+            if (!isFormula(trimmed) && !/[+\-*/()]/.test(trimmed)) { onupdate(i, { error: undefined }); return; }
+            // Formula or bare arithmetic: resolve via the shared evaluator.
+            const result = evaluateAmountInput(v);
             if ('error' in result) {
               onupdate(i, { error: result.error });
-            } else if (result.value <= 0) {
-              onupdate(i, { error: 'Amount must be positive' });
             } else {
               onupdate(i, { amount: result.value.toFixed(2), error: undefined });
             }
