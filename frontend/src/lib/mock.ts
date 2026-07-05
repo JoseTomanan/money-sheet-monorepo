@@ -7,13 +7,14 @@ import type {
 } from "./types";
 import { CATEGORY_MAP } from "./theme";
 import { buildEntry, getMainCategory } from "./domain";
+import { today } from "./format";
 
 export const isMockMode = import.meta.env.VITE_MOCK === "true";
 
 function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = today().split('-').map(Number);
+  const date = new Date(y, m - 1, d - n);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 let entries: Entry[] = [
