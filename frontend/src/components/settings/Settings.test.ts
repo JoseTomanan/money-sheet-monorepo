@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import Settings from "./Settings.svelte";
+import { ConnectionError, UnauthorizedError } from "../../lib/adapter-real";
 
 const mockSetConnection = vi.hoisted(() => vi.fn());
 const mockConnection = vi.hoisted(() => ({ current: null as { gasUrl: string; apiSecret: string } | null }));
@@ -11,11 +12,15 @@ vi.mock("../../lib/connection.svelte", () => ({
   setConnection: mockSetConnection,
 }));
 
-vi.mock("../../lib/api", () => ({
-  validateConnection: mockValidateConnection,
-  UnauthorizedError: class UnauthorizedError extends Error {},
-  ConnectionError: class ConnectionError extends Error {},
-}));
+// Settings delegates error → copy mapping to the adapter's real userMessage —
+// only validateConnection itself is mocked here.
+vi.mock("../../lib/api", async () => {
+  const real = await vi.importActual<typeof import("../../lib/adapter-real")>("../../lib/adapter-real");
+  return {
+    validateConnection: mockValidateConnection,
+    userMessage: real.userMessage,
+  };
+});
 
 function baseProps(overrides: Record<string, unknown> = {}) {
   return { onsaved: vi.fn(), ...overrides };
@@ -103,5 +108,35 @@ describe("Settings form", () => {
     const { getByLabelText } = render(Settings, baseProps());
     expect(getByLabelText(/GAS URL/i)).toHaveValue("https://existing.url");
     expect(getByLabelText(/API Secret/i)).toHaveValue("existing-secret");
+  });
+
+  // ── Cycle 6: error copy is sourced from the adapter's userMessage, not
+  // re-mapped locally via instanceof ────────────────────────────────────────
+  describe("error messaging (sourced from adapter userMessage)", () => {
+    async function attemptSave() {
+      const { getByLabelText, getByRole, findByText } = render(Settings, baseProps());
+      await fireEvent.input(getByLabelText(/GAS URL/i), { target: { value: "https://fake.example" } });
+      await fireEvent.input(getByLabelText(/API Secret/i), { target: { value: "secret" } });
+      await fireEvent.click(getByRole("button", { name: /save/i }));
+      return { findByText };
+    }
+
+    it("shows the auth-rejected message when validateConnection rejects with UnauthorizedError", async () => {
+      mockValidateConnection.mockRejectedValueOnce(new UnauthorizedError("nope"));
+      const { findByText } = await attemptSave();
+      await findByText(/Secret rejected — make sure the secret and the GAS URL are from the same copy of the sheet\./);
+    });
+
+    it("shows the unreachable-URL message when validateConnection rejects with ConnectionError", async () => {
+      mockValidateConnection.mockRejectedValueOnce(new ConnectionError("offline"));
+      const { findByText } = await attemptSave();
+      await findByText(/Couldn't reach that URL — check the GAS web-app URL and try again\./);
+    });
+
+    it("shows the generic fallback when validateConnection rejects with a plain Error", async () => {
+      mockValidateConnection.mockRejectedValueOnce(new Error("boom"));
+      const { findByText } = await attemptSave();
+      await findByText(/Something went wrong\. Check the URL and secret and try again\./);
+    });
   });
 });

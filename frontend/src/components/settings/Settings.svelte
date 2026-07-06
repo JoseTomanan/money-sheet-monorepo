@@ -1,6 +1,6 @@
 <script lang="ts">
   import { connection, setConnection, generateSetupUrl } from '../../lib/connection.svelte';
-  import { validateConnection, UnauthorizedError, ConnectionError } from '../../lib/api';
+  import { validateConnection, userMessage } from '../../lib/api';
   import { darkMode, type ThemePreference } from '../../lib/darkMode.svelte';
 
   const themeOptions: { value: ThemePreference; label: string }[] = [
@@ -42,11 +42,7 @@
       setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });
       onsaved();
     } catch (err) {
-      errorMsg = err instanceof UnauthorizedError
-        ? "Secret rejected — make sure the secret and the GAS URL are from the same copy of the sheet."
-        : err instanceof ConnectionError
-          ? "Couldn't reach that URL — check the GAS web-app URL and try again."
-          : "Something went wrong. Check the URL and secret and try again.";
+      errorMsg = userMessage(err);
     } finally {
       saving = false;
     }
