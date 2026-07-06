@@ -1,6 +1,6 @@
 import { enqueue, readQueue, writeQueue } from './queue';
 import type { QueueItem } from './queue';
-import { ConnectionError } from './api';
+import { isQueueable } from './api';
 import type { Entry, AddEntryPayload, UpdateEntryPatch } from './types';
 
 export type AddOutcome =
@@ -55,7 +55,7 @@ export async function submitEdit(
     await tryEdit();
     return { status: 'confirmed' };
   } catch (err) {
-    if (err instanceof ConnectionError) {
+    if (isQueueable(err)) {
       enqueue({ op: 'edit', id, patch });
       return { status: 'queued', error: err };
     }
@@ -75,7 +75,7 @@ export async function submitDelete(
     await tryDelete();
     return { status: 'confirmed' };
   } catch (err) {
-    if (err instanceof ConnectionError) {
+    if (isQueueable(err)) {
       enqueue({ op: 'delete', id });
       return { status: 'queued', error: err };
     }
