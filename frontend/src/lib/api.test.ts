@@ -21,7 +21,7 @@ async function freshModsFirstVisitor() {
   vi.resetModules();
   const connMod = await import("./connection.svelte");
   const apiMod = await import("./api");
-  return { connection: connMod.connection, api: apiMod };
+  return { connection: connMod.connection, setConnection: connMod.setConnection, api: apiMod };
 }
 
 async function freshModsWithConn() {
@@ -155,6 +155,34 @@ describe("api — first-time visitor (no connection, no dismissal flag) uses Moc
     expect(entries.length).toBeGreaterThan(0);
     expect(entries[0]).toHaveProperty("id");
     expect(entries[0]).toHaveProperty("direction");
+  });
+});
+
+// ── Cycle 10: adapter selection is lazy — no reload needed after setConnection ──
+
+describe("api — adapter selection re-evaluates without a module reload", () => {
+  afterEach(() => {
+    localStorage.clear();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("switches from MockAdapter to RealAdapter after setConnection, without vi.resetModules", async () => {
+    const { setConnection, api } = await freshModsFirstVisitor();
+
+    // First-time visitor: mock fixtures, no network call.
+    const entries = await api.getEntries();
+    expect(entries.length).toBeGreaterThan(0);
+
+    // Save a Connection at runtime — no reload, no module reset.
+    setConnection(FAKE_CONN);
+    const fetchMock = vi.fn().mockResolvedValue({
+      text: () => Promise.resolve(JSON.stringify({ entries: [] })),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.getEntries();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
 
