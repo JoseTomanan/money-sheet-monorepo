@@ -1,5 +1,5 @@
 import * as api from './api';
-import { ConnectionError, UnauthorizedError } from './api';
+import { isQueueable } from './api';
 import { readCache, writeCache } from './cache';
 import { getLocalEntryIds } from './offlineMutation';
 import { getMainCategory, buildEntry } from './domain';
@@ -34,22 +34,11 @@ let localIds = $state<Set<number>>(getLocalEntryIds());
 let draining = $state(false);
 let syncing = $state(false);
 
-const REQUEST_TIMEOUT_MS = 15_000;
-
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
 function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
 function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
 function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
-
-function withTimeout<T>(promise: Promise<T>): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new ConnectionError('Request timed out.')), REQUEST_TIMEOUT_MS)
-    ),
-  ]);
-}
 
 function showToast(
   msgOrErr: unknown,
@@ -58,7 +47,7 @@ function showToast(
 ): void {
   toastMsg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
   toastAction = action ?? null;
-  toastIsConnection = msgOrErr instanceof ConnectionError;
+  toastIsConnection = isQueueable(msgOrErr);
   toastVariant = variant;
   // Destructive (auth) toasts stay until dismissed — they require user action.
   if (!action && variant !== 'destructive') {
@@ -90,12 +79,12 @@ async function refreshAll(silent = false): Promise<void> {
     errorIsConnection = false;
   }
   try {
-    const [e, m, c, cfg] = await withTimeout(Promise.all([
+    const [e, m, c, cfg] = await Promise.all([
       api.getEntries(),
       api.getMaster(),
       api.getCategories(),
       api.getConfig(),
-    ]));
+    ]);
     entries = e;
     master = m;
     categories = c;
@@ -106,7 +95,7 @@ async function refreshAll(silent = false): Promise<void> {
   } catch (err) {
     if (!silent) {
       error = err instanceof Error ? err.message : String(err);
-      errorIsConnection = err instanceof ConnectionError;
+      errorIsConnection = isQueueable(err);
     }
   } finally {
     if (!silent) loading = false;
@@ -133,9 +122,9 @@ const storeSeam: EntryStoreSeam = {
 };
 
 const mutApi: MutationApi = {
-  addEntry: (payload) => withTimeout(api.addEntry(payload)),
-  updateEntry: (id, patch) => withTimeout(api.updateEntry(id, patch)),
-  deleteEntry: (id) => withTimeout(api.deleteEntry(id)),
+  addEntry: (payload) => api.addEntry(payload),
+  updateEntry: (id, patch) => api.updateEntry(id, patch),
+  deleteEntry: (id) => api.deleteEntry(id),
 };
 
 const engine = createMutationEngine(storeSeam, mutApi);
