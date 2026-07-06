@@ -1,6 +1,7 @@
 import { submitAdd, submitEdit, submitDelete, drain, getLocalEntryIds } from './offlineMutation';
 import { buildEntry, getMainCategory } from './domain';
 import { isAuthError } from './api';
+import { readQueue } from './queue';
 import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch } from './types';
 
 // ---------------------------------------------------------------------------
@@ -233,5 +234,30 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     if (allDrained) await seam.refreshAll();
   }
 
-  return { add, addLegs, edit, remove, removeMany, drainQueue };
+  // Re-derive Local Entries from the persisted Offline Queue onto freshly-fetched
+  // entries. Reuses the same buildEntry/getMainCategory logic as add/edit above,
+  // so entry-building has a single owner instead of a second copy in the store.
+  function injectQueue(): void {
+    for (const item of readQueue()) {
+      if (item.op === 'add') {
+        if (!seam.getEntries().some((e) => e.id === item.tempId)) {
+          seam.appendEntry(buildEntry(item.tempId, item.payload, seam.getCategories()));
+        }
+      } else if (item.op === 'edit') {
+        const prev = seam.getEntries().find((e) => e.id === item.id);
+        if (prev) {
+          seam.swapEntry(item.id, {
+            ...prev,
+            ...item.patch,
+            mainCategory: item.patch.tag
+              ? getMainCategory(item.patch.tag, seam.getCategories())
+              : prev.mainCategory,
+          });
+        }
+      }
+      // delete items: entry stays visible until drained
+    }
+  }
+
+  return { add, addLegs, edit, remove, removeMany, drainQueue, injectQueue };
 }

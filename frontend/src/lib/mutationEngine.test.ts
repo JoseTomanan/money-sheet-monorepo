@@ -403,3 +403,46 @@ describe('engine.drainQueue', () => {
     expect(seam.refreshCount).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Slice 8 — injectQueue: re-derive Local Entries from the persisted queue
+// ---------------------------------------------------------------------------
+describe('engine.injectQueue', () => {
+  beforeEach(() => { _resetTempIdCounter(); clearQueue(); });
+
+  it('appends a Local Entry for a queued add item not already present', () => {
+    writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
+    const seam = makeFakeSeam();
+    const engine = createMutationEngine(seam, makeApi());
+    engine.injectQueue();
+    expect(seam.entries).toHaveLength(1);
+    expect(seam.entries[0]).toMatchObject({ id: -1, mainCategory: 'FOOD', tag: 'Groceries' });
+  });
+
+  it('is idempotent: does not duplicate an add item already present in entries', () => {
+    writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
+    const localEntry: Entry = { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'lunch', direction: 'O', amount: 50 };
+    const seam = makeFakeSeam([localEntry]);
+    const engine = createMutationEngine(seam, makeApi());
+    engine.injectQueue();
+    expect(seam.entries).toHaveLength(1);
+  });
+
+  it('re-resolves mainCategory for a queued edit that changes tag', () => {
+    writeQueue([{ op: 'edit', id: 10, patch: { tag: 'Rent' } }]);
+    const seam = makeFakeSeam([EXISTING]);
+    const engine = createMutationEngine(seam, makeApi());
+    engine.injectQueue();
+    const patched = seam.entries.find((e) => e.id === 10);
+    expect(patched?.tag).toBe('Rent');
+    expect(patched?.mainCategory).toBe('HOUSING');
+  });
+
+  it('leaves a queued delete item as a no-op — entry stays visible until drained', () => {
+    writeQueue([{ op: 'delete', id: 10 }]);
+    const seam = makeFakeSeam([EXISTING]);
+    const engine = createMutationEngine(seam, makeApi());
+    engine.injectQueue();
+    expect(seam.entries.find((e) => e.id === 10)).toBeDefined();
+  });
+});
