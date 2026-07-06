@@ -1,5 +1,39 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeDate, peso, shiftYearMonth, daysInYearMonth, monthLabel, monthShort } from './format';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { normalizeDate, peso, shiftYearMonth, daysInYearMonth, monthLabel, monthShort, today, currentYearMonth } from './format';
+
+describe('today', () => {
+  const originalTZ = process.env.TZ;
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTZ;
+  });
+
+  it('returns the day before the UTC day when local time has not yet crossed UTC midnight', () => {
+    process.env.TZ = 'America/New_York'; // UTC-4 in summer (EDT)
+    vi.useFakeTimers();
+    // 2026-05-24T02:00:00Z is still 2026-05-23 22:00 in New York.
+    vi.setSystemTime(new Date('2026-05-24T02:00:00Z'));
+    expect(today()).toBe('2026-05-23');
+  });
+
+  it('returns the day after the UTC day when local time has already crossed into the next day', () => {
+    process.env.TZ = 'Asia/Manila'; // UTC+8
+    vi.useFakeTimers();
+    // 2026-05-23T22:00:00Z is already 2026-05-24 06:00 in Manila.
+    vi.setSystemTime(new Date('2026-05-23T22:00:00Z'));
+    expect(today()).toBe('2026-05-24');
+  });
+});
+
+describe('currentYearMonth', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('derives from today() rather than a separate UTC calculation', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-01T00:00:00'));
+    expect(currentYearMonth()).toBe(today().slice(0, 7));
+  });
+});
 
 describe('shiftYearMonth', () => {
   it('shifts forward within a year', () => {

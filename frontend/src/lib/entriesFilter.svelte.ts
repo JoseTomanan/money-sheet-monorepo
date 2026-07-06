@@ -1,12 +1,10 @@
 import { store } from './store.svelte';
 import { countByCategory } from './aggregations';
 import { groupByWeek, weekStartOf, weekLabel, compareEntriesForDisplay } from './groupEntries';
+import { today } from './format';
 
 export function currentWeekKey(): string {
-  const n = new Date();
-  return weekStartOf(
-    `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
-  );
+  return weekStartOf(today());
 }
 
 export function createEntriesFilter() {

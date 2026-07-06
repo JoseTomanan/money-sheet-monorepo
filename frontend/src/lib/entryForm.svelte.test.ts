@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createEntryForm } from "./entryForm.svelte";
 import { addLeg } from "./splitEntry";
+import { today } from "./format";
 import type { CategoryMap, Entry } from "./types";
 
 const CATEGORIES: CategoryMap = {
@@ -68,6 +69,25 @@ describe("createEntryForm — buildMutation", () => {
     expect(m.type).toBe("edit");
     expect(m.id).toBe(42);
     expect(m.patch).toMatchObject({ tag: "Dining", amount: 150 });
+  });
+});
+
+describe("createEntryForm — default date", () => {
+  const originalTZ = process.env.TZ;
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTZ;
+  });
+
+  it("defaults to the local calendar day, not the UTC day", () => {
+    process.env.TZ = "America/New_York"; // UTC-4 in summer (EDT)
+    vi.useFakeTimers();
+    // 2026-05-24T02:00:00Z is still 2026-05-23 22:00 in New York.
+    vi.setSystemTime(new Date("2026-05-24T02:00:00Z"));
+
+    const form = makeForm();
+    expect(form.date).toBe(today());
+    expect(form.date).toBe("2026-05-23");
   });
 });
 

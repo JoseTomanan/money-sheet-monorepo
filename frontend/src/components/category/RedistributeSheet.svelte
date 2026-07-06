@@ -7,6 +7,7 @@
   import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { isFormula, evaluateFormula } from '../../lib/formula';
   import { store } from '../../lib/store.svelte';
+  import { today as todayStr } from '../../lib/format';
   import type { CategoryMap, AddEntryPayload } from '../../lib/types';
 
   interface Props {
@@ -18,7 +19,7 @@
 
   let { open, categories, onclose, onsubmit }: Props = $props();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
 
   let source      = $state('');
   let target      = $state('');

@@ -50,8 +50,14 @@ export function yearMonth(iso: string): string {
   return iso.slice(0, 7);
 }
 
+/** The user's wall-clock calendar day as "YYYY-MM-DD" — local-date semantics, never UTC. */
+export function today(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+}
+
 export function currentYearMonth(): string {
-  return new Date().toISOString().slice(0, 7);
+  return today().slice(0, 7);
 }
 
 const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December'] as const;

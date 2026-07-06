@@ -1,4 +1,5 @@
 import { isValidTag } from './domain';
+import { today as todayStr } from './format';
 import {
   initSplitState,
   addLeg,
@@ -11,7 +12,7 @@ import {
 import type { CategoryMap, Entry, AddEntryPayload, Direction, EntryMutation } from './types';
 
 export function createEntryForm(getCategories: () => CategoryMap) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
 
   let date        = $state(today);
   let direction   = $state<Direction>('O');
