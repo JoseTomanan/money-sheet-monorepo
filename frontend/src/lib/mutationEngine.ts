@@ -1,6 +1,6 @@
 import { submitAdd, submitEdit, submitDelete, drain, getLocalEntryIds } from './offlineMutation';
 import { buildEntry, getMainCategory } from './domain';
-import { UnauthorizedError } from './api';
+import { isAuthError } from './api';
 import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch } from './types';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ export interface EntryStoreSeam {
   refreshAll(): Promise<void>;
 }
 
-// API callbacks injected by the store (already wrapped in withTimeout).
+// API callbacks injected by the store — the adapter seam owns request timeout.
 export interface MutationApi {
   addEntry(payload: AddEntryPayload): Promise<Entry>;
   updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
@@ -57,7 +57,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
         seam.setPending(outcome.entry.id, false);
       } else {
         seam.syncLocalIds();
-        if (outcome.error instanceof UnauthorizedError) {
+        if (isAuthError(outcome.error)) {
           seam.showToast(outcome.error, 'destructive');
         }
       }
@@ -94,7 +94,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
       seam.syncLocalIds();
 
       const authErr = outcomes.find(
-        (o) => o.status === 'queued' && o.error instanceof UnauthorizedError
+        (o) => o.status === 'queued' && isAuthError(o.error)
       );
       if (authErr) {
         seam.showToast((authErr as { error: unknown }).error, 'destructive');
@@ -126,7 +126,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
         await seam.refreshAll();
       } else if (outcome.status === 'queued') {
         seam.syncLocalIds();
-        if (outcome.error instanceof UnauthorizedError) seam.showToast(outcome.error, 'destructive');
+        if (isAuthError(outcome.error)) seam.showToast(outcome.error, 'destructive');
       } else {
         seam.swapEntry(id, prev);
         seam.showToast(outcome.error);
@@ -150,7 +150,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
       } else if (outcome.status === 'queued') {
         seam.syncLocalIds();
         if (wasLocal) seam.removeEntry(id);
-        if (outcome.error instanceof UnauthorizedError) seam.showToast(outcome.error, 'destructive');
+        if (isAuthError(outcome.error)) seam.showToast(outcome.error, 'destructive');
       } else {
         seam.showToast(outcome.error);
       }
@@ -192,7 +192,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
           if (outcome.status === 'confirmed') {
             removed.push(remote[i]);
           } else if (outcome.status === 'queued') {
-            if (outcome.error instanceof UnauthorizedError) seam.showToast(outcome.error, 'destructive');
+            if (isAuthError(outcome.error)) seam.showToast(outcome.error, 'destructive');
           } else {
             failCount++;
           }
@@ -224,7 +224,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
           seam.removeEntry(item.id);
         }
       } else {
-        if (result.error instanceof UnauthorizedError) seam.showToast(result.error, 'destructive');
+        if (isAuthError(result.error)) seam.showToast(result.error, 'destructive');
       }
     }
 
