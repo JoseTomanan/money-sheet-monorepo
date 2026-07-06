@@ -9,8 +9,6 @@ import { CATEGORY_MAP } from "./theme";
 import { buildEntry, getMainCategory } from "./domain";
 import { today } from "./format";
 
-export const isMockMode = import.meta.env.VITE_MOCK === "true";
-
 function daysAgo(n: number): string {
   const [y, m, d] = today().split('-').map(Number);
   const date = new Date(y, m - 1, d - n);
