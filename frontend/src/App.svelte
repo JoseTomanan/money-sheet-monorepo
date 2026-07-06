@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { store } from './lib/store.svelte';
+  import { toast } from './lib/toast.svelte';
   import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
@@ -124,15 +125,15 @@
       {/if}
     {/if}
 
-    {#if store.toastMsg}
+    {#if toast.msg}
       <Toast
         class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)]"
-        message={store.toastMsg}
-        variant={store.toastVariant}
-        isConnection={store.toastIsConnection}
-        action={store.toastAction}
+        message={toast.msg}
+        variant={toast.variant}
+        isConnection={toast.isConnection}
+        action={toast.action}
         onSettings={() => (settingsOpen = true)}
-        onDismiss={store.dismissToast}
+        onDismiss={toast.dismiss}
       />
     {/if}
 

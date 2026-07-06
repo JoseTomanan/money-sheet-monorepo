@@ -1,10 +1,8 @@
 import * as api from './api';
 import { isQueueable } from './api';
-import { readCache, writeCache } from './cache';
+import { loadSnapshot, saveSnapshot } from './cacheSync';
+import { toast } from './toast.svelte';
 import { getLocalEntryIds } from './offlineMutation';
-import { getMainCategory, buildEntry } from './domain';
-import { dedupeEntries } from './dedupe';
-import { readQueue } from './queue';
 import { createMutationEngine } from './mutationEngine';
 import type { EntryStoreSeam, MutationApi } from './mutationEngine';
 import type {
@@ -24,10 +22,6 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 let errorIsConnection = $state(false);
 let masterLoading = $state(false);
-let toastMsg = $state<string | null>(null);
-let toastAction = $state<{ label: string; run: () => void } | null>(null);
-let toastIsConnection = $state(false);
-let toastVariant = $state<'default' | 'destructive'>('default');
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
 let localIds = $state<Set<number>>(getLocalEntryIds());
@@ -39,38 +33,6 @@ function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
 function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
 function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
-
-function showToast(
-  msgOrErr: unknown,
-  action?: { label: string; run: () => void },
-  variant: 'default' | 'destructive' = 'default',
-): void {
-  toastMsg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
-  toastAction = action ?? null;
-  toastIsConnection = isQueueable(msgOrErr);
-  toastVariant = variant;
-  // Destructive (auth) toasts stay until dismissed — they require user action.
-  if (!action && variant !== 'destructive') {
-    setTimeout(() => { toastMsg = null; toastIsConnection = false; toastVariant = 'default'; }, 3000);
-  }
-}
-
-function injectQueueEntries(): void {
-  for (const item of readQueue()) {
-    if (item.op === 'add') {
-      if (!entries.some((e) => e.id === item.tempId)) {
-        entries = [...entries, buildEntry(item.tempId, item.payload, categories)];
-      }
-    } else if (item.op === 'edit') {
-      entries = entries.map((e) =>
-        e.id === item.id
-          ? { ...e, ...item.patch, mainCategory: item.patch.tag ? getMainCategory(item.patch.tag, categories) : e.mainCategory }
-          : e
-      );
-    }
-    // delete items: entry stays visible until drained
-  }
-}
 
 async function refreshAll(silent = false): Promise<void> {
   if (!silent) {
@@ -89,9 +51,9 @@ async function refreshAll(silent = false): Promise<void> {
     master = m;
     categories = c;
     config = cfg;
-    injectQueueEntries();
+    engine.injectQueue();
     localIds = getLocalEntryIds();
-    writeCache({ entries, master, categories, config });
+    saveSnapshot({ entries, master, categories, config });
   } catch (err) {
     if (!silent) {
       error = err instanceof Error ? err.message : String(err);
@@ -115,8 +77,8 @@ const storeSeam: EntryStoreSeam = {
   setPending: (id, active) => { active ? addPending(id) : removePending(id); },
   setDeletePending: (id, active) => { active ? addDeletePending(id) : removeDeletePending(id); },
   setMasterLoading: (active) => { masterLoading = active; },
-  showToast: (msgOrErr, variant = 'default') => showToast(msgOrErr, undefined, variant),
-  clearToast: () => { toastMsg = null; toastAction = null; },
+  showToast: (msgOrErr, variant = 'default') => toast.show(msgOrErr, undefined, variant),
+  clearToast: () => toast.dismiss(),
   syncLocalIds: () => { localIds = getLocalEntryIds(); },
   refreshAll: () => refreshAll(true),
 };
@@ -160,13 +122,13 @@ async function drainQueue(): Promise<void> {
 
 async function init(): Promise<void> {
   localIds = getLocalEntryIds();
-  const cache = readCache();
+  const cache = loadSnapshot();
   if (cache) {
-    entries = dedupeEntries(cache.entries);
+    entries = cache.entries;
     master = cache.master;
     categories = cache.categories;
     if (cache.config) config = cache.config;
-    injectQueueEntries();
+    engine.injectQueue();
     localIds = getLocalEntryIds();
     syncing = true;
     masterLoading = true;
@@ -176,7 +138,7 @@ async function init(): Promise<void> {
     });
   } else {
     await refreshAll(false);
-    injectQueueEntries();
+    engine.injectQueue();
     localIds = getLocalEntryIds();
   }
   window.addEventListener('online', () => void drainQueue());
@@ -191,10 +153,6 @@ export const store = {
   get error() { return error; },
   get errorIsConnection() { return errorIsConnection; },
   get masterLoading() { return masterLoading; },
-  get toastMsg() { return toastMsg; },
-  get toastAction() { return toastAction; },
-  get toastIsConnection() { return toastIsConnection; },
-  get toastVariant() { return toastVariant; },
   get pendingIds() { return pendingIds; },
   get deletePendingIds() { return deletePendingIds; },
   get localIds() { return localIds; },
@@ -207,5 +165,4 @@ export const store = {
   deleteEntry,
   deleteEntries,
   drainQueue,
-  dismissToast: () => { toastMsg = null; toastAction = null; toastIsConnection = false; toastVariant = 'default'; },
 };

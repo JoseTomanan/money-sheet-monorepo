@@ -104,6 +104,7 @@ function makeConnectionErrorFetch() {
 
 describe("pendingIds", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -112,6 +113,7 @@ describe("pendingIds", () => {
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
@@ -237,7 +239,7 @@ describe("pendingIds", () => {
       expect(store.entries.length).toBe(1);
       expect(store.pendingIds.size).toBe(0);
       expect(store.localIds.size).toBe(1);
-      expect(store.toastMsg).toBeNull();
+      expect(toast.msg).toBeNull();
     });
     vi.useRealTimers();
   });
@@ -248,7 +250,7 @@ describe("pendingIds", () => {
     await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
     expect(store.entries.length).toBe(1);
     expect(store.localIds.size).toBe(1);
-    expect(store.toastMsg).toBeNull();
+    expect(toast.msg).toBeNull();
   });
 
   it("local entry survives a silent refreshAll that omits it from the server response", async () => {
@@ -461,6 +463,7 @@ function makePostMock(failAtIndices: number[] = []) {
 
 describe("addEntry — split (array) path", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -471,6 +474,7 @@ describe("addEntry — split (array) path", () => {
     ));
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
@@ -509,7 +513,7 @@ describe("addEntry — split (array) path", () => {
     ]);
     await vi.waitFor(() => expect(store.entries).toEqual(freshEntries));
     expect(store.localIds.size).toBe(0);
-    expect(store.toastMsg).toBeNull();
+    expect(toast.msg).toBeNull();
   });
 
   it("hung leg counted as local entry after 15s withTimeout", async () => {
@@ -625,6 +629,7 @@ describe("addEntry — split (array) path", () => {
 
 describe("store — errorIsConnection and toastIsConnection", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -636,6 +641,7 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
@@ -677,8 +683,8 @@ describe("store — errorIsConnection and toastIsConnection", () => {
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
     }));
     store.updateEntry(1, { description: "changed" });
-    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
-    expect(store.toastIsConnection).toBe(false);
+    await vi.waitFor(() => expect(toast.msg).not.toBeNull());
+    expect(toast.isConnection).toBe(false);
   });
 
   it("dismissToast resets toastIsConnection to false", async () => {
@@ -691,9 +697,9 @@ describe("store — errorIsConnection and toastIsConnection", () => {
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "Entry not found" })) });
     }));
     store.updateEntry(1, { description: "x" });
-    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
-    store.dismissToast();
-    expect(store.toastIsConnection).toBe(false);
+    await vi.waitFor(() => expect(toast.msg).not.toBeNull());
+    toast.dismiss();
+    expect(toast.isConnection).toBe(false);
   });
 });
 
@@ -703,6 +709,7 @@ describe("store — errorIsConnection and toastIsConnection", () => {
 
 describe("offline queue — addEntry connection failure", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -711,6 +718,7 @@ describe("offline queue — addEntry connection failure", () => {
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
@@ -737,7 +745,7 @@ describe("offline queue — addEntry connection failure", () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
     await vi.waitFor(() => expect(store.localIds.size).toBe(1));
-    expect(store.toastMsg).toBeNull();
+    expect(toast.msg).toBeNull();
   });
 });
 
@@ -747,6 +755,7 @@ describe("offline queue — addEntry connection failure", () => {
 
 describe("offline queue — updateEntry connection failure", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -755,6 +764,7 @@ describe("offline queue — updateEntry connection failure", () => {
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
     await store.refreshAll(); // seed entry id=1
   });
 
@@ -779,7 +789,7 @@ describe("offline queue — updateEntry connection failure", () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.updateEntry(1, { description: "updated" });
     await vi.waitFor(() => expect(store.localIds.has(1)).toBe(true));
-    expect(store.toastMsg).toBeNull();
+    expect(toast.msg).toBeNull();
   });
 
   it("generic API error still rolls back and shows toast", async () => {
@@ -790,7 +800,7 @@ describe("offline queue — updateEntry connection failure", () => {
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
     }));
     store.updateEntry(1, { description: "updated" });
-    await vi.waitFor(() => expect(store.toastMsg).not.toBeNull());
+    await vi.waitFor(() => expect(toast.msg).not.toBeNull());
     expect(store.entries.find(e => e.id === 1)?.description).toBe("fresh");
     expect(store.localIds.has(1)).toBe(false);
   });
