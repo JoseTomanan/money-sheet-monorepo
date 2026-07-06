@@ -5,7 +5,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
-  import { isFormula, evaluateFormula } from '../../lib/formula';
+  import { sanitizeAmountInput, resolveAmountOnBlur } from '../../lib/formula';
   import { store } from '../../lib/store.svelte';
   import { today as todayStr } from '../../lib/format';
   import type { CategoryMap, AddEntryPayload } from '../../lib/types';
@@ -108,19 +108,12 @@
             bind:value={amount}
             oninput={(e) => {
               const v = (e.target as HTMLInputElement).value;
-              amount = v.startsWith('=') ? v : v.replace(/[^0-9.]/g, '');
+              amount = sanitizeAmountInput(v);
             }}
             onblur={() => {
-              if (!isFormula(amount)) { amountError = ''; return; }
-              const result = evaluateFormula(amount);
-              if ('error' in result) {
-                amountError = 'Invalid formula';
-              } else if (result.value <= 0) {
-                amountError = 'Amount must be positive';
-              } else {
-                amount = result.value.toFixed(2);
-                amountError = '';
-              }
+              const result = resolveAmountOnBlur(amount);
+              if (result.amount !== null) amount = result.amount;
+              amountError = result.error ?? '';
             }}
             placeholder="0.00"
           />
