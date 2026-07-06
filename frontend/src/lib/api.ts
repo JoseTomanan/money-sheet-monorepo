@@ -12,7 +12,7 @@ import { isMockMode } from "./mock";
 import { RealAdapter } from "./adapter-real";
 import { MockAdapter } from "./adapter-mock";
 
-export { ConnectionError, ConnectionMissingError, UnauthorizedError } from "./adapter-real";
+export { ConnectionError, ConnectionMissingError, UnauthorizedError, isQueueable, isAuthError, userMessage } from "./adapter-real";
 export type { GatewayAdapter } from "./types";
 
 let _adapter: GatewayAdapter = (isMockMode || mockMode.current)

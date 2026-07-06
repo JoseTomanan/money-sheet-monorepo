@@ -15,12 +15,50 @@ export class ConnectionError extends Error {}
 export class ConnectionMissingError extends ConnectionError {}
 export class UnauthorizedError extends ConnectionError {}
 
+// ---------------------------------------------------------------------------
+// Semantic interface — the only vocabulary callers above this module should
+// use to interpret an adapter failure. Nothing outside this file should do
+// `instanceof ConnectionError` / `instanceof UnauthorizedError` directly.
+// ---------------------------------------------------------------------------
+
+/** Should this mutation go to the Offline Queue rather than fail outright? */
+export function isQueueable(err: unknown): boolean {
+  return err instanceof ConnectionError;
+}
+
+/** Was this failure specifically a rejected/mismatched API secret? */
+export function isAuthError(err: unknown): boolean {
+  return err instanceof UnauthorizedError;
+}
+
+/** What should the user read for this failure? */
+export function userMessage(err: unknown): string {
+  if (isAuthError(err)) {
+    return "Secret rejected — make sure the secret and the GAS URL are from the same copy of the sheet.";
+  }
+  if (isQueueable(err)) {
+    return "Couldn't reach that URL — check the GAS web-app URL and try again.";
+  }
+  return "Something went wrong. Check the URL and secret and try again.";
+}
+
 type ConnectionSource = () => Connection | null;
 
 const DEFAULT_CONFIG: Config = { currency: "₱" };
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export class RealAdapter implements GatewayAdapter {
   constructor(private readonly getConnection: ConnectionSource) {}
+
+  // Races a fetch against a timeout so every request self-limits — callers
+  // never need their own timeout wrapper.
+  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new ConnectionError("Request timed out.")), REQUEST_TIMEOUT_MS);
+    });
+    return Promise.race([fetch(url, init), timeout]).finally(() => clearTimeout(timer));
+  }
 
   // Single deep helper — owns the fetch→parse→error-taxonomy protocol.
   private async gasRequest<T>(
@@ -30,7 +68,7 @@ export class RealAdapter implements GatewayAdapter {
     let res: Response;
     try {
       const { url, ...fetchInit } = init;
-      res = await fetch(url, fetchInit);
+      res = await this.fetchWithTimeout(url, fetchInit);
     } catch (e) {
       throw new ConnectionError(e instanceof Error ? e.message : String(e));
     }
