@@ -36,6 +36,37 @@ export function isFormula(raw: string): boolean {
 }
 
 /**
+ * Single definition of the amount-input sanitise allowlist, shared by every
+ * amount field that supports bare arithmetic. A leading '=' switches to
+ * formula mode and is kept verbatim; otherwise only digits, '.', and the
+ * arithmetic characters are kept as the user types.
+ */
+export function sanitizeAmountInput(raw: string): string {
+  return raw.startsWith("=") ? raw : raw.replace(/[^0-9.+\-*/()]/g, "");
+}
+
+export interface AmountBlurResult {
+  /** Formatted value to write back into the field, or null to leave it as typed. */
+  amount: string | null;
+  /** Error message to display, or null to clear any existing error. */
+  error: string | null;
+}
+
+/**
+ * Resolves an amount input string on blur. A bare plain number (no operators,
+ * no leading '=') is left as typed; anything with operators or a leading '='
+ * is resolved via evaluateAmountInput, which enforces positivity.
+ */
+export function resolveAmountOnBlur(raw: string): AmountBlurResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return { amount: null, error: null };
+  if (!isFormula(trimmed) && !/[+\-*/()]/.test(trimmed)) return { amount: null, error: null };
+  const result = evaluateAmountInput(raw);
+  if ("error" in result) return { amount: null, error: result.error };
+  return { amount: result.value.toFixed(2), error: null };
+}
+
+/**
  * Evaluates a Google Sheets-style arithmetic formula string.
  *
  * Supported: +, -, SUM(a, b, ...) with literal number arguments only.
