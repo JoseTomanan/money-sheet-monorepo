@@ -178,6 +178,16 @@ describe("mockMode", () => {
     await freshConnection();
     expect(localStorage.getItem("ms_mock_dismissed")).toBeNull();
   });
+
+  it("mockMode.current is true when VITE_MOCK env override is set, even with a connection and dismissal", async () => {
+    vi.stubEnv("VITE_MOCK", "true");
+    const { mockMode } = await freshConnection(() => {
+      localStorage.setItem("ms_connection", JSON.stringify(FAKE));
+      localStorage.setItem("ms_mock_dismissed", "1");
+    });
+    expect(mockMode.current).toBe(true);
+    vi.unstubAllEnvs();
+  });
 });
 
 // ---------------------------------------------------------------------------

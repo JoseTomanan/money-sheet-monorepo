@@ -2,9 +2,9 @@ import type { Connection } from "./types";
 
 const LS_KEY = "ms_connection";
 const LS_MOCK_DISMISSED = "ms_mock_dismissed";
+const envMock = import.meta.env.VITE_MOCK === "true";
 
 function readFromStorage(): Connection | null {
-  if (import.meta.env.VITE_MOCK === "true") return { gasUrl: "mock://noop", apiSecret: "mock" };
   if (import.meta.env.DEV && !import.meta.env.VITEST && import.meta.env.VITE_GAS_URL && import.meta.env.VITE_API_SECRET) {
     return { gasUrl: import.meta.env.VITE_GAS_URL, apiSecret: import.meta.env.VITE_API_SECRET };
   }
@@ -26,14 +26,14 @@ if (_initial != null && !localStorage.getItem(LS_MOCK_DISMISSED)) {
   localStorage.setItem(LS_MOCK_DISMISSED, "1");
 }
 
-let mockActive = $state(!localStorage.getItem(LS_MOCK_DISMISSED) && _initial == null);
-
 export const connection = {
   get current() { return current; },
 };
 
 export const mockMode = {
-  get current() { return mockActive; },
+  get current() {
+    return envMock || (current == null && !localStorage.getItem(LS_MOCK_DISMISSED));
+  },
 };
 
 export function setConnection(c: Connection): void {
