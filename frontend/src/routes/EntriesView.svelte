@@ -6,6 +6,7 @@
   import { groupEntriesByDate, splitRunPositions } from '../lib/groupEntries';
   import { createEntriesFilter, currentWeekKey } from '../lib/entriesFilter.svelte';
   import { createBulkSelect } from '../lib/bulkSelect.svelte';
+  import { entryCountLabel, rowIntent } from '../lib/entrySelection';
   import EntryRow from '../components/entry/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
   import * as Sheet from '$lib/components/ui/sheet';
@@ -28,14 +29,16 @@
     }
   });
 
-  const filter = createEntriesFilter();
+  const filter = createEntriesFilter(() => store.entries);
 
   const categoryNames = $derived(Object.keys(store.categories).sort());
 
-  const bulk = createBulkSelect(() =>
-    filter.filtered
-      .filter(e => !store.pendingIds.has(e.id) && !store.deletePendingIds.has(e.id))
-      .map(e => e.id)
+  const bulk = createBulkSelect(
+    () =>
+      filter.filtered
+        .filter(e => !store.pendingIds.has(e.id) && !store.deletePendingIds.has(e.id))
+        .map(e => e.id),
+    store.deleteEntries
   );
 
   // Clear selection whenever select mode exits.
@@ -237,21 +240,17 @@
                   class:border-local={local}
                   class:bg-[var(--destructive-tint-select)]={selectMode && checked}
                   onclick={() => {
-                    if (selectMode) {
-                      if (selectable) bulk.toggle(entry.id);
-                    } else if (!pending && !deletePending) {
-                      onopenedit(entry);
-                    }
+                    const intent = rowIntent(selectMode, selectable, pending, deletePending);
+                    if (intent === 'toggle') bulk.toggle(entry.id);
+                    else if (intent === 'edit') onopenedit(entry);
                   }}
                   role={selectMode ? 'checkbox' : 'button'}
                   aria-checked={selectMode ? checked : undefined}
                   tabindex="0"
                   onkeydown={(e) => {
-                    if (selectMode) {
-                      if ((e.key === 'Enter' || e.key === ' ') && selectable) bulk.toggle(entry.id);
-                    } else if (!pending && !deletePending && e.key === 'Enter') {
-                      onopenedit(entry);
-                    }
+                    const intent = rowIntent(selectMode, selectable, pending, deletePending);
+                    if (intent === 'toggle' && (e.key === 'Enter' || e.key === ' ')) bulk.toggle(entry.id);
+                    else if (intent === 'edit' && e.key === 'Enter') onopenedit(entry);
                   }}
                 >
                   <!-- Checkbox indicator in select mode -->
@@ -296,7 +295,7 @@
     <div class="w-9 h-1 rounded-[2px] bg-border"></div>
   </div>
   <Sheet.Header>
-    <Sheet.Title>Delete {bulk.selectedIds.size} {bulk.selectedIds.size === 1 ? 'entry' : 'entries'}?</Sheet.Title>
+    <Sheet.Title>Delete {entryCountLabel(bulk.selectedIds.size)}?</Sheet.Title>
   </Sheet.Header>
   <div class="px-5 pb-2 pt-1">
     <p class="font-sans text-[14px] text-muted-foreground">This action cannot be undone. The selected {bulk.selectedIds.size === 1 ? 'entry' : 'entries'} will be permanently removed.</p>

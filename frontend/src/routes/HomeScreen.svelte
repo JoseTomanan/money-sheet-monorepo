@@ -3,7 +3,8 @@
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
   import { peso, fmtDate, dayOfWeek } from '../lib/format';
-  import { compareEntriesForDisplay, splitRunPositions } from '../lib/groupEntries';
+  import { recentForDisplay, splitRunPositions } from '../lib/groupEntries';
+  import { latestEntryDate } from '../lib/aggregations';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import EntryRow from '../components/entry/EntryRow.svelte';
 
@@ -16,17 +17,9 @@
   const now = new Date();
   const monthLabel = now.toLocaleString('en-PH', { month: 'long', year: 'numeric' });
 
-  const latestDate = $derived(
-    store.entries.length > 0
-      ? store.entries.reduce((max, e) => e.date > max ? e.date : max, store.entries[0].date)
-      : null
-  );
+  const latestDate = $derived(latestEntryDate(store.entries));
 
-  const allSorted = $derived(
-    [...store.entries].sort(compareEntriesForDisplay)
-  );
-
-  const todayEntries = $derived(allSorted.slice(-2));
+  const todayEntries = $derived(recentForDisplay(store.entries, 2));
   const todaySplitPos = $derived(splitRunPositions(todayEntries));
 
   const latestLabel = $derived(

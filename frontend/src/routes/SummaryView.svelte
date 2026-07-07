@@ -11,6 +11,9 @@
     incomingByMonth,
     flowByMonth,
     cumulativeOutgoingByDay,
+    upToDay as computeUpToDay,
+    paceDelta as computePaceDelta,
+    rankCategorySpend,
   } from '../lib/aggregations';
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
@@ -42,28 +45,16 @@
   const paceCur = $derived(cumulativeOutgoingByDay(store.entries, selectedYm));
   const pacePrev = $derived(cumulativeOutgoingByDay(store.entries, prevYm));
   const pacePrevShown = $derived((pacePrev[pacePrev.length - 1] ?? 0) > 0 ? pacePrev : []);
-  const upToDay = $derived(
-    selectedYm === thisYm ? Math.min(new Date().getDate(), paceCur.length) : paceCur.length
-  );
+  const upToDay = $derived(computeUpToDay(paceCur.length, selectedYm === thisYm, new Date().getDate()));
 
   // Pace delta: spend so far vs the same day of the previous month.
-  const paceDelta = $derived.by(() => {
-    const cmpDay = Math.min(upToDay, pacePrev.length);
-    const prevAt = pacePrev[cmpDay - 1] ?? 0;
-    const curAt = paceCur[upToDay - 1] ?? 0;
-    return prevAt > 0 ? ((curAt - prevAt) / prevAt) * 100 : null;
-  });
+  const paceDelta = $derived(computePaceDelta(paceCur, pacePrev, upToDay));
 
   const spendByCategory = $derived(outgoingByCategory(store.entries, selectedYm));
 
   const categoryData = $derived(
-    CATEGORY_ORDER.map((key) => {
-      const c = CATEGORIES[key];
-      const budget = store.master.budgets[key] ?? 0;
-      const spent = spendByCategory[key] ?? 0;
-      const pct = monthOutgoing > 0 ? (spent / monthOutgoing) * 100 : 0;
-      return { key, c, budget, spent, pct };
-    }).sort((a, b) => b.spent - a.spent)
+    rankCategorySpend(CATEGORY_ORDER, store.master.budgets, spendByCategory, monthOutgoing)
+      .map(d => ({ ...d, c: CATEGORIES[d.key] }))
   );
 
   const maxSpent = $derived(Math.max(...categoryData.map(d => d.spent), 1));
