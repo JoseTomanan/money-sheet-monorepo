@@ -1,6 +1,7 @@
-import { store } from './store.svelte';
-
-export function createBulkSelect(getSelectableIds: () => number[]) {
+export function createBulkSelect(
+  getSelectableIds: () => number[],
+  deleteEntries: (ids: number[]) => Promise<void>
+) {
   let selectedIds = $state(new Set<number>());
   let confirmOpen = $state(false);
 
@@ -26,7 +27,7 @@ export function createBulkSelect(getSelectableIds: () => number[]) {
 
   async function confirmDelete(onDone: () => void): Promise<void> {
     confirmOpen = false;
-    await store.deleteEntries([...selectedIds]);
+    await deleteEntries([...selectedIds]);
     onDone();
   }
 

@@ -1,4 +1,4 @@
-import { store } from './store.svelte';
+import type { Entry } from './types';
 import { countByCategory } from './aggregations';
 import { groupByWeek, weekStartOf, weekLabel, compareEntriesForDisplay } from './groupEntries';
 import { today } from './format';
@@ -7,13 +7,13 @@ export function currentWeekKey(): string {
   return weekStartOf(today());
 }
 
-export function createEntriesFilter() {
+export function createEntriesFilter(getEntries: () => Entry[]) {
   let filterDir = $state<'all' | 'I' | 'O'>('all');
   let filterCat = $state('');
   let selectedWeek = $state(currentWeekKey());
 
   const filtered = $derived(
-    store.entries
+    getEntries()
       .filter((e) => {
         if (filterDir !== 'all' && e.direction !== filterDir) return false;
         if (filterCat && e.mainCategory !== filterCat) return false;
@@ -28,7 +28,7 @@ export function createEntriesFilter() {
   const selectableWeeks = $derived(() => {
     const cur = currentWeekKey();
     const fromEntries = groupByWeek(
-      store.entries.filter(e => filterDir === 'all' || e.direction === filterDir)
+      getEntries().filter(e => filterDir === 'all' || e.direction === filterDir)
     ).map(g => ({ key: g.key, label: g.label }));
     const hasCur = fromEntries.some(w => w.key === cur);
     const all = hasCur ? fromEntries : [...fromEntries, { key: cur, label: weekLabel(cur) }];
@@ -41,7 +41,7 @@ export function createEntriesFilter() {
   });
 
   const catCounts = $derived(
-    countByCategory(store.entries, filterDir === 'all' ? undefined : filterDir)
+    countByCategory(getEntries(), filterDir === 'all' ? undefined : filterDir)
   );
 
   return {
