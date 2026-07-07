@@ -71,6 +71,11 @@ export function compareEntriesForDisplay(a: Entry, b: Entry): number {
   );
 }
 
+/** The last `count` entries in display order (date asc, then id — see compareEntriesForDisplay). */
+export function recentForDisplay(entries: Entry[], count: number): Entry[] {
+  return [...entries].sort(compareEntriesForDisplay).slice(-count);
+}
+
 export interface SplitPosition {
   inGroup: boolean;
   isFirst: boolean;

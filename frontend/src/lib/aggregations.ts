@@ -64,6 +64,50 @@ export function cumulativeOutgoingByDay(entries: Entry[], ym: string): number[] 
   return daily.map(v => (run += v));
 }
 
+/** Last day-of-month to show pace data for: clamped to today when browsing the current month. */
+export function upToDay(monthLength: number, isCurrentMonth: boolean, currentDay: number): number {
+  return isCurrentMonth ? Math.min(currentDay, monthLength) : monthLength;
+}
+
+/** % change in cumulative spend-so-far vs the same point in the previous month; null if the previous month had no spend. */
+export function paceDelta(cur: number[], prev: number[], upToDay: number): number | null {
+  const cmpDay = Math.min(upToDay, prev.length);
+  const prevAt = prev[cmpDay - 1] ?? 0;
+  const curAt = cur[upToDay - 1] ?? 0;
+  return prevAt > 0 ? ((curAt - prevAt) / prevAt) * 100 : null;
+}
+
+export interface CategorySpend {
+  key: string;
+  budget: number;
+  spent: number;
+  pct: number;
+}
+
+/** Categories ranked by spend descending, with each category's share of total outgoing. */
+export function rankCategorySpend(
+  keys: string[],
+  budgets: Record<string, number>,
+  spendByCategory: Record<string, number>,
+  totalOutgoing: number
+): CategorySpend[] {
+  return keys
+    .map((key) => {
+      const budget = budgets[key] ?? 0;
+      const spent = spendByCategory[key] ?? 0;
+      const pct = totalOutgoing > 0 ? (spent / totalOutgoing) * 100 : 0;
+      return { key, budget, spent, pct };
+    })
+    .sort((a, b) => b.spent - a.spent);
+}
+
+/** The most recent entry date (ISO string), or null when there are no entries. */
+export function latestEntryDate(entries: Entry[]): string | null {
+  return entries.length > 0
+    ? entries.reduce((max, e) => (e.date > max ? e.date : max), entries[0].date)
+    : null;
+}
+
 export function countByCategory(entries: Entry[], direction?: Direction): Record<string, number> {
   const result: Record<string, number> = {};
   for (const e of entries) {

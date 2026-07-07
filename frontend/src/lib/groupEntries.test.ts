@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions, weekStartOf, weekLabel } from "./groupEntries";
+import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions, weekStartOf, weekLabel, recentForDisplay } from "./groupEntries";
 import type { Entry } from "./types";
 
 function entry(id: number, date: string, description = ""): Entry {
@@ -239,6 +239,26 @@ describe("splitRunPositions", () => {
       { isFirst: false, isLast: true,  inGroup: true  },
       { isFirst: true,  isLast: true,  inGroup: false },
     ]);
+  });
+});
+
+describe("recentForDisplay", () => {
+  it("returns empty array for no entries", () => {
+    expect(recentForDisplay([], 2)).toEqual([]);
+  });
+
+  it("returns all entries in display order when fewer than count", () => {
+    const entries = [entry(1, "2026-05-18")];
+    expect(recentForDisplay(entries, 2).map(e => e.id)).toEqual([1]);
+  });
+
+  it("returns the last `count` entries in display order, not input order", () => {
+    const entries = [
+      entry(3, "2026-05-20"),
+      entry(1, "2026-05-18"),
+      entry(2, "2026-05-19"),
+    ];
+    expect(recentForDisplay(entries, 2).map(e => e.id)).toEqual([2, 3]);
   });
 });
 

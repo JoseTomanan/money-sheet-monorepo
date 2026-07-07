@@ -8,6 +8,10 @@ import {
   countByCategory,
   flowByMonth,
   cumulativeOutgoingByDay,
+  upToDay,
+  paceDelta,
+  rankCategorySpend,
+  latestEntryDate,
 } from './aggregations';
 import type { Entry } from './types';
 
@@ -162,6 +166,106 @@ describe('cumulativeOutgoingByDay', () => {
   it('returns all zeros for a month with no outgoing', () => {
     const result = cumulativeOutgoingByDay(ENTRIES, '2025-12');
     expect(result.every(v => v === 0)).toBe(true);
+  });
+});
+
+describe('upToDay', () => {
+  it('first day of the current month clamps to 1', () => {
+    expect(upToDay(31, true, 1)).toBe(1);
+  });
+
+  it('clamps to the current day when browsing the current month', () => {
+    expect(upToDay(31, true, 15)).toBe(15);
+  });
+
+  it('clamps to month length when the current day exceeds it (should not happen, but safe)', () => {
+    expect(upToDay(30, true, 31)).toBe(30);
+  });
+
+  it('returns the full month length for a non-current month, ignoring currentDay', () => {
+    expect(upToDay(31, false, 5)).toBe(31);
+  });
+});
+
+describe('paceDelta', () => {
+  it('returns null when the previous month had zero spend (division guard)', () => {
+    const cur = [100, 200, 300];
+    const prev = [0, 0, 0];
+    expect(paceDelta(cur, prev, 3)).toBeNull();
+  });
+
+  it('previous month shorter than current day: compares against the previous month\'s last available day', () => {
+    // Previous month only has 2 days of data; upToDay is 5 — clamp comparison day to prev.length
+    const cur = [10, 20, 30, 40, 50];
+    const prev = [100, 200];
+    // cmpDay = min(5, 2) = 2 → prevAt = prev[1] = 200, curAt = cur[4] = 50
+    expect(paceDelta(cur, prev, 5)).toBe(((50 - 200) / 200) * 100);
+  });
+
+  it('positive delta when spending faster than the previous month', () => {
+    const cur = [300];
+    const prev = [100];
+    expect(paceDelta(cur, prev, 1)).toBe(200);
+  });
+
+  it('negative delta when spending slower than the previous month', () => {
+    const cur = [50];
+    const prev = [100];
+    expect(paceDelta(cur, prev, 1)).toBe(-50);
+  });
+});
+
+describe('rankCategorySpend', () => {
+  it('ranks categories by spend, descending', () => {
+    const result = rankCategorySpend(
+      ['FOOD', 'TRANSIT', 'HOUSING'],
+      { FOOD: 500, TRANSIT: 300, HOUSING: 1000 },
+      { FOOD: 300, TRANSIT: 300, HOUSING: 500 },
+      800
+    );
+    expect(result.map(r => r.key)).toEqual(['HOUSING', 'FOOD', 'TRANSIT']);
+  });
+
+  it('preserves input order for tied spend amounts (stable sort)', () => {
+    const result = rankCategorySpend(
+      ['TRANSIT', 'FOOD', 'HOUSING'],
+      {},
+      { TRANSIT: 100, FOOD: 100, HOUSING: 100 },
+      300
+    );
+    expect(result.map(r => r.key)).toEqual(['TRANSIT', 'FOOD', 'HOUSING']);
+  });
+
+  it('defaults missing budget/spend to 0', () => {
+    const result = rankCategorySpend(['FOOD'], {}, {}, 0);
+    expect(result[0]).toEqual({ key: 'FOOD', budget: 0, spent: 0, pct: 0 });
+  });
+
+  it('computes pct of total outgoing per category', () => {
+    const result = rankCategorySpend(['FOOD', 'TRANSIT'], {}, { FOOD: 25, TRANSIT: 75 }, 100);
+    const food = result.find(r => r.key === 'FOOD')!;
+    const transit = result.find(r => r.key === 'TRANSIT')!;
+    expect(food.pct).toBe(25);
+    expect(transit.pct).toBe(75);
+  });
+
+  it('pct is 0 for every category when totalOutgoing is 0 (division guard)', () => {
+    const result = rankCategorySpend(['FOOD', 'TRANSIT'], {}, { FOOD: 0, TRANSIT: 0 }, 0);
+    expect(result.every(r => r.pct === 0)).toBe(true);
+  });
+});
+
+describe('latestEntryDate', () => {
+  it('returns null for an empty array', () => {
+    expect(latestEntryDate([])).toBeNull();
+  });
+
+  it('returns the max date regardless of array order', () => {
+    expect(latestEntryDate(ENTRIES)).toBe('2026-05-11');
+  });
+
+  it('a single entry is its own latest date', () => {
+    expect(latestEntryDate([ENTRIES[3]])).toBe('2026-04-15');
   });
 });
 
