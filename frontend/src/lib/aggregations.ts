@@ -86,7 +86,7 @@ export interface CategorySpend {
 
 /** Categories ranked by spend descending, with each category's share of total outgoing. */
 export function rankCategorySpend(
-  keys: string[],
+  keys: readonly string[],
   budgets: Record<string, number>,
   spendByCategory: Record<string, number>,
   totalOutgoing: number
