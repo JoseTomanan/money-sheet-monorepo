@@ -8,7 +8,7 @@ export default defineConfig({
     hookTimeout: 30_000,
     setupFiles: ["dotenv/config"],
     globals: true,
-    fileParallel: false,
+    fileParallelism: false,
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
   },
