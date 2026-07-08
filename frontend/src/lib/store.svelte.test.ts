@@ -346,6 +346,24 @@ describe("store", () => {
       expect(store.entries).toHaveLength(1);
       expect(store.entries[0].description).toBe("first");
     });
+
+    it("applies entries/categories from a partial refresh when only getMaster fails transiently", async () => {
+      // Mirrors the real-world GAS quirk where the 4 concurrent refreshAll
+      // requests share one web-app deployment and an occasional one drops
+      // (e.g. net::ERR_NETWORK_CHANGED) while the rest succeed.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const qs = typeof url === "string" && url.includes("?") ? url.split("?")[1] : "";
+          const action = new URLSearchParams(qs).get("action");
+          if (action === "getMaster") return Promise.reject(new Error("net::ERR_NETWORK_CHANGED"));
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+        })
+      );
+      await store.refreshAll(true);
+      expect(store.entries).toEqual(freshEntries);
+      expect(store.categories).toEqual(freshCategories);
+    });
   });
 
   describe("init (stale-while-revalidate)", () => {

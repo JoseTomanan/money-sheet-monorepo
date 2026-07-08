@@ -34,6 +34,10 @@ function removePending(id: number): void { pendingIds = new Set([...pendingIds].
 function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
 function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
 
+// Requests race independently rather than via Promise.all: the 4 endpoints
+// share one GAS deployment, and firing them concurrently occasionally trips
+// a transient connection failure (e.g. net::ERR_NETWORK_CHANGED) on just one
+// of them. A single reject shouldn't discard the other 3 that succeeded.
 async function refreshAll(silent = false): Promise<void> {
   if (!silent) {
     loading = true;
@@ -41,24 +45,29 @@ async function refreshAll(silent = false): Promise<void> {
     errorIsConnection = false;
   }
   try {
-    const [e, m, c, cfg] = await Promise.all([
+    const [e, m, c, cfg] = await Promise.allSettled([
       api.getEntries(),
       api.getMaster(),
       api.getCategories(),
       api.getConfig(),
     ]);
-    entries = e;
-    master = m;
-    categories = c;
-    config = cfg;
+    if (e.status === 'fulfilled') entries = e.value;
+    if (m.status === 'fulfilled') master = m.value;
+    if (c.status === 'fulfilled') categories = c.value;
+    if (cfg.status === 'fulfilled') config = cfg.value;
+
+    const failure = [e, m, c].find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    if (failure) {
+      if (!silent) {
+        error = failure.reason instanceof Error ? failure.reason.message : String(failure.reason);
+        errorIsConnection = isQueueable(failure.reason);
+      }
+      return;
+    }
+
     engine.injectQueue();
     localIds = getLocalEntryIds();
     saveSnapshot({ entries, master, categories, config });
-  } catch (err) {
-    if (!silent) {
-      error = err instanceof Error ? err.message : String(err);
-      errorIsConnection = isQueueable(err);
-    }
   } finally {
     if (!silent) loading = false;
   }
