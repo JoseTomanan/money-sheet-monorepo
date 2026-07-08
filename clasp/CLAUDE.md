@@ -26,7 +26,7 @@ GAS loads all files from `dist/` alphabetically in a single global scope — the
 
 Files under `src/lib/` (e.g. `weeks.ts`, `setup.ts`, `menu.ts`) use ES `export` keywords so Vitest can import them. The `scripts/strip-exports.js` post-build step rewrites `dist/lib/*.js` to remove the `export` keyword, making them plain globals at GAS runtime.
 
-The corresponding `_*_globals.d.ts` files (`_week_globals.d.ts`, `_setup_globals.d.ts`, `_menu_globals.d.ts`) declare ambient global types so the non-module GAS files can call those functions without TypeScript errors.
+The corresponding `_*_globals.ts` files (`_week_globals.ts`, `_setup_globals.ts`, `_menu_globals.ts`, `_config_globals.ts`, `_entries_globals.ts`, `_dispatch_globals.ts`) declare ambient global types so the non-module GAS files can call those functions without TypeScript errors. They're plain `.ts` files, not `.d.ts` — `tsconfig.json` sets `skipLibCheck: true`, which silently skips type-checking of `.d.ts` files (including hand-written ones), so a `.d.ts` mirror could drift from the lib module it mirrors without `tsc --noEmit` ever catching it. Each mirror derives its types from the corresponding `src/lib/*.ts` module via `typeof import(...)` rather than hand-copying the signature, so a drift there is a compile error (issue #109). `_contract_parity.ts` additionally asserts the GAS-global domain types in `0_types.ts`/`2_entries.ts` stay structurally identical to `src/lib/dispatch.ts`'s canonical wire types.
 
 ### tsconfig split
 
