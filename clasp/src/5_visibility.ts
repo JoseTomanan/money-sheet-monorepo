@@ -11,15 +11,15 @@ function applyRowVisibility(sh: GoogleAppsScript.Spreadsheet.Sheet): void {
   lastRow = sh.getLastRow();
   if (lastRow < 2) return;
 
-  const data = sh.getRange(2, COL.DATE, lastRow - 1, 7).getValues();
+  const data = liveIoRepository(sh).readRows();
   const now = new Date();
   const currentWeekStart = weekStartSunday(now, MANILA_TZ);
 
   for (let i = 0; i < data.length; i++) {
     const sheetRow = i + 2;
     const rawDate = data[i][0]; // col B
-    const id = data[i][6]; // col H
-    const isSeparator = id === "" || id === null || id === undefined;
+    const id = data[i][ID_INDEX]; // col H
+    const isSeparator = isSeparatorRow(id);
 
     if (!rawDate) {
       // No date at all — keep visible (shouldn't happen)
@@ -52,15 +52,14 @@ function insertSeparatorIfMissing(
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return;
 
-  const data = sh.getRange(2, COL.DATE, lastRow - 1, 7).getValues();
+  const data = liveIoRepository(sh).readRows();
 
   // Find first entry row belonging to this week
   let firstEntrySheetRow = -1;
   for (let i = 0; i < data.length; i++) {
     const rawDate = data[i][0];
-    const id = data[i][6];
-    const isEntry = id !== "" && id !== null && id !== undefined;
-    if (!isEntry) continue;
+    const id = data[i][ID_INDEX];
+    if (isSeparatorRow(id)) continue;
 
     const rowDate = rawDate instanceof Date ? rawDate : new Date(String(rawDate));
     const rowWeekStart = weekStartSunday(rowDate, MANILA_TZ);
@@ -74,19 +73,18 @@ function insertSeparatorIfMissing(
 
   // Check if the row above is already the separator for this week
   if (firstEntrySheetRow > 2) {
-    const aboveData = sh.getRange(firstEntrySheetRow - 1, COL.DATE, 1, 7).getValues()[0];
+    const aboveData = sh.getRange(firstEntrySheetRow - 1, IO_COL.DATE, 1, 7).getValues()[0];
     const aboveDate = aboveData[0];
-    const aboveId = aboveData[6];
-    const aboveIsSeparator = aboveId === "" || aboveId === null || aboveId === undefined;
-    if (aboveIsSeparator && aboveDate instanceof Date && aboveDate.getTime() === weekSunday.getTime()) {
+    const aboveId = aboveData[ID_INDEX];
+    if (isSeparatorRow(aboveId) && aboveDate instanceof Date && aboveDate.getTime() === weekSunday.getTime()) {
       return; // separator already present
     }
   }
 
   // Insert separator row before first entry of this week
   sh.insertRowBefore(firstEntrySheetRow);
-  sh.getRange(firstEntrySheetRow, COL.DATE).setValue(weekSunday);
-  const labelRange = sh.getRange(firstEntrySheetRow, COL.DESC);
+  sh.getRange(firstEntrySheetRow, IO_COL.DATE).setValue(weekSunday);
+  const labelRange = sh.getRange(firstEntrySheetRow, IO_COL.DESC);
   labelRange.setValue(formatWeekLabel(weekSunday, MANILA_TZ));
   labelRange.setFontStyle("italic");
   // Leave TAG, MAIN_CAT, DIR, AMOUNT, ID blank — col H blank is what marks it as a separator
@@ -96,7 +94,7 @@ function _insertMissingSeparators(sh: GoogleAppsScript.Spreadsheet.Sheet): void 
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return;
 
-  const data = sh.getRange(2, COL.DATE, lastRow - 1, 7).getValues();
+  const data = liveIoRepository(sh).readRows();
   const now = new Date();
   const currentWeekStart = weekStartSunday(now, MANILA_TZ);
 
@@ -104,9 +102,8 @@ function _insertMissingSeparators(sh: GoogleAppsScript.Spreadsheet.Sheet): void 
   const completedWeekStarts = new Map<number, Date>(); // ms timestamp → Date
   for (const row of data) {
     const rawDate = row[0];
-    const id = row[6];
-    const isEntry = id !== "" && id !== null && id !== undefined;
-    if (!isEntry || !rawDate) continue;
+    const id = row[ID_INDEX];
+    if (isSeparatorRow(id) || !rawDate) continue;
 
     const rowDate = rawDate instanceof Date ? rawDate : new Date(String(rawDate));
     const ws = weekStartSunday(rowDate, MANILA_TZ);

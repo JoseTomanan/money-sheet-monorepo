@@ -3,17 +3,6 @@ const SHEET_MASTER = "MASTER";
 const SHEET_CATEGORIES = "Categories";
 const SHEET_CONFIG = "Config";
 
-// 1-based column indices for INCOMING/OUTGOING
-const COL = {
-  DATE: 2,
-  TAG: 3,
-  MAIN_CAT: 4,
-  DESC: 5,
-  DIR: 6,
-  AMOUNT: 7,
-  ID: 8,
-} as const;
-
 function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_IO);
@@ -35,11 +24,40 @@ function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   return sh;
 }
 
-// Returns all data rows from INCOMING/OUTGOING (row 2 onward, cols B–H).
-// Each inner array: [date, tag, mainCategory, description, direction, amount, id]
-function getIODataRows(): unknown[][] {
-  const sh = getIOSheet();
-  const lastRow = sh.getLastRow();
-  if (lastRow < 2) return [];
-  return sh.getRange(2, COL.DATE, lastRow - 1, 7).getValues();
+// Tolerant: returns null if the Config sheet doesn't exist (legacy spreadsheets).
+function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(SHEET_CONFIG);
+}
+
+// The live GAS-backed IoRepository adapter. Defaults to the INCOMING/OUTGOING
+// sheet, but accepts an explicit handle so callers (e.g. visibility) that
+// already hold one don't re-resolve it.
+function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet()): IoRepository {
+  return {
+    readRows(): IoRow[] {
+      const lastRow = sh.getLastRow();
+      if (lastRow < 2) return [];
+      return sh.getRange(2, IO_COL.DATE, lastRow - 1, 7).getValues();
+    },
+    insertRowBefore(sheetRow: number): void {
+      sh.insertRowBefore(sheetRow);
+    },
+    writeEntryFields(sheetRow, fields): void {
+      // Never writes IO_COL.MAIN_CAT (col D) — it is ARRAYFORMULA-driven.
+      if (fields.date !== undefined) sh.getRange(sheetRow, IO_COL.DATE).setValue(fields.date);
+      if (fields.tag !== undefined) sh.getRange(sheetRow, IO_COL.TAG).setValue(fields.tag);
+      if (fields.description !== undefined) sh.getRange(sheetRow, IO_COL.DESC).setValue(fields.description);
+      if (fields.direction !== undefined) sh.getRange(sheetRow, IO_COL.DIR).setValue(fields.direction);
+      if (fields.amount !== undefined) sh.getRange(sheetRow, IO_COL.AMOUNT).setValue(fields.amount);
+      if (fields.id !== undefined) sh.getRange(sheetRow, IO_COL.ID).setValue(fields.id);
+    },
+    resolveMainCategory(sheetRow: number): string {
+      SpreadsheetApp.flush();
+      return String(sh.getRange(sheetRow, IO_COL.MAIN_CAT).getValue());
+    },
+    deleteRow(sheetRow: number): void {
+      sh.deleteRow(sheetRow);
+    },
+  };
 }

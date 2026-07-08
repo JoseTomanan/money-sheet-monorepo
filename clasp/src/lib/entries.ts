@@ -6,6 +6,8 @@
  * 2_entries.ts call these helpers after acquiring the DocumentLock.
  */
 
+import { isSeparatorRow } from "./repository";
+
 /**
  * Scans the raw values from the Entry-ID column (col H, row 2 onward) and
  * returns the 1-based sheet row index where the target Entry lives, or null
@@ -25,8 +27,7 @@ export function findRowByEntryId(
 ): number | null {
   for (let i = 0; i < idColumnValues.length; i++) {
     const raw = idColumnValues[i];
-    // Skip blank / separator rows (empty string, null, undefined)
-    if (raw === "" || raw === null || raw === undefined) continue;
+    if (isSeparatorRow(raw)) continue;
     if (Number(raw) === targetId) {
       return i + 2; // convert 0-based index to 1-based sheet row (data starts at row 2)
     }
