@@ -74,6 +74,9 @@ export interface UpdateEntryPatch {
 
 export type CategoryMap = Record<string, string[]>;
 
+// { [key]: value } — key-value pairs from the Config sheet
+export type ConfigMap = Record<string, string>;
+
 export type ApiResponse =
   | { ok: true; entries: EntryData[] }
   | { ok: true; master: unknown }
