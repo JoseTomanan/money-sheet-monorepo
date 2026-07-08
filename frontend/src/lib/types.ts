@@ -48,6 +48,17 @@ export type EntryMutation =
   | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
   | { type: 'edit'; id: number; patch: UpdateEntryPatch };
 
+// Machine-readable error codes from the GAS dispatch envelope — see
+// clasp/src/lib/dispatch.ts's `ErrorCode` / `ApiResponse` for the canonical definitions.
+export type ApiErrorCode = "auth" | "validation" | "not_found" | "internal";
+
+export interface ApiErrorEnvelope {
+  ok: false;
+  error: string;
+  code: ApiErrorCode;
+  message: string;
+}
+
 export interface GatewayAdapter {
   getEntries(): Promise<Entry[]>;
   getMaster(): Promise<MasterRow>;
