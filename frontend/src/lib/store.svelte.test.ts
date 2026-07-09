@@ -463,19 +463,20 @@ describe("refreshAll timeout", () => {
 // addEntry — split (array) path
 // ---------------------------------------------------------------------------
 
-/** Returns a fetch stub where POSTs at the given indices fail with a network error. */
-function makePostMock(failAtIndices: number[] = []) {
-  let postIdx = 0;
-  return vi.fn().mockImplementation((url: string) => {
+/**
+ * Returns a fetch stub for the single atomic addEntries POST a split now
+ * issues. `fail: true` rejects the whole batch (network error); otherwise it
+ * resolves with one entry per submitted leg, ids assigned in array order.
+ */
+function makeBatchPostMock({ fail = false }: { fail?: boolean } = {}) {
+  return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("action=")) {
       return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
     }
-    const i = postIdx++;
-    if (failAtIndices.includes(i)) {
-      return Promise.reject(new Error("Network error"));
-    }
-    const entry = { id: 100 + i, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 + i };
-    return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+    if (fail) return Promise.reject(new Error("Network error"));
+    const body = JSON.parse(String(init?.body)) as { entries: AddEntryPayload[] };
+    const entries = body.entries.map((p, i) => ({ id: 100 + i, mainCategory: "FOOD", ...p }));
+    return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entries })) });
   });
 }
 
@@ -500,144 +501,63 @@ describe("addEntry — split (array) path", () => {
     vi.useRealTimers();
   });
 
-  it("partial failure: failed legs stay as Local Entries in localIds", async () => {
-    vi.stubGlobal("fetch", makePostMock([1])); // 2nd POST fails
-    const payloads: AddEntryPayload[] = [
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-      { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
-    ];
-    await store.addEntry(payloads);
-    expect(store.localIds.size).toBe(1);
-    expect(store.entries.length).toBeGreaterThanOrEqual(1); // at least the local entry remains
-  });
-
-  it("all legs fail: all legs stay as Local Entries in localIds", async () => {
-    vi.stubGlobal("fetch", makePostMock([0, 1, 2]));
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-      { date: "2026-01-01", tag: "Rent", description: "split", direction: "O", amount: 30 },
-    ]);
-    await vi.waitFor(() => expect(store.localIds.size).toBe(3));
-    expect(store.entries.filter(e => store.localIds.has(e.id))).toHaveLength(3);
-  });
-
-  it("full success: no local entries, entries refreshed", async () => {
-    vi.stubGlobal("fetch", makePostMock([]));
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-    ]);
-    await vi.waitFor(() => expect(store.entries).toEqual(freshEntries));
-    expect(store.localIds.size).toBe(0);
-    expect(toast.msg).toBeNull();
-  });
-
-  it("hung leg counted as local entry after 15s withTimeout", async () => {
-    vi.useFakeTimers();
-    let postIdx = 0;
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+  it("issues exactly one addEntries POST for the whole split, not one per leg", async () => {
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (typeof url === "string" && url.includes("action=")) {
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
       }
-      const i = postIdx++;
-      if (i === 0) return new Promise<never>(() => {});
-      const entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "split", direction: "O", amount: 20 };
-      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
+      postCount++;
+      const body = JSON.parse(String(init?.body)) as { action: string; entries: AddEntryPayload[] };
+      expect(body.action).toBe("addEntries");
+      const entries = body.entries.map((p, i) => ({ id: 100 + i, mainCategory: "FOOD", ...p }));
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entries })) });
     }));
-    store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "split", direction: "O", amount: 20 },
-    ]);
-    await vi.advanceTimersByTimeAsync(15_000);
-    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
-    expect(store.entries.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("submits legs sequentially: leg[1]'s POST is not sent until leg[0]'s POST resolves", async () => {
-    let postIdx = 0;
-    let secondLegPosted = false;
-    let resolveFirstLeg!: (value: { text: () => Promise<string> }) => void;
-
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
-      if (typeof url === "string" && url.includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
-      }
-      const i = postIdx++;
-      if (i === 0) {
-        return new Promise((resolve) => { resolveFirstLeg = resolve; });
-      }
-      secondLegPosted = true;
-      const entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "^^", direction: "O", amount: 20 };
-      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
-    }));
-
-    const addPromise = store.addEntry([
-      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
-      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
-    ]);
-
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(secondLegPosted).toBe(false);
-
-    const mainEntry = { id: 100, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 };
-    resolveFirstLeg({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: mainEntry })) });
-
-    await addPromise;
-    expect(secondLegPosted).toBe(true);
-  });
-
-  it("ditto legs (after the main leg lands) are submitted concurrently, not one-at-a-time", async () => {
-    let postIdx = 0;
-    let leg1Posted = false;
-    let leg2Posted = false;
-    let resolveMain!: (value: { text: () => Promise<string> }) => void;
-    let resolveLeg1!: (value: { text: () => Promise<string> }) => void;
-
-    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
-      if (typeof url === "string" && url.includes("action=")) {
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
-      }
-      const i = postIdx++;
-      if (i === 0) {
-        return new Promise((resolve) => { resolveMain = resolve; });
-      }
-      if (i === 1) {
-        leg1Posted = true;
-        return new Promise((resolve) => { resolveLeg1 = resolve; });
-      }
-      leg2Posted = true;
-      const entry = { id: 102, date: "2026-01-01", tag: "Rent", mainCategory: "FOOD", description: "^^", direction: "O", amount: 30 };
-      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry })) });
-    }));
-
-    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-    const addPromise = store.addEntry([
+    await store.addEntry([
       { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
       { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
       { date: "2026-01-01", tag: "Rent", description: "^^", direction: "O", amount: 30 },
     ]);
+    expect(postCount).toBe(1);
+  });
 
-    await flush();
-    expect(leg1Posted).toBe(false);
-    expect(leg2Posted).toBe(false);
+  it("full success: no local entries, entries refreshed, ids assigned in array order", async () => {
+    vi.stubGlobal("fetch", makeBatchPostMock());
+    await store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
+    ]);
+    expect(store.entries).toEqual(freshEntries);
+    expect(store.localIds.size).toBe(0);
+    expect(toast.msg).toBeNull();
+  });
 
-    const mainEntry = { id: 100, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "split", direction: "O", amount: 10 };
-    resolveMain({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: mainEntry })) });
+  it("batch failure: every leg stays a Local Entry — no partial success", async () => {
+    vi.stubGlobal("fetch", makeBatchPostMock({ fail: true }));
+    await store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
+      { date: "2026-01-01", tag: "Rent", description: "^^", direction: "O", amount: 30 },
+    ]);
+    expect(store.localIds.size).toBe(3);
+    expect(store.entries.filter((e) => store.localIds.has(e.id))).toHaveLength(3);
+  });
 
-    await flush();
-    // leg2 must be posted even though leg1's own request is still unresolved —
-    // proves they were dispatched together, not awaited one-after-another.
-    expect(leg1Posted).toBe(true);
-    expect(leg2Posted).toBe(true);
-
-    const leg1Entry = { id: 101, date: "2026-01-01", tag: "Dining", mainCategory: "FOOD", description: "^^", direction: "O", amount: 20 };
-    resolveLeg1({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: leg1Entry })) });
-
-    await addPromise;
+  it("a hung batch POST counts all legs as Local Entries after 15s withTimeout", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      return new Promise<never>(() => {});
+    }));
+    store.addEntry([
+      { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O", amount: 10 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 20 },
+    ]);
+    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.waitFor(() => expect(store.localIds.size).toBe(2));
+    expect(store.entries.filter((e) => store.localIds.has(e.id))).toHaveLength(2);
   });
 });
 

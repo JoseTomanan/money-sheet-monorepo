@@ -59,6 +59,9 @@ const CONFIRMED_ENTRY: Entry = { id: 42, date: '2026-01-01', tag: 'Groceries', m
 function makeApi(overrides: Partial<MutationApi> = {}): MutationApi {
   return {
     addEntry: vi.fn(async () => CONFIRMED_ENTRY),
+    addEntries: vi.fn(async (payloads: AddEntryPayload[]) =>
+      payloads.map((p, i) => ({ ...CONFIRMED_ENTRY, id: CONFIRMED_ENTRY.id + i, ...p }))
+    ),
     updateEntry: vi.fn(async () => {}),
     deleteEntry: vi.fn(async () => {}),
     ...overrides,
@@ -297,26 +300,18 @@ describe('engine.remove — queued (connection error)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Slice 6 — addLegs sequencing: main leg confirmed before ditto legs fire
+// Slice 6 — addLegs: one atomic addEntries call (issue #111)
 // ---------------------------------------------------------------------------
-describe('engine.addLegs — sequencing', () => {
+describe('engine.addLegs — atomic batch', () => {
   beforeEach(() => { _resetTempIdCounter(); clearQueue(); });
 
-  it('does not call addEntry for ditto legs until the main leg resolves', async () => {
-    const callOrder: string[] = [];
-    let mainResolve!: (e: Entry) => void;
-    const mainPromise = new Promise<Entry>((res) => { mainResolve = res; });
-
-    const api = makeApi({
-      addEntry: vi.fn((payload: AddEntryPayload) => {
-        if (payload.description === 'main') {
-          callOrder.push('main-start');
-          return mainPromise.then((e) => { callOrder.push('main-done'); return e; });
-        }
-        callOrder.push('ditto');
-        return Promise.resolve({ ...CONFIRMED_ENTRY, id: 43 });
-      }),
-    });
+  it('submits all legs as exactly one addEntries call, not one addEntry call per leg', async () => {
+    const addEntries = vi.fn(async () => [
+      { ...CONFIRMED_ENTRY, id: 42, description: 'main' },
+      { ...CONFIRMED_ENTRY, id: 43, description: '^^' },
+    ]);
+    const addEntry = vi.fn();
+    const api = makeApi({ addEntry, addEntries });
 
     const legs: AddEntryPayload[] = [
       { ...BASE_PAYLOAD, description: 'main' },
@@ -324,24 +319,19 @@ describe('engine.addLegs — sequencing', () => {
     ];
 
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
-    const done = engine.addLegs(legs);
+    await createMutationEngine(seam, api).addLegs(legs);
 
-    // Ditto leg should NOT have started yet (main hasn't resolved)
-    expect(callOrder).toEqual(['main-start']);
-
-    mainResolve(CONFIRMED_ENTRY);
-    await done;
-
-    expect(callOrder.indexOf('main-done')).toBeLessThan(callOrder.indexOf('ditto'));
+    expect(addEntries).toHaveBeenCalledTimes(1);
+    expect(addEntries).toHaveBeenCalledWith(legs);
+    expect(addEntry).not.toHaveBeenCalled();
   });
 
-  it('inserts all legs as optimistic entries immediately', async () => {
-    let countAtStart = 0;
+  it('inserts all legs as optimistic entries immediately, before the network call resolves', async () => {
+    let countAtStart = -1;
     const api = makeApi({
-      addEntry: vi.fn(async (p: AddEntryPayload) => {
-        countAtStart = countAtStart || 0; // captured outside
-        return { ...CONFIRMED_ENTRY, id: p.description === '^^' ? 43 : 42 };
+      addEntries: vi.fn(async (payloads: AddEntryPayload[]) => {
+        countAtStart = seam.entries.length;
+        return payloads.map((p, i) => ({ ...CONFIRMED_ENTRY, id: 42 + i, ...p }));
       }),
     });
     const seam = makeFakeSeam();
@@ -349,15 +339,38 @@ describe('engine.addLegs — sequencing', () => {
       { ...BASE_PAYLOAD, description: 'main' },
       { ...BASE_PAYLOAD, description: '^^' },
     ];
-    // Intercept first call to count before network resolves
-    let initialCount = 0;
-    const origAddEntry = api.addEntry as ReturnType<typeof vi.fn>;
-    (api as MutationApi).addEntry = vi.fn(async (p: AddEntryPayload) => {
-      if (initialCount === 0) initialCount = seam.entries.length;
-      return origAddEntry(p);
-    });
     await createMutationEngine(seam, api).addLegs(legs);
-    expect(initialCount).toBe(2);
+    expect(countAtStart).toBe(2);
+  });
+
+  it('swaps each temp id to its real entry positionally, in array order', async () => {
+    const api = makeApi({
+      addEntries: vi.fn(async (payloads: AddEntryPayload[]) =>
+        payloads.map((p, i) => ({ ...CONFIRMED_ENTRY, id: 100 + i, ...p }))
+      ),
+    });
+    const seam = makeFakeSeam();
+    const legs: AddEntryPayload[] = [
+      { ...BASE_PAYLOAD, description: 'main' },
+      { ...BASE_PAYLOAD, description: '^^' },
+    ];
+    await createMutationEngine(seam, api).addLegs(legs);
+
+    expect(seam.entries.map((e) => e.id)).toEqual([100, 101]);
+    expect(seam.entries.every((e) => e.id > 0)).toBe(true);
+  });
+
+  it('a batch that fails leaves all legs as Local Entries (no partial success)', async () => {
+    const api = makeApi({ addEntries: vi.fn(async () => { throw new Error('offline'); }) });
+    const seam = makeFakeSeam();
+    const legs: AddEntryPayload[] = [
+      { ...BASE_PAYLOAD, description: 'main' },
+      { ...BASE_PAYLOAD, description: '^^' },
+    ];
+    await createMutationEngine(seam, api).addLegs(legs);
+
+    expect(seam.entries).toHaveLength(2);
+    expect(seam.entries.every((e) => e.id < 0)).toBe(true);
   });
 });
 
@@ -402,6 +415,24 @@ describe('engine.drainQueue', () => {
     await engine.drainQueue();
     expect(seam.refreshCount).toBe(0);
   });
+
+  it('drains a queued addBatch as one addEntries call, swapping every leg positionally', async () => {
+    const localLegs: Entry[] = [
+      { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'split', direction: 'O', amount: 40 },
+      { id: -2, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: '^^', direction: 'O', amount: 60 },
+    ];
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, { ...BASE_PAYLOAD, description: '^^' }] }]);
+    const seam = makeFakeSeam(localLegs);
+    const addEntries = vi.fn(async (payloads: AddEntryPayload[]) =>
+      payloads.map((p, i) => ({ ...CONFIRMED_ENTRY, id: 200 + i, ...p }))
+    );
+    const engine = createMutationEngine(seam, makeApi({ addEntries }));
+    await engine.drainQueue();
+    expect(addEntries).toHaveBeenCalledTimes(1);
+    expect(seam.entries.find((e) => e.id === -1)).toBeUndefined();
+    expect(seam.entries.find((e) => e.id === -2)).toBeUndefined();
+    expect(seam.entries.map((e) => e.id)).toEqual([200, 201]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -428,6 +459,14 @@ describe('engine.injectQueue', () => {
     expect(seam.entries).toHaveLength(1);
   });
 
+  it('appends a Local Entry for every leg of a queued addBatch item not already present', () => {
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, { ...BASE_PAYLOAD, description: '^^' }] }]);
+    const seam = makeFakeSeam();
+    const engine = createMutationEngine(seam, makeApi());
+    engine.injectQueue();
+    expect(seam.entries.map((e) => e.id)).toEqual([-1, -2]);
+  });
+
   it('re-resolves mainCategory for a queued edit that changes tag', () => {
     writeQueue([{ op: 'edit', id: 10, patch: { tag: 'Rent' } }]);
     const seam = makeFakeSeam([EXISTING]);
@@ -444,5 +483,56 @@ describe('engine.injectQueue', () => {
     const engine = createMutationEngine(seam, makeApi());
     engine.injectQueue();
     expect(seam.entries.find((e) => e.id === 10)).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slice 9 — freeze guard: legs of a queued (unsynced) batch are read-only
+// ---------------------------------------------------------------------------
+describe('engine — batch-leg freeze guard', () => {
+  beforeEach(() => { _resetTempIdCounter(); clearQueue(); });
+
+  const batchLeg: Entry = { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'split', direction: 'O', amount: 40 };
+
+  it('edit: blocks editing a leg belonging to a queued batch, with a user-facing message', async () => {
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
+    const seam = makeFakeSeam([batchLeg]);
+    const updateEntry = vi.fn();
+    const engine = createMutationEngine(seam, makeApi({ updateEntry }));
+    await engine.edit(-1, { amount: 999 });
+    expect(updateEntry).not.toHaveBeenCalled();
+    expect(seam.entries.find((e) => e.id === -1)).toEqual(batchLeg); // unchanged
+    expect(seam.toasts).toHaveLength(1);
+  });
+
+  it('remove: blocks deleting a leg belonging to a queued batch, with a user-facing message', async () => {
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
+    const seam = makeFakeSeam([batchLeg]);
+    const deleteEntry = vi.fn();
+    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    await engine.remove(-1, seam.entries);
+    expect(deleteEntry).not.toHaveBeenCalled();
+    expect(seam.entries.find((e) => e.id === -1)).toBeDefined();
+    expect(seam.toasts).toHaveLength(1);
+  });
+
+  it('removeMany: skips frozen batch legs but still deletes the rest', async () => {
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
+    const seam = makeFakeSeam([batchLeg, REMOTE_ENTRY]);
+    const deleteEntry = vi.fn(async () => {});
+    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    await engine.removeMany([-1, REMOTE_ENTRY.id], seam.entries);
+    expect(deleteEntry).toHaveBeenCalledWith(REMOTE_ENTRY.id);
+    expect(deleteEntry).not.toHaveBeenCalledWith(-1);
+    expect(seam.entries.find((e) => e.id === -1)).toBeDefined();
+    expect(seam.entries.find((e) => e.id === REMOTE_ENTRY.id)).toBeUndefined();
+  });
+
+  it('edit/remove on an id not in any queued batch proceed as normal', async () => {
+    const seam = makeFakeSeam([REMOTE_ENTRY]);
+    const deleteEntry = vi.fn(async () => {});
+    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    await engine.remove(REMOTE_ENTRY.id, seam.entries);
+    expect(deleteEntry).toHaveBeenCalledWith(REMOTE_ENTRY.id);
   });
 });

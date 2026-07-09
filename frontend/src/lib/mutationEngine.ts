@@ -1,4 +1,4 @@
-import { submitAdd, submitEdit, submitDelete, drain, getLocalEntryIds } from './offlineMutation';
+import { submitAdd, submitAddBatch, submitEdit, submitDelete, drain, getLocalEntryIds, isBatchLegId } from './offlineMutation';
 import { buildEntry, getMainCategory } from './domain';
 import { isAuthError } from './api';
 import { readQueue } from './queue';
@@ -27,6 +27,7 @@ export interface EntryStoreSeam {
 // API callbacks injected by the store — the adapter seam owns request timeout.
 export interface MutationApi {
   addEntry(payload: AddEntryPayload): Promise<Entry>;
+  addEntries(payloads: AddEntryPayload[]): Promise<Entry[]>;
   updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
   deleteEntry(id: number): Promise<void>;
 }
@@ -37,6 +38,10 @@ export interface MutationApi {
 let _nextId = -1;
 export function nextTempId(): number { return _nextId--; }
 export function _resetTempIdCounter(): void { _nextId = -1; }
+
+// A leg of a queued (not-yet-synced) batch add is read-only until it syncs —
+// no per-leg coalescing rules are introduced for it (ADR-0004 amendment).
+const BATCH_FROZEN_MESSAGE = "This entry is part of a split that hasn't synced yet — sync it first, then try again.";
 
 // ---------------------------------------------------------------------------
 // Engine factory
@@ -67,6 +72,10 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     }
   }
 
+  // Split Entry / Fund Redistribution legs are submitted as one atomic
+  // addEntries POST under a single GAS document lock (issue #111): the
+  // server assigns array-order ids, so no client-side sequencing is needed
+  // to keep the main leg's id lowest (contrast the old per-leg awaiting).
   async function addLegs(legs: AddEntryPayload[]): Promise<void> {
     const tempIds = legs.map(() => nextTempId());
     for (let i = 0; i < legs.length; i++) {
@@ -75,31 +84,19 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     for (const id of tempIds) seam.setPending(id, true);
     seam.setMasterLoading(true);
     try {
-      // Main leg must confirm before ditto legs fire: GAS assigns IDs in lock-acquisition
-      // order, so a ditto leg racing the main leg could win a lower ID, breaking
-      // splitRunPositions' "main leg first" grouping.
-      const mainOutcome = await submitAdd(tempIds[0], legs[0], () => mutApi.addEntry(legs[0]));
-      const dittoOutcomes = await Promise.all(
-        legs.slice(1).map((leg, i) =>
-          submitAdd(tempIds[i + 1], leg, () => mutApi.addEntry(leg))
-        )
-      );
-      const outcomes = [mainOutcome, ...dittoOutcomes];
+      const outcome = await submitAddBatch(tempIds, legs, () => mutApi.addEntries(legs));
+      for (const id of tempIds) seam.setPending(id, false);
 
-      for (let i = 0; i < outcomes.length; i++) {
-        seam.setPending(tempIds[i], false);
-        if (outcomes[i].status === 'confirmed') {
-          seam.swapEntry(tempIds[i], (outcomes[i] as { status: 'confirmed'; entry: Entry }).entry);
+      if (outcome.status === 'confirmed') {
+        for (let i = 0; i < tempIds.length; i++) {
+          seam.swapEntry(tempIds[i], outcome.entries[i]);
         }
       }
       seam.syncLocalIds();
 
-      const authErr = outcomes.find(
-        (o) => o.status === 'queued' && isAuthError(o.error)
-      );
-      if (authErr) {
-        seam.showToast((authErr as { error: unknown }).error, 'destructive');
-      } else if (outcomes.every((o) => o.status === 'confirmed')) {
+      if (outcome.status === 'queued' && isAuthError(outcome.error)) {
+        seam.showToast(outcome.error, 'destructive');
+      } else if (outcome.status === 'confirmed') {
         seam.clearToast();
       }
       await seam.refreshAll();
@@ -111,6 +108,10 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
   async function edit(id: number, patch: UpdateEntryPatch): Promise<void> {
     const prev = seam.getEntries().find((e) => e.id === id);
     if (!prev) return;
+    if (isBatchLegId(id)) {
+      seam.showToast(BATCH_FROZEN_MESSAGE);
+      return;
+    }
     const optimistic: Entry = {
       ...prev,
       ...patch,
@@ -140,6 +141,10 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
 
   async function remove(id: number, entries: Entry[]): Promise<void> {
     if (!entries.some((e) => e.id === id)) return;
+    if (isBatchLegId(id)) {
+      seam.showToast(BATCH_FROZEN_MESSAGE);
+      return;
+    }
     const wasLocal = getLocalEntryIds().has(id);
     seam.setDeletePending(id, true);
     seam.setMasterLoading(true);
@@ -165,17 +170,24 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     const present = ids.filter((id) => entries.some((e) => e.id === id));
     if (present.length === 0) return;
 
+    // Legs of a queued (not-yet-synced) batch are frozen: skip them and tell
+    // the user to sync first, same as a single edit/delete on a batch leg.
+    const frozen = present.filter((id) => isBatchLegId(id));
+    const deletable = present.filter((id) => !isBatchLegId(id));
+    if (frozen.length > 0) seam.showToast(BATCH_FROZEN_MESSAGE);
+    if (deletable.length === 0) return;
+
     const currentLocalIds = getLocalEntryIds();
 
     // Local (unsynced) entries: coalesce into queue, remove optimistically.
-    const localToDelete = present.filter((id) => currentLocalIds.has(id));
+    const localToDelete = deletable.filter((id) => currentLocalIds.has(id));
     for (const id of localToDelete) {
       await submitDelete(id, () => Promise.resolve());
       seam.removeEntry(id);
     }
     seam.syncLocalIds();
 
-    const remote = present.filter((id) => !currentLocalIds.has(id));
+    const remote = deletable.filter((id) => !currentLocalIds.has(id));
     if (remote.length === 0) return;
 
     for (const id of remote) seam.setDeletePending(id, true);
@@ -212,6 +224,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
   async function drainQueue(): Promise<void> {
     const results = await drain({
       add: mutApi.addEntry,
+      addEntries: mutApi.addEntries,
       edit: mutApi.updateEntry,
       delete: mutApi.deleteEntry,
     });
@@ -221,6 +234,10 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
         const item = result.item;
         if (item.op === 'add') {
           seam.swapEntry(item.tempId, result.entry!);
+        } else if (item.op === 'addBatch') {
+          for (let i = 0; i < item.tempIds.length; i++) {
+            seam.swapEntry(item.tempIds[i], result.entries![i]);
+          }
         } else if (item.op === 'delete') {
           seam.removeEntry(item.id);
         }
@@ -242,6 +259,12 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
       if (item.op === 'add') {
         if (!seam.getEntries().some((e) => e.id === item.tempId)) {
           seam.appendEntry(buildEntry(item.tempId, item.payload, seam.getCategories()));
+        }
+      } else if (item.op === 'addBatch') {
+        for (let i = 0; i < item.tempIds.length; i++) {
+          if (!seam.getEntries().some((e) => e.id === item.tempIds[i])) {
+            seam.appendEntry(buildEntry(item.tempIds[i], item.payloads[i], seam.getCategories()));
+          }
         }
       } else if (item.op === 'edit') {
         const prev = seam.getEntries().find((e) => e.id === item.id);

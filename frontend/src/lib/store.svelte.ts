@@ -94,6 +94,7 @@ const storeSeam: EntryStoreSeam = {
 
 const mutApi: MutationApi = {
   addEntry: (payload) => api.addEntry(payload),
+  addEntries: (payloads) => api.addEntries(payloads),
   updateEntry: (id, patch) => api.updateEntry(id, patch),
   deleteEntry: (id) => api.deleteEntry(id),
 };
