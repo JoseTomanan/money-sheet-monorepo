@@ -12,6 +12,7 @@ function apiDeps(): DispatchDeps {
     getConfig: () => getConfig(),
     getEntryById: (id) => getEntries().find((e) => e.id === id) ?? null,
     addEntry: (payload) => addEntry(payload),
+    addEntries: (payloads) => addEntries(payloads),
     updateEntry: (id, patch) => updateEntry(id, patch),
     deleteEntry: (id) => deleteEntry(id),
   };

@@ -64,6 +64,10 @@ export interface AddEntryPayload {
   amount: number;
 }
 
+export interface AddEntriesPayload {
+  entries: AddEntryPayload[];
+}
+
 export interface UpdateEntryPatch {
   date?: string;
   tag?: string;
@@ -86,6 +90,9 @@ export type ApiResponse =
   | { ok: true }
   | { ok: false; error: string; code: ErrorCode; message: string };
 
+// `addEntries` reuses the `{ ok: true; entries: EntryData[] }` success shape
+// (same as `getEntries`) — both mean "here is an array of entries."
+
 export interface DispatchRequest {
   action: string;
   /** Present on mutation actions; absent / undefined on reads */
@@ -103,6 +110,8 @@ export interface DispatchDeps {
   getConfig?: () => unknown;
   getEntryById: (id: number) => EntryData | null;
   addEntry: (payload: AddEntryPayload) => EntryData;
+  /** Inserts all legs under one document-lock acquisition; returns entries in array order. */
+  addEntries: (payloads: AddEntryPayload[]) => EntryData[];
   updateEntry: (id: number, patch: UpdateEntryPatch) => void;
   deleteEntry: (id: number) => void;
 }
@@ -219,6 +228,33 @@ function validateAddPayload(
   };
 }
 
+/**
+ * Validate-then-write: every leg is checked against the identical single-leg
+ * rules (`validateAddPayload`) before any write happens. The first invalid
+ * leg rejects the whole batch — no partial validation, no partial write.
+ */
+function validateAddBatchPayload(
+  body: Record<string, unknown>,
+  categories: CategoryMap
+): { payloads: AddEntryPayload[] } | { error: ApiResponse } {
+  const entries = body.entries;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return { error: err("validation", '"entries" must be a non-empty array') };
+  }
+
+  const payloads: AddEntryPayload[] = [];
+  for (const entry of entries) {
+    if (typeof entry !== "object" || entry === null) {
+      return { error: err("validation", "each entry in \"entries\" must be an object") };
+    }
+    const result = validateAddPayload(entry as Record<string, unknown>, categories);
+    if ("error" in result) return result;
+    payloads.push(result.payload);
+  }
+
+  return { payloads };
+}
+
 function validateUpdatePayload(
   body: Record<string, unknown>,
   existingEntry: EntryData,
@@ -282,7 +318,7 @@ const READ_ACTIONS = new Set(["getEntries", "getMaster", "getCategories", "getCo
 // Actions gated behind the shared secret. `validate` is the secret-check
 // endpoint itself, so it must be authenticated even though it mutates nothing —
 // the frontend's connection check relies on a wrong secret being rejected here.
-const AUTH_ACTIONS = new Set(["validate", "addEntry", "updateEntry", "deleteEntry"]);
+const AUTH_ACTIONS = new Set(["validate", "addEntry", "addEntries", "updateEntry", "deleteEntry"]);
 
 function isKnownAction(action: string): boolean {
   return READ_ACTIONS.has(action) || AUTH_ACTIONS.has(action);
@@ -344,6 +380,14 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
       if ("error" in result) return result.error;
       const entry = deps.addEntry(result.payload);
       return { ok: true, entry };
+    }
+
+    if (action === "addEntries") {
+      const categories = deps.getCategories();
+      const result = validateAddBatchPayload(body, categories);
+      if ("error" in result) return result.error;
+      const entries = deps.addEntries(result.payloads);
+      return { ok: true, entries };
     }
 
     if (action === "updateEntry") {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isSeparatorRow, listEntries, patchEntry, removeEntry, insertEntry } from "./repository";
+import { isSeparatorRow, listEntries, patchEntry, removeEntry, insertEntry, insertEntries } from "./repository";
 
 describe("isSeparatorRow", () => {
   it("is true for a blank Entry ID cell (empty string, null, undefined)", () => {
@@ -180,5 +180,105 @@ describe("insertEntry", () => {
 
     expect(repo.insertRowBefore).not.toHaveBeenCalled();
     expect(repo.writeEntryFields).toHaveBeenCalledWith(3, expect.objectContaining({ id: 2 }));
+  });
+});
+
+describe("insertEntries", () => {
+  it("reads the IO data rows exactly once for the whole batch", () => {
+    const repo = new FakeIoRepository([
+      [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
+    ]);
+
+    insertEntries(repo, [
+      { date: "2026-01-10", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { date: "2026-01-10", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+      { date: "2026-01-10", tag: "FOOD", description: "^^", direction: "O", amount: 80 },
+    ]);
+
+    expect(repo.readRowsCallCount).toBe(1);
+  });
+
+  it("assigns N distinct contiguous ids in array order (leg 0 lowest)", () => {
+    const repo = new FakeIoRepository([
+      [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
+      [new Date("2026-01-10"), "FOOD", "FOOD", "Snacks", "O", 50, 2],
+    ]);
+
+    const entries = insertEntries(repo, [
+      { date: "2026-01-07", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { date: "2026-01-07", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+
+    expect(entries.map((e) => e.id)).toEqual([3, 4]);
+  });
+
+  it("writes each leg's fields and resolves mainCategory per row, in order", () => {
+    const repo = new FakeIoRepository([
+      [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
+    ]);
+
+    const entries = insertEntries(repo, [
+      { date: "2026-01-10", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { date: "2026-01-10", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+
+    // Both legs share a date later than the only existing row (row 2), and
+    // insert adjacently in array order: leg 0 at row 3, leg 1 at row 4.
+    expect(repo.insertRowBefore).not.toHaveBeenCalled();
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 3, {
+      date: "2026-01-10",
+      tag: "FOOD",
+      description: "Split A",
+      direction: "O",
+      amount: 40,
+      id: 2,
+    });
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 4, {
+      date: "2026-01-10",
+      tag: "FOOD",
+      description: "^^",
+      direction: "O",
+      amount: 60,
+      id: 3,
+    });
+    expect(repo.resolveMainCategory).toHaveBeenNthCalledWith(1, 3);
+    expect(repo.resolveMainCategory).toHaveBeenNthCalledWith(2, 4);
+    expect(entries).toEqual([
+      { id: 2, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { id: 3, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+  });
+
+  it("stays correct under date-ordered insertion when legs interleave with existing dated rows", () => {
+    const repo = new FakeIoRepository([
+      [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
+      [new Date("2026-01-20"), "FOOD", "FOOD", "Late bill", "O", 30, 2],
+    ]);
+
+    // Both new legs date 2026-01-10 — must land between the existing rows
+    // (row 3), shifting the existing 2026-01-20 row down each time.
+    insertEntries(repo, [
+      { date: "2026-01-10", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { date: "2026-01-10", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+
+    expect(repo.insertRowBefore).toHaveBeenNthCalledWith(1, 3);
+    expect(repo.insertRowBefore).toHaveBeenNthCalledWith(2, 4);
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 3, expect.objectContaining({ id: 3 }));
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 4, expect.objectContaining({ id: 4 }));
+  });
+
+  it("appends to an empty sheet without inserting a row", () => {
+    const repo = new FakeIoRepository([]);
+
+    const entries = insertEntries(repo, [
+      { date: "2026-01-07", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
+      { date: "2026-01-07", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+
+    expect(repo.insertRowBefore).not.toHaveBeenCalled();
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 2, expect.objectContaining({ id: 1 }));
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 3, expect.objectContaining({ id: 2 }));
+    expect(entries.map((e) => e.id)).toEqual([1, 2]);
   });
 });

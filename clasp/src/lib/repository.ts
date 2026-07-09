@@ -146,6 +146,76 @@ export function insertEntry(repo: IoRepository, payload: AddEntryPayload): Entry
   };
 }
 
+/**
+ * Inserts N new Entries in array order under a single `readRows()` call.
+ * IDs are assigned as a contiguous block starting after the max existing ID,
+ * in array order (leg 0 gets the lowest ID). Each leg's row position is
+ * computed date-ordered against the sheet state as it stands after the
+ * previous legs in this batch were inserted, so legs sharing a date land on
+ * adjacent rows in array order and interleave correctly with existing rows.
+ */
+export function insertEntries(repo: IoRepository, payloads: AddEntryPayload[]): EntryData[] {
+  const rows = repo.readRows();
+
+  const existingIds = rows.map((r) => r[ID_INDEX]).filter((id) => !isSeparatorRow(id)).map(Number);
+  let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+  const idSet = new Set(existingIds);
+  while (idSet.has(nextId)) nextId++;
+
+  const dates: (Date | null)[] = rows.map((r) => {
+    const v = r[0];
+    return v instanceof Date ? v : v ? new Date(String(v)) : null;
+  });
+
+  let lastRow = rows.length + 1;
+  const targetRows: number[] = [];
+  const entries: EntryData[] = [];
+
+  for (const payload of payloads) {
+    const newDate = new Date(payload.date);
+    const idx = findInsertionIndex(dates, newDate);
+    const sheetRow = 2 + idx;
+
+    let targetRow: number;
+    if (sheetRow <= lastRow) {
+      repo.insertRowBefore(sheetRow);
+      targetRow = sheetRow;
+      dates.splice(idx, 0, newDate);
+    } else {
+      targetRow = lastRow + 1;
+      dates.push(newDate);
+    }
+    lastRow++;
+
+    const id = nextId++;
+    repo.writeEntryFields(targetRow, {
+      date: payload.date,
+      tag: payload.tag,
+      description: payload.description,
+      direction: payload.direction,
+      amount: payload.amount,
+      id,
+    });
+
+    targetRows.push(targetRow);
+    entries.push({
+      id,
+      date: payload.date,
+      tag: payload.tag,
+      mainCategory: "",
+      description: payload.description,
+      direction: payload.direction,
+      amount: payload.amount,
+    });
+  }
+
+  targetRows.forEach((sheetRow, i) => {
+    entries[i].mainCategory = repo.resolveMainCategory(sheetRow);
+  });
+
+  return entries;
+}
+
 /** Deletes the Entry matching `id`. Throws if not found. */
 export function removeEntry(repo: Pick<IoRepository, "readRows" | "deleteRow">, id: number): void {
   const rows = repo.readRows();

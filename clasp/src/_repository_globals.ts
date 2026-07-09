@@ -7,6 +7,7 @@ declare const ID_INDEX: typeof import("./lib/repository").ID_INDEX;
 declare const isSeparatorRow: typeof import("./lib/repository").isSeparatorRow;
 declare const listEntries: typeof import("./lib/repository").listEntries;
 declare const insertEntry: typeof import("./lib/repository").insertEntry;
+declare const insertEntries: typeof import("./lib/repository").insertEntries;
 declare const patchEntry: typeof import("./lib/repository").patchEntry;
 declare const removeEntry: typeof import("./lib/repository").removeEntry;
 declare type IoRepository = import("./lib/repository").IoRepository;

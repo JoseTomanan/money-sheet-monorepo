@@ -31,6 +31,17 @@ function addEntry(payload: AddEntryPayload): Entry {
   }
 }
 
+/** Inserts all legs under one document-lock acquisition (issue #111). */
+function addEntries(payloads: AddEntryPayload[]): Entry[] {
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(10_000);
+  try {
+    return insertEntries(liveIoRepository(), payloads);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 interface UpdateEntryPatch {
   date?: string;
   tag?: string;

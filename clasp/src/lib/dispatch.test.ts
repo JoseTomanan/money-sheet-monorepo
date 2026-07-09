@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { dispatch, type DispatchDeps } from "./dispatch";
 
 // ──────────────────────────────────────────────────────────────
@@ -31,6 +31,11 @@ function makeDeps(overrides: Partial<DispatchDeps> = {}): DispatchDeps {
       mainCategory: "FOOD",
       ...payload,
     }),
+    addEntries: (payloads) => payloads.map((payload, i) => ({
+      id: 100 + i,
+      mainCategory: "FOOD",
+      ...payload,
+    })),
     updateEntry: (_id, _patch) => {},
     deleteEntry: (id) => {
       if (id !== 1) throw new Error(`Entry ${id} not found`);
@@ -501,6 +506,87 @@ describe("success response shapes", () => {
     );
     expect(res.ok).toBe(false);
     expect(res.code).toBe("not_found");
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// addEntries — batch action (issue #111)
+// ──────────────────────────────────────────────────────────────
+
+describe("addEntries — batch", () => {
+  const validLeg = {
+    date: "2026-01-15",
+    tag: "Dining",
+    description: "Split leg",
+    direction: "O" as const,
+    amount: 50,
+  };
+
+  it("requires auth — missing secret rejects and never calls deps.addEntries", () => {
+    const addEntries = vi.fn();
+    const deps = makeDeps({ addEntries });
+    const res = dispatch(
+      { action: "addEntries", secret: undefined, body: { entries: [validLeg] } },
+      deps
+    );
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("auth");
+    expect(addEntries).not.toHaveBeenCalled();
+  });
+
+  it("requires auth — wrong secret rejects and never calls deps.addEntries", () => {
+    const addEntries = vi.fn();
+    const deps = makeDeps({ addEntries });
+    const res = dispatch(
+      { action: "addEntries", secret: "wrong", body: { entries: [validLeg] } },
+      deps
+    );
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("auth");
+    expect(addEntries).not.toHaveBeenCalled();
+  });
+
+  it("rejects the whole batch when any leg is invalid, writing nothing", () => {
+    const addEntries = vi.fn();
+    const deps = makeDeps({ addEntries });
+    const res = dispatch(
+      {
+        action: "addEntries",
+        secret: "correct-secret",
+        body: {
+          entries: [
+            validLeg,
+            { ...validLeg, tag: "FOOD" }, // Category tag on Outgoing — invalid
+          ],
+        },
+      },
+      deps
+    );
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("validation");
+    expect(addEntries).not.toHaveBeenCalled();
+  });
+
+  it("valid batch inserts all legs under one call and returns entries in order", () => {
+    const addEntries = vi.fn((payloads) =>
+      payloads.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p }))
+    );
+    const deps = makeDeps({ addEntries });
+    const secondLeg = { ...validLeg, tag: "Rent", description: "^^", amount: 75 };
+    const res = dispatch(
+      {
+        action: "addEntries",
+        secret: "correct-secret",
+        body: { entries: [validLeg, secondLeg] },
+      },
+      deps
+    );
+    expect(res.ok).toBe(true);
+    expect(addEntries).toHaveBeenCalledTimes(1);
+    expect((res as any).entries).toEqual([
+      { id: 10, mainCategory: "FOOD", ...validLeg },
+      { id: 11, mainCategory: "FOOD", ...secondLeg },
+    ]);
   });
 });
 
