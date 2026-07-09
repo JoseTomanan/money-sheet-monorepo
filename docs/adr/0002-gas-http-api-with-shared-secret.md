@@ -16,3 +16,18 @@ Expose GAS as a web app (`doGet` for reads, `doPost` for all mutations). Write o
 - Supports multiple independent users sharing one deployed URL; each device configures its own Connection pointing at its own spreadsheet.
 - Changing the secret requires updating Script Properties in GAS and re-entering the secret in the Settings screen.
 - Full OAuth / Google Sign-In is explicitly deferred; this decision should be revisited if stronger authentication is needed.
+
+## Action table
+
+| Action | Method | Auth |
+|---|---|---|
+| `getEntries` | GET | none |
+| `getMaster` | GET | none |
+| `getCategories` | GET | none |
+| `getConfig` | GET | none |
+| `addEntry` | POST | secret |
+| `addEntries` | POST | secret |
+| `updateEntry` | POST | secret |
+| `deleteEntry` | POST | secret |
+
+`addEntries` (added in issue #111) is the same shared-secret write auth as every other mutation — it accepts an ordered array of entry payloads and inserts them atomically under one document lock. See the dedicated batch-add ADR for its semantics.

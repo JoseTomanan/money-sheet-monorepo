@@ -52,10 +52,11 @@ npx tsc --noEmit   # type-check locally
 | `getCategories` | GET | none |
 | `getSubcategoryBreakdown` | GET | none |
 | `addEntry` | POST | secret |
+| `addEntries` | POST | secret |
 | `updateEntry` | POST | secret |
 | `deleteEntry` | POST | secret |
 
-`addEntry` writes `ENTRY ID` to col H as an auto-incrementing integer (max existing ID + 1).
+`addEntry` writes `ENTRY ID` to col H as an auto-incrementing integer (max existing ID + 1). `addEntries` inserts an ordered array of entries atomically under one document lock (validate-then-write, no partial writes) — see ADR-0008.
 
 **Auth**: shared secret passed as `body.secret` in POST requests. Stored in GAS Script Properties as `API_SECRET`. OAuth is deferred.
 

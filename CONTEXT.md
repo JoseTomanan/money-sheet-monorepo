@@ -4,7 +4,7 @@
 A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API. Amount is normally positive; a negative amount is valid only on an Incoming Entry and indicates a redistribution drain (see Fund Redistribution).
 
 ## Split Entry
-A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). The app groups legs by a leading `^^` (prefix match, not exact equality), so a ditto leg's description may also continue past the marker, e.g. `^^ extra detail`.
+A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). The app groups legs by a leading `^^` (prefix match, not exact equality), so a ditto leg's description may also continue past the marker, e.g. `^^ extra detail`. All legs are submitted together as one atomic `addEntries` batch (see ADR-0008) — either every leg lands or none does; the main leg is guaranteed the lowest Entry ID in the run.
 
 ## Category
 One of seven top-level budget buckets: **HOUSING, FOOD, TRANSIT, HEALTH, FINANCE, LIFESTYLE, MISC**. Always written in ALL CAPS. A Category is the coarsest grouping; Budgets are computed per Category.
@@ -41,7 +41,7 @@ Column D of INCOMING/OUTGOING. A VLOOKUP formula that resolves any Tag (Category
 The net balance for a Category. Computed as: sum of all Incoming Entries whose Tag equals that Category, minus sum of all Outgoing Entries whose Main Category resolves to it. Rolling all-time (no period resets). A Budget can go negative.
 
 ## Fund Redistribution
-A user-initiated reallocation of a fixed amount from one Category's Budget to another. ON HAND is unchanged by a redistribution. Modeled as a pair of Incoming Entries written together: a negative-amount Entry draining the source Category's Budget and a positive-amount Entry crediting the target Category's Budget. Only Incoming Entries may carry a negative amount.
+A user-initiated reallocation of a fixed amount from one Category's Budget to another. ON HAND is unchanged by a redistribution. Modeled as a pair of Incoming Entries written together: a negative-amount Entry draining the source Category's Budget and a positive-amount Entry crediting the target Category's Budget. Only Incoming Entries may carry a negative amount. Like a Split Entry, both legs are submitted as one atomic `addEntries` batch (ADR-0008).
 
 ## ON HAND
 The sum of all Category Budgets. Represents total money currently available across all categories. Displayed in the MASTER sheet. Derived entirely from spreadsheet formulas; GAS never writes to it.
@@ -59,7 +59,7 @@ The permanent opt-out from Mock Mode. Recorded as a truthy value under the `ms_m
 An Entry that is visible in the app's UI but has not yet been confirmed written to the spreadsheet. Holds a temporary negative integer ID until it syncs and receives a real Entry ID from GAS. Displayed with a visual indicator to distinguish it from confirmed entries. A Local Entry exists because its originating mutation was queued in the Offline Queue rather than successfully sent.
 
 ## Offline Queue
-The ordered list of pending mutations (addEntry, updateEntry, deleteEntry) that failed to reach GAS. Persisted in localStorage (`ms_queue`) so it survives page reloads. Drained in order when connectivity is restored — either automatically on the browser `online` event, or manually via a "Sync now" trigger. Coalescing rules apply: a later operation on the same logical entry merges into or cancels the earlier one rather than appending a new queue item.
+The ordered list of pending mutations (addEntry, addEntries, updateEntry, deleteEntry) that failed to reach GAS. Persisted in localStorage (`ms_queue`) so it survives page reloads. Drained in order when connectivity is restored — either automatically on the browser `online` event, or manually via a "Sync now" trigger. Coalescing rules apply: a later operation on the same logical entry merges into or cancels the earlier one rather than appending a new queue item. A failed Split Entry / Fund Redistribution batch queues as a single self-contained `addBatch` item rather than one item per leg; its legs are **frozen** (read-only) until the batch syncs — editing or deleting one is blocked, not coalesced (see ADR-0004's amendment).
 
 ## Sheets
 
