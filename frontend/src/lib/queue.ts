@@ -4,6 +4,11 @@ const KEY = "ms_queue";
 
 export type QueueItem =
   | { op: "add"; tempId: number; payload: AddEntryPayload }
+  // A Split Entry / Fund Redistribution batch that failed to reach GAS online.
+  // Self-contained: all data needed to replay it as one addEntries lives on
+  // this item — see ADR-0004's amendment. Frozen until synced (issue #111):
+  // no per-leg edit/delete coalescing is introduced for it.
+  | { op: "addBatch"; tempIds: number[]; payloads: AddEntryPayload[] }
   | { op: "edit"; id: number; patch: UpdateEntryPatch }
   | { op: "delete"; id: number };
 
@@ -29,7 +34,7 @@ export function clearQueue(): void {
 export function enqueue(item: QueueItem): void {
   const q = readQueue();
 
-  if (item.op === "add") {
+  if (item.op === "add" || item.op === "addBatch") {
     writeQueue([...q, item]);
     return;
   }

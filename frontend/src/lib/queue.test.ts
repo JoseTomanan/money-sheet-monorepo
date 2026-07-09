@@ -103,6 +103,28 @@ describe("queue", () => {
     expect(q[1].op === "add" && q[1].tempId).toBe(-2002);
   });
 
+  it("enqueue addBatch: appends a new addBatch item (no coalescing target)", () => {
+    const legPayload = { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O" as const, amount: 40 };
+    const batch: QueueItem = {
+      op: "addBatch",
+      tempIds: [-1, -2],
+      payloads: [legPayload, { ...legPayload, description: "^^" }],
+    };
+    enqueue(batch);
+    expect(readQueue()).toEqual([batch]);
+  });
+
+  it("enqueue addBatch then a real add: both present, batch untouched", () => {
+    const legPayload = { date: "2026-01-01", tag: "Groceries", description: "split", direction: "O" as const, amount: 40 };
+    const batch: QueueItem = { op: "addBatch", tempIds: [-1, -2], payloads: [legPayload, legPayload] };
+    enqueue(batch);
+    enqueue(ADD_A);
+    const q = readQueue();
+    expect(q).toHaveLength(2);
+    expect(q[0]).toEqual(batch);
+    expect(q[1]).toEqual(ADD_A);
+  });
+
   it("clearQueue: empties the queue", () => {
     enqueue(ADD_A);
     enqueue(EDIT_REAL);

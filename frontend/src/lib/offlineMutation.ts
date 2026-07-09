@@ -7,13 +7,17 @@ export type AddOutcome =
   | { status: 'confirmed'; entry: Entry }
   | { status: 'queued'; error?: unknown };
 
+export type AddBatchOutcome =
+  | { status: 'confirmed'; entries: Entry[] }
+  | { status: 'queued'; error?: unknown };
+
 export type MutateOutcome =
   | { status: 'confirmed' }
   | { status: 'queued'; error?: unknown }
   | { status: 'failed'; error: unknown };
 
 export type DrainItemResult =
-  | { item: QueueItem; status: 'drained'; entry?: Entry }
+  | { item: QueueItem; status: 'drained'; entry?: Entry; entries?: Entry[] }
   | { item: QueueItem; status: 'stopped'; error: unknown };
 
 export function isLocalEntryId(id: number): boolean {
@@ -21,7 +25,18 @@ export function isLocalEntryId(id: number): boolean {
 }
 
 export function localEntryIdsFromQueue(queue: QueueItem[]): Set<number> {
-  return new Set(queue.flatMap((item) => (item.op === 'add' ? [item.tempId] : [item.id])));
+  return new Set(
+    queue.flatMap((item) => {
+      if (item.op === 'add') return [item.tempId];
+      if (item.op === 'addBatch') return item.tempIds;
+      return [item.id];
+    }),
+  );
+}
+
+/** True when `id` is a leg of a batch currently sitting in the queue (frozen until synced). */
+export function isBatchLegId(id: number): boolean {
+  return readQueue().some((item) => item.op === 'addBatch' && item.tempIds.includes(id));
 }
 
 export function getLocalEntryIds(): Set<number> {
@@ -38,6 +53,25 @@ export async function submitAdd(
     return { status: 'confirmed', entry };
   } catch (err) {
     enqueue({ op: 'add', tempId, payload });
+    return { status: 'queued', error: err };
+  }
+}
+
+/**
+ * Submits a Split Entry / Fund Redistribution as one atomic addEntries call.
+ * On failure, enqueues a single `addBatch` item (not one item per leg) — the
+ * whole batch replays as one addEntries call when the queue drains.
+ */
+export async function submitAddBatch(
+  tempIds: number[],
+  payloads: AddEntryPayload[],
+  tryAddBatch: () => Promise<Entry[]>,
+): Promise<AddBatchOutcome> {
+  try {
+    const entries = await tryAddBatch();
+    return { status: 'confirmed', entries };
+  } catch (err) {
+    enqueue({ op: 'addBatch', tempIds, payloads });
     return { status: 'queued', error: err };
   }
 }
@@ -85,6 +119,7 @@ export async function submitDelete(
 
 export async function drain(callbacks: {
   add: (payload: AddEntryPayload) => Promise<Entry>;
+  addEntries: (payloads: AddEntryPayload[]) => Promise<Entry[]>;
   edit: (id: number, patch: UpdateEntryPatch) => Promise<void>;
   delete: (id: number) => Promise<void>;
 }): Promise<DrainItemResult[]> {
@@ -95,8 +130,11 @@ export async function drain(callbacks: {
     const item = q[0];
     try {
       let entry: Entry | undefined;
+      let entries: Entry[] | undefined;
       if (item.op === 'add') {
         entry = await callbacks.add(item.payload);
+      } else if (item.op === 'addBatch') {
+        entries = await callbacks.addEntries(item.payloads);
       } else if (item.op === 'edit') {
         await callbacks.edit(item.id, item.patch);
       } else {
@@ -104,7 +142,7 @@ export async function drain(callbacks: {
       }
       q = q.slice(1);
       writeQueue(q);
-      results.push({ item, status: 'drained', entry });
+      results.push({ item, status: 'drained', entry, entries });
     } catch (err) {
       results.push({ item, status: 'stopped', error: err });
       break;

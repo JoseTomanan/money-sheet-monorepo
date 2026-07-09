@@ -29,6 +29,16 @@ describe('offlineMutation — identity', () => {
   it('getLocalEntryIds: returns empty set when queue is empty', () => {
     expect(getLocalEntryIds()).toEqual(new Set());
   });
+
+  it('getLocalEntryIds: derives every tempId from a queued addBatch item', () => {
+    writeQueue([
+      { op: 'addBatch', tempIds: [-1, -2], payloads: [
+        { date: '2026-01-01', tag: 'Groceries', description: 'split', direction: 'O', amount: 40 },
+        { date: '2026-01-01', tag: 'Groceries', description: '^^', direction: 'O', amount: 60 },
+      ] },
+    ]);
+    expect(getLocalEntryIds()).toEqual(new Set([-1, -2]));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -85,6 +95,55 @@ describe('offlineMutation — submitAdd failure', () => {
   it('enqueues even on non-connection errors (add never fails permanently)', async () => {
     await submitAdd(-2000, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new Error('API returned error')));
     expect(getLocalEntryIds().has(-2000)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slice 3b — submitAddBatch (issue #111: atomic Split Entry / Fund Redistribution)
+// ---------------------------------------------------------------------------
+
+import { submitAddBatch } from './offlineMutation';
+
+const LEG_A = { date: '2026-01-01', tag: 'Groceries', description: 'split', direction: 'O' as const, amount: 40 };
+const LEG_B = { date: '2026-01-01', tag: 'Groceries', description: '^^', direction: 'O' as const, amount: 60 };
+const REAL_ENTRIES: Entry[] = [
+  { id: 77, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'split', direction: 'O', amount: 40 },
+  { id: 78, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: '^^', direction: 'O', amount: 60 },
+];
+
+describe('offlineMutation — submitAddBatch success', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns confirmed with entries in array order when tryAddBatch resolves', async () => {
+    const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.resolve(REAL_ENTRIES));
+    expect(outcome.status).toBe('confirmed');
+    if (outcome.status === 'confirmed') expect(outcome.entries).toEqual(REAL_ENTRIES);
+  });
+
+  it('leaves the queue empty on success', async () => {
+    await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.resolve(REAL_ENTRIES));
+    expect(getLocalEntryIds().size).toBe(0);
+  });
+});
+
+describe('offlineMutation — submitAddBatch failure', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('returns queued and enqueues exactly one addBatch item (not per-leg) when tryAddBatch rejects', async () => {
+    const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.reject(new Error('Network error')));
+    expect(outcome.status).toBe('queued');
+    const q = readQueue();
+    expect(q).toHaveLength(1);
+    expect(q[0].op).toBe('addBatch');
+    if (q[0].op === 'addBatch') {
+      expect(q[0].tempIds).toEqual([-1, -2]);
+      expect(q[0].payloads).toEqual([LEG_A, LEG_B]);
+    }
+  });
+
+  it('all legs become Local Entries after a queued batch', async () => {
+    await submitAddBatch([-5, -6], [LEG_A, LEG_B], () => Promise.reject(new Error('offline')));
+    expect(getLocalEntryIds()).toEqual(new Set([-5, -6]));
   });
 });
 
@@ -246,6 +305,7 @@ describe('offlineMutation — drain', () => {
     writeQueue([{ op: 'add', tempId: -1001, payload: BASE_PAYLOAD }]);
     const results = await drain({
       add: () => Promise.resolve(REAL_ENTRY),
+      addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
       delete: () => Promise.resolve(),
     });
@@ -259,6 +319,7 @@ describe('offlineMutation — drain', () => {
     writeQueue([{ op: 'edit', id: 1, patch: { description: 'updated' } }]);
     const results = await drain({
       add: () => Promise.resolve(REAL_ENTRY),
+      addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
       delete: () => Promise.resolve(),
     });
@@ -271,6 +332,7 @@ describe('offlineMutation — drain', () => {
     writeQueue([{ op: 'delete', id: 1 }]);
     const results = await drain({
       add: () => Promise.resolve(REAL_ENTRY),
+      addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
       delete: () => Promise.resolve(),
     });
@@ -282,6 +344,7 @@ describe('offlineMutation — drain', () => {
   it('empty queue: returns empty results array', async () => {
     const results = await drain({
       add: () => Promise.resolve(REAL_ENTRY),
+      addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
       delete: () => Promise.resolve(),
     });
@@ -300,6 +363,7 @@ describe('offlineMutation — drain', () => {
         if (callCount === 1) return Promise.resolve(REAL_ENTRY);
         return Promise.reject(new Error('Network error'));
       },
+      addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
       delete: () => Promise.resolve(),
     });
@@ -310,5 +374,25 @@ describe('offlineMutation — drain', () => {
     const remaining = readQueue();
     expect(remaining).toHaveLength(1);
     if (remaining[0].op === 'add') expect(remaining[0].tempId).toBe(-1002);
+  });
+
+  it('drains an addBatch item as one call: returns entries in order, queue emptied', async () => {
+    writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [LEG_A, LEG_B] }]);
+    let addEntriesCallCount = 0;
+    const results = await drain({
+      add: () => Promise.resolve(REAL_ENTRY),
+      addEntries: (payloads) => {
+        addEntriesCallCount++;
+        expect(payloads).toEqual([LEG_A, LEG_B]);
+        return Promise.resolve(REAL_ENTRIES);
+      },
+      edit: () => Promise.resolve(),
+      delete: () => Promise.resolve(),
+    });
+    expect(addEntriesCallCount).toBe(1);
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe('drained');
+    if (results[0].status === 'drained') expect(results[0].entries).toEqual(REAL_ENTRIES);
+    expect(readQueue()).toHaveLength(0);
   });
 });
