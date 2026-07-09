@@ -49,6 +49,22 @@ export async function trackedAdd(
   return entry;
 }
 
+/**
+ * addEntries wrapper that records every returned id so afterEach can clean up.
+ * Use this for every legitimate batch insert in a test.
+ */
+export async function trackedAddBatch(
+  client: GasClient,
+  payloads: AddEntryPayload[],
+  createdIds: number[],
+): Promise<Entry[]> {
+  const entries = await client.addEntries(payloads);
+  for (const entry of entries) {
+    if (typeof entry?.id === "number") createdIds.push(entry.id);
+  }
+  return entries;
+}
+
 export async function cleanup(
   client: GasClient,
   createdIds: number[],

@@ -78,6 +78,14 @@ export class GasClient {
     return data.entry;
   }
 
+  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+    const data = await this.post<{ ok: boolean; entries: Entry[] }>({
+      action: "addEntries",
+      entries: payloads,
+    });
+    return data.entries;
+  }
+
   async deleteEntry(id: number): Promise<void> {
     await this.post<{ ok: boolean }>({ action: "deleteEntry", id });
   }

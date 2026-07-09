@@ -7,6 +7,7 @@ import {
   pickSubcategories,
   runId,
   trackedAdd,
+  trackedAddBatch,
 } from "../src/fixtures";
 import type { AddEntryPayload, CategoryMap } from "../src/client";
 
@@ -145,64 +146,100 @@ describe("split outgoing entry — real GAS API", () => {
     }
   });
 
-  // Partial failure: today the frontend's store calls Promise.all([...adds]).
-  // Promise.all rejects on the first failure, but GAS has no transaction,
-  // so any leg that already succeeded stays on the sheet — the user is left
-  // with a half-applied split. This test documents that behavior: a known
-  // "unhappy path" the UI should eventually surface (rollback, retry, or
-  // at least a toast saying "2 of 3 legs saved").
-  it("partial failure: surviving legs persist when one leg's POST errors", async () => {
-    const picks = pickSubcategories(cats, 2);
-    const date = new Date().toISOString().slice(0, 10);
-    const description = markerDescription(RUN, "partial-fail");
+  // addEntries (issue #111): a Split Entry / Fund Redistribution's legs are now
+  // submitted as one atomic batch under a single document lock. These tests
+  // supersede the old "partial failure: surviving legs persist" characterization —
+  // that orphaning behavior is no longer possible: a batch either writes every
+  // leg or writes none.
+  describe("addEntries — atomic batch", () => {
+    it("rejects the whole batch when one leg is invalid, writing zero rows", async () => {
+      const picks = pickSubcategories(cats, 1);
+      const date = new Date().toISOString().slice(0, 10);
+      const description = markerDescription(RUN, "atomic-reject");
+      const invalidCategoryTag = Object.keys(cats)[0]; // Category name — invalid as an Outgoing tag
 
-    const goodA = trackedAdd(
-      client,
-      {
+      const before = await client.getEntries();
+
+      await expect(
+        client.addEntries([
+          { date, tag: picks[0].subcategory, description, direction: "O", amount: 50 },
+          { date, tag: invalidCategoryTag, description, direction: "O", amount: 60 },
+        ]),
+      ).rejects.toThrow();
+
+      const after = await client.getEntries();
+      expect(after.length).toBe(before.length);
+      expect(after.filter((e) => e.description === description)).toHaveLength(0);
+    });
+
+    it("valid N-leg batch inserts exactly N rows under one lock, with contiguous array-order ids", async () => {
+      const picks = pickSubcategories(cats, 3);
+      const date = new Date().toISOString().slice(0, 10);
+      const description = markerDescription(RUN, "atomic-success");
+
+      const before = await client.getEntries();
+      const payloads: AddEntryPayload[] = [
+        { date, tag: picks[0].subcategory, description, direction: "O", amount: 40 },
+        { date, tag: picks[1].subcategory, description: "^^", direction: "O", amount: 50 },
+        { date, tag: picks[2].subcategory, description: "^^", direction: "O", amount: 60 },
+      ];
+
+      const entries = await trackedAddBatch(client, payloads, createdIds);
+      const after = await client.getEntries();
+
+      expect(after.length - before.length).toBe(payloads.length);
+      expect(entries).toHaveLength(payloads.length);
+
+      // Distinct, contiguous, and assigned in array order (leg 0 = lowest —
+      // the main leg owns the lowest id in the run, preserving `^^` grouping).
+      const ids = entries.map((e) => e.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      const sorted = [...ids].sort((a, b) => a - b);
+      expect(ids).toEqual(sorted);
+      for (let i = 1; i < ids.length; i++) expect(ids[i]).toBe(ids[i - 1] + 1);
+
+      // Descriptions stored verbatim; each leg's mainCategory resolves correctly.
+      for (let i = 0; i < entries.length; i++) {
+        expect(entries[i].description).toBe(payloads[i].description);
+        expect(entries[i].tag).toBe(payloads[i].tag);
+        expect(entries[i].amount).toBe(payloads[i].amount);
+        expect(entries[i].mainCategory).toBe(picks[i].category);
+      }
+    });
+
+    it("concurrency: a batch racing a single add never collides on ids or overwrites rows", async () => {
+      const picks = pickSubcategories(cats, 3);
+      const date = new Date().toISOString().slice(0, 10);
+      const batchDescription = markerDescription(RUN, "atomic-concurrency-batch");
+      const soloDescription = markerDescription(RUN, "atomic-concurrency-solo");
+
+      const before = await client.getEntries();
+
+      const batchPayloads: AddEntryPayload[] = [
+        { date, tag: picks[0].subcategory, description: batchDescription, direction: "O", amount: 70 },
+        { date, tag: picks[1].subcategory, description: "^^", direction: "O", amount: 80 },
+      ];
+      const soloPayload: AddEntryPayload = {
         date,
-        tag: picks[0].subcategory,
-        description,
+        tag: picks[2].subcategory,
+        description: soloDescription,
         direction: "O",
-        amount: 200,
-      },
-      createdIds,
-    );
-    // Mimic a leg whose POST is rejected by GAS (missing secret → "unauthorized").
-    const bad = new GasClient(process.env.GAS_URL!, "wrong-secret-on-purpose")
-      .addEntry({
-        date,
-        tag: picks[1].subcategory,
-        description,
-        direction: "O",
-        amount: 999,
-      });
-    const goodB = trackedAdd(
-      client,
-      {
-        date,
-        tag: picks[1].subcategory,
-        description,
-        direction: "O",
-        amount: 300,
-      },
-      createdIds,
-    );
+        amount: 90,
+      };
 
-    const results = await Promise.allSettled([goodA, bad, goodB]);
+      const [batchEntries, soloEntry] = await Promise.all([
+        trackedAddBatch(client, batchPayloads, createdIds),
+        trackedAdd(client, soloPayload, createdIds),
+      ]);
 
-    expect(results[0].status).toBe("fulfilled");
-    expect(results[1].status).toBe("rejected");
-    expect(results[2].status).toBe("fulfilled");
+      const after = await client.getEntries();
+      expect(after.length - before.length).toBe(3);
 
-    // Survivors must be on the sheet — no rollback today.
-    const after = await client.getEntries();
-    const survivors = after.filter((e) => e.description === description);
-    expect(survivors).toHaveLength(2);
+      const allIds = [...batchEntries.map((e) => e.id), soloEntry.id];
+      expect(new Set(allIds).size).toBe(allIds.length);
 
-    // And the failed leg must NOT be on the sheet.
-    const ghosts = after.filter(
-      (e) => e.description === description && e.amount === 999,
-    );
-    expect(ghosts).toHaveLength(0);
+      const ourRows = after.filter((e) => allIds.includes(e.id));
+      expect(ourRows).toHaveLength(3);
+    });
   });
 });
