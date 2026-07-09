@@ -36,6 +36,10 @@ export interface AddEntryPayload {
   amount: number;
 }
 
+export interface AddEntriesPayload {
+  entries: AddEntryPayload[];
+}
+
 export interface UpdateEntryPatch {
   date?: string;
   tag?: string;
@@ -65,6 +69,7 @@ export interface GatewayAdapter {
   getCategories(): Promise<CategoryMap>;
   getConfig(): Promise<Config>;
   addEntry(payload: AddEntryPayload): Promise<Entry>;
+  addEntries(payloads: AddEntryPayload[]): Promise<Entry[]>;
   updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
   deleteEntry(id: number): Promise<void>;
   validateConnection(gasUrl: string, apiSecret: string): Promise<void>;

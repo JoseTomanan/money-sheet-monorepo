@@ -99,6 +99,14 @@ export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
   return Promise.resolve(entry);
 }
 
+/** Assigns a contiguous id block in array order, mirroring the real addEntries contract. */
+export function mockAddEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+  let nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+  const newEntries = payloads.map((payload) => buildEntry(nextId++, payload, CATEGORY_MAP));
+  entries = [...entries, ...newEntries];
+  return Promise.resolve(newEntries);
+}
+
 export function mockUpdateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
   entries = entries.map(e => {
     if (e.id !== id) return e;

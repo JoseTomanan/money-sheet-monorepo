@@ -13,10 +13,11 @@
  * app code, so it contributes nothing to the built bundle.
  */
 
-import type { Entry, AddEntryPayload, UpdateEntryPatch, CategoryMap, Config, ApiErrorEnvelope } from './types';
+import type { Entry, AddEntryPayload, AddEntriesPayload, UpdateEntryPatch, CategoryMap, Config, ApiErrorEnvelope } from './types';
 import type {
   EntryData,
   AddEntryPayload as ClaspAddEntryPayload,
+  AddEntriesPayload as ClaspAddEntriesPayload,
   UpdateEntryPatch as ClaspUpdateEntryPatch,
   CategoryMap as ClaspCategoryMap,
   ApiResponse,
@@ -29,6 +30,7 @@ type __Expect<T extends true> = T;
 
 type __AssertEntry = __Expect<__Equal<Entry, EntryData>>;
 type __AssertAddEntryPayload = __Expect<__Equal<AddEntryPayload, ClaspAddEntryPayload>>;
+type __AssertAddEntriesPayload = __Expect<__Equal<AddEntriesPayload, ClaspAddEntriesPayload>>;
 type __AssertUpdateEntryPatch = __Expect<__Equal<UpdateEntryPatch, ClaspUpdateEntryPatch>>;
 type __AssertCategoryMap = __Expect<__Equal<CategoryMap, ClaspCategoryMap>>;
 

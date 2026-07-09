@@ -30,6 +30,10 @@ export class MockAdapter implements GatewayAdapter {
     return mock.mockAddEntry(payload);
   }
 
+  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+    return mock.mockAddEntries(payloads);
+  }
+
   async updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
     return mock.mockUpdateEntry(id, patch);
   }

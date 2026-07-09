@@ -154,6 +154,14 @@ export class RealAdapter implements GatewayAdapter {
     return data.entry;
   }
 
+  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+    const data = await this.gasPost<{ ok: boolean; entries: Entry[] }>({
+      action: "addEntries",
+      entries: payloads,
+    });
+    return data.entries;
+  }
+
   async updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
     await this.gasPost({ action: "updateEntry", id, ...patch });
   }

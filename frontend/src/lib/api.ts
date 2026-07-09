@@ -53,6 +53,10 @@ export async function addEntry(payload: AddEntryPayload): Promise<Entry> {
   return adapter().addEntry(payload);
 }
 
+export async function addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+  return adapter().addEntries(payloads);
+}
+
 export async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
   return adapter().updateEntry(id, patch);
 }
