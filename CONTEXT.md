@@ -24,9 +24,9 @@ Default subcategories by category:
 ## Tag
 The value in column C of INCOMING/OUTGOING. Tag is **polymorphic based on Direction**:
 - On an **Incoming** Entry: Tag is a Category (e.g., `HOUSING`)
-- On an **Outgoing** Entry: Tag is a Subcategory (e.g., `Dining`)
+- On an **Outgoing** Entry: Tag is a Subcategory (e.g., `Dining`), or its parent Category alone (e.g., `FOOD`) — Subcategory is optional on Outgoing
 
-A Category-level Tag is never valid on an Outgoing Entry; a Subcategory-level Tag is never valid on an Incoming Entry.
+A Subcategory-level Tag is never valid on an Incoming Entry. A bare Category-level Tag, however, is a permanently valid Outgoing Tag — not merely a recovery-only bypass — so that an Entry whose Subcategory was later removed or renamed out of the Categories sheet (an "orphaned" tag) can always be retagged to its parent Category and edited again (issue #123).
 
 ## Direction
 Whether an Entry is **Incoming** (`I`) or **Outgoing** (`O`). Stored in column F of INCOMING/OUTGOING. Determines the valid domain of Tag.
