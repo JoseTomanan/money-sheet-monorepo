@@ -82,6 +82,21 @@
     </button>
     <!-- Vertical divider -->
     <span class="w-px self-stretch bg-border shrink-0"></span>
+    <!-- Commit the bare Category itself — Subcategory is optional on Outgoing (#123).
+         Hidden for an orphaned/unknown pseudo-category (no real entry in `categories`). -->
+    {#if activeCategory in categories}
+      {@const isActive = tag === activeCategory}
+      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
+      <button
+        class={catPillClass}
+        aria-pressed={isActive}
+        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
+        onclick={() => onselect(activeCategory)}
+      >
+        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
+        No subcategory
+      </button>
+    {/if}
     <!-- Subcategory pills -->
     {#each subcategories as sub}
       {@const isActive = tag === sub}

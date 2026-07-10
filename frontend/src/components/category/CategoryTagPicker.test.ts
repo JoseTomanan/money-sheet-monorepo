@@ -60,6 +60,41 @@ describe("CategoryTagPicker — Outgoing: collapse on re-tap", () => {
   });
 });
 
+describe("CategoryTagPicker — Outgoing: selecting a bare Category (no subcategory, #123)", () => {
+  it("shows a 'No subcategory' pill once a Category is expanded", async () => {
+    const { getByRole } = render(CategoryTagPicker, baseProps());
+    await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
+    expect(getByRole("button", { name: /No subcategory/ })).toBeInTheDocument();
+  });
+
+  it("does not show the 'No subcategory' pill before a Category is expanded", () => {
+    const { queryByRole } = render(CategoryTagPicker, baseProps());
+    expect(queryByRole("button", { name: /No subcategory/ })).not.toBeInTheDocument();
+  });
+
+  it("calls onselect with the bare Category when 'No subcategory' is tapped", async () => {
+    const props = baseProps();
+    const { getByRole } = render(CategoryTagPicker, props);
+    await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
+    await fireEvent.click(getByRole("button", { name: /No subcategory/ }));
+    expect(props.onselect).toHaveBeenCalledWith("FOOD");
+  });
+
+  it("does not show the 'No subcategory' pill when the expanded pseudo-category is unknown (orphaned tag recovery)", () => {
+    // Simulates an orphaned entry: its tag doesn't match any known Category or
+    // Subcategory, so on mount `activeCategory` is seeded to the tag itself,
+    // which is not a real key in `categories`.
+    const { queryByRole, getByRole } = render(
+      CategoryTagPicker,
+      baseProps({ tag: "Ghost Subcategory" })
+    );
+    // Pinned pseudo-category pill is shown...
+    expect(getByRole("button", { name: /Ghost Subcategory/ })).toBeInTheDocument();
+    // ...but no bare-category commit affordance, since "Ghost Subcategory" isn't a Category.
+    expect(queryByRole("button", { name: /No subcategory/ })).not.toBeInTheDocument();
+  });
+});
+
 describe("CategoryTagPicker — Outgoing: selecting a subcategory", () => {
   it("calls onselect with the subcategory value", async () => {
     const props = baseProps();
