@@ -69,14 +69,16 @@
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent" class:pt-8={mockMode.current}>
     {#if store.syncing}
       <span
-        class="fixed top-[14px] z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
+        class="fixed {mockMode.current ? 'top-[46px]' : 'top-[14px]'} z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
         aria-label="Syncing data"
       ></span>
     {/if}
 
-    <!-- Gear button: fixed top-right -->
+    <!-- Gear button: fixed top-right. Offset below the MockBanner (h-8, z-[600])
+         when Mock Mode is active — .app-shell's pt-8 only affects in-flow
+         layout, not this fixed-positioned element. -->
     <button
-      class="gear-btn fixed top-3 z-50 p-2 rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)]"
+      class="gear-btn fixed {mockMode.current ? 'top-11' : 'top-3'} z-50 p-2 rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)]"
       onclick={() => (settingsOpen = true)}
       aria-label="Open settings"
     >
