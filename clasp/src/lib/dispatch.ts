@@ -159,7 +159,8 @@ function isValidDate(s: string): boolean {
  *
  * Invariant:
  * - Incoming (I): tag must be a Category (top-level key in CategoryMap)
- * - Outgoing (O): tag must be a Subcategory (leaf value in CategoryMap)
+ * - Outgoing (O): tag must be a Subcategory (leaf value in CategoryMap), or
+ *   its parent Category (top-level key) — Subcategory is optional (issue #123).
  */
 export function checkTagDirection(
   tag: string,
@@ -174,8 +175,8 @@ export function checkTagDirection(
       return `Tag "${tag}" is not a Category. Incoming entries require a Category tag (e.g. FOOD, HOUSING).`;
     }
   } else {
-    if (!subs.has(tag)) {
-      return `Tag "${tag}" is not a Subcategory. Outgoing entries require a Subcategory tag (e.g. Dining, Rent).`;
+    if (!subs.has(tag) && !cats.has(tag)) {
+      return `Tag "${tag}" is not a Subcategory or Category. Outgoing entries require a Subcategory (e.g. Dining, Rent) or a Category (e.g. FOOD).`;
     }
   }
   return null;

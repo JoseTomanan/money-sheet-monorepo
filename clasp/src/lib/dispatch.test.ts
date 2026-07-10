@@ -76,7 +76,7 @@ describe("auth", () => {
 // ──────────────────────────────────────────────────────────────
 
 describe("addEntry — tag/direction validation", () => {
-  it("rejects Category tag on Outgoing entry", () => {
+  it("accepts a bare Category tag on Outgoing entry (Subcategory is optional)", () => {
     const deps = makeDeps();
     const res = dispatch(
       {
@@ -84,7 +84,7 @@ describe("addEntry — tag/direction validation", () => {
         secret: "correct-secret",
         body: {
           date: "2026-01-15",
-          tag: "FOOD", // Category, but direction is O
+          tag: "FOOD", // Category, no Subcategory — now permanently valid on Outgoing
           description: "test",
           direction: "O",
           amount: 50,
@@ -92,8 +92,7 @@ describe("addEntry — tag/direction validation", () => {
       },
       deps
     );
-    expect(res.ok).toBe(false);
-    expect(res.code).toBe("validation");
+    expect(res.ok).toBe(true);
   });
 
   // ──────────────────────────────────────────────────────────────
@@ -334,33 +333,32 @@ describe("addEntry — required fields", () => {
 // ──────────────────────────────────────────────────────────────
 
 describe("updateEntry — tag/direction validation", () => {
-  it("rejects patch that would make tag invalid for existing direction", () => {
+  it("accepts patching tag to a bare Category while direction stays Outgoing", () => {
     const deps = makeDeps({
       // STORED_ENTRY has direction: O
       getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
     });
-    // Patching tag to a Category while direction remains O
+    // Patching tag to a Category while direction remains O — now valid (#123)
     const res = dispatch(
       {
         action: "updateEntry",
         secret: "correct-secret",
         body: {
           id: 1,
-          tag: "FOOD", // Category — invalid for Outgoing
+          tag: "FOOD", // Category — valid for Outgoing, Subcategory is optional
         },
       },
       deps
     );
-    expect(res.ok).toBe(false);
-    expect(res.code).toBe("validation");
+    expect(res.ok).toBe(true);
   });
 
-  it("rejects patch where new direction conflicts with existing tag", () => {
+  it("accepts patching direction to Outgoing when existing tag is a bare Category", () => {
     const incomingEntry = { ...STORED_ENTRY, direction: "I" as const, tag: "FOOD" };
     const deps = makeDeps({
       getEntryById: (id) => (id === 1 ? incomingEntry : null),
     });
-    // Changing direction to O while existing tag is still a Category
+    // Changing direction to O while existing tag is still a Category — now valid (#123)
     const res = dispatch(
       {
         action: "updateEntry",
@@ -368,6 +366,27 @@ describe("updateEntry — tag/direction validation", () => {
         body: {
           id: 1,
           direction: "O",
+        },
+      },
+      deps
+    );
+    expect(res.ok).toBe(true);
+  });
+
+  it("rejects patch where new direction conflicts with an existing Subcategory-only tag", () => {
+    // Existing entry has a Subcategory tag ("Dining") and Outgoing direction.
+    // Patching direction to Incoming must still be rejected — Incoming requires
+    // a Category tag, and the Outgoing relaxation does not extend to Incoming.
+    const deps = makeDeps({
+      getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
+    });
+    const res = dispatch(
+      {
+        action: "updateEntry",
+        secret: "correct-secret",
+        body: {
+          id: 1,
+          direction: "I",
         },
       },
       deps
@@ -556,7 +575,7 @@ describe("addEntries — batch", () => {
         body: {
           entries: [
             validLeg,
-            { ...validLeg, tag: "FOOD" }, // Category tag on Outgoing — invalid
+            { ...validLeg, tag: "Dining", direction: "I" as const }, // Subcategory tag on Incoming — invalid
           ],
         },
       },
@@ -565,6 +584,24 @@ describe("addEntries — batch", () => {
     expect(res.ok).toBe(false);
     expect(res.code).toBe("validation");
     expect(addEntries).not.toHaveBeenCalled();
+  });
+
+  it("accepts a batch with an Outgoing leg tagged with a bare Category (Subcategory optional, #123)", () => {
+    const addEntries = vi.fn((payloads) =>
+      payloads.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p }))
+    );
+    const deps = makeDeps({ addEntries });
+    const categoryLeg = { ...validLeg, tag: "FOOD", description: "^^", amount: 25 };
+    const res = dispatch(
+      {
+        action: "addEntries",
+        secret: "correct-secret",
+        body: { entries: [validLeg, categoryLeg] },
+      },
+      deps
+    );
+    expect(res.ok).toBe(true);
+    expect(addEntries).toHaveBeenCalledTimes(1);
   });
 
   it("valid batch inserts all legs under one call and returns entries in order", () => {
