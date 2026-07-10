@@ -43,8 +43,8 @@ describe('isValidTag', () => {
     expect(isValidTag('Dining', 'O', MAP)).toBe(true);
   });
 
-  it('Outgoing: false for a category key', () => {
-    expect(isValidTag('FOOD', 'O', MAP)).toBe(false);
+  it('Outgoing: true for a category key (Subcategory is optional, #123)', () => {
+    expect(isValidTag('FOOD', 'O', MAP)).toBe(true);
   });
 
   it('Outgoing: false for unknown string', () => {

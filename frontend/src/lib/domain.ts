@@ -17,5 +17,8 @@ export function isValidTag(
   categories: CategoryMap
 ): boolean {
   if (direction === 'I') return Object.keys(categories).includes(tag);
-  return Object.values(categories).flat().includes(tag);
+  // Outgoing: a Subcategory is valid, and so is its bare parent Category —
+  // Subcategory is optional on Outgoing (#123).
+  return Object.values(categories).flat().includes(tag)
+    || Object.keys(categories).includes(tag);
 }

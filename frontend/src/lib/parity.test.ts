@@ -81,9 +81,9 @@ const TAG_FIXTURES: Array<{ tag: string; direction: 'I' | 'O'; expectedValid: bo
   // Valid Outgoing (Subcategory tags)
   { tag: 'Groceries', direction: 'O', expectedValid: true  },
   { tag: 'Rent',      direction: 'O', expectedValid: true  },
-  // Invalid: Category tag on Outgoing
-  { tag: 'FOOD',    direction: 'O', expectedValid: false },
-  { tag: 'HOUSING', direction: 'O', expectedValid: false },
+  // Valid: bare Category tag on Outgoing — Subcategory is optional (#123)
+  { tag: 'FOOD',    direction: 'O', expectedValid: true },
+  { tag: 'HOUSING', direction: 'O', expectedValid: true },
   // Invalid: Subcategory tag on Incoming
   { tag: 'Groceries', direction: 'I', expectedValid: false },
   { tag: 'Rent',      direction: 'I', expectedValid: false },
