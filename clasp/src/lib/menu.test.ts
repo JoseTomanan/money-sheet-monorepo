@@ -38,9 +38,9 @@ describe("buildMenu", () => {
     );
   });
 
-  it("calls addToUi to attach the menu to the spreadsheet", () => {
+  it("calls addToUi to attach each menu to the spreadsheet", () => {
     buildMenu(makeUi());
-    expect(mockAddToUi).toHaveBeenCalledOnce();
+    expect(mockAddToUi).toHaveBeenCalledTimes(2); // "Autohide" and "Categories"
   });
 
   it("calls addSeparator once to separate autohide items from setup", () => {
@@ -51,5 +51,27 @@ describe("buildMenu", () => {
   it('adds "Run setup" item wired to the setup function', () => {
     buildMenu(makeUi());
     expect(mockAddItem).toHaveBeenCalledWith("Run setup", "setup");
+  });
+
+  it('creates a second menu named "Categories", separate from "Autohide"', () => {
+    buildMenu(makeUi());
+    expect(mockCreateMenu).toHaveBeenCalledWith("Autohide");
+    expect(mockCreateMenu).toHaveBeenCalledWith("Categories");
+  });
+
+  it('adds "Install category-sync trigger" item wired to installCategorySyncTrigger', () => {
+    buildMenu(makeUi());
+    expect(mockAddItem).toHaveBeenCalledWith(
+      "Install category-sync trigger",
+      "installCategorySyncTrigger"
+    );
+  });
+
+  it('adds "Retry last category sync" item wired to retryLastCategorySync', () => {
+    buildMenu(makeUi());
+    expect(mockAddItem).toHaveBeenCalledWith(
+      "Retry last category sync",
+      "retryLastCategorySync"
+    );
   });
 });
