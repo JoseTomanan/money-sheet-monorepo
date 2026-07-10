@@ -5,6 +5,7 @@
 declare const IO_COL: typeof import("./lib/repository").IO_COL;
 declare const ID_INDEX: typeof import("./lib/repository").ID_INDEX;
 declare const isSeparatorRow: typeof import("./lib/repository").isSeparatorRow;
+declare const planFieldWrites: typeof import("./lib/repository").planFieldWrites;
 declare const listEntries: typeof import("./lib/repository").listEntries;
 declare const insertEntry: typeof import("./lib/repository").insertEntry;
 declare const insertEntries: typeof import("./lib/repository").insertEntries;

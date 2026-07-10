@@ -1,5 +1,50 @@
 import { describe, it, expect, vi } from "vitest";
-import { isSeparatorRow, listEntries, patchEntry, removeEntry, insertEntry, insertEntries } from "./repository";
+import {
+  isSeparatorRow,
+  listEntries,
+  patchEntry,
+  removeEntry,
+  insertEntry,
+  insertEntries,
+  planFieldWrites,
+} from "./repository";
+
+describe("planFieldWrites", () => {
+  it("splits a full-field write into consecutive-column runs, skipping col D", () => {
+    const runs = planFieldWrites({
+      date: "2026-01-07",
+      tag: "FOOD",
+      description: "Groceries",
+      direction: "O",
+      amount: 100,
+      id: 3,
+    });
+
+    expect(runs).toEqual([
+      { startCol: 2, values: ["2026-01-07", "FOOD"] },
+      { startCol: 5, values: ["Groceries", "O", 100, 3] },
+    ]);
+  });
+
+  it("collapses a contiguous partial patch into a single run", () => {
+    const runs = planFieldWrites({ description: "Groceries (updated)", direction: "O", amount: 150 });
+
+    expect(runs).toEqual([{ startCol: 5, values: ["Groceries (updated)", "O", 150] }]);
+  });
+
+  it("splits a gapped partial patch (skipping direction) into two runs", () => {
+    const runs = planFieldWrites({ description: "Groceries (updated)", amount: 150 });
+
+    expect(runs).toEqual([
+      { startCol: 5, values: ["Groceries (updated)"] },
+      { startCol: 7, values: [150] },
+    ]);
+  });
+
+  it("returns an empty array for an empty patch", () => {
+    expect(planFieldWrites({})).toEqual([]);
+  });
+});
 
 describe("isSeparatorRow", () => {
   it("is true for a blank Entry ID cell (empty string, null, undefined)", () => {

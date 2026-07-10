@@ -46,6 +46,45 @@ export interface EntryFields {
   id: number;
 }
 
+// Maps EntryFields keys to their 1-based sheet column, in column order.
+// Col D (MAIN_CAT) is never a key here — it is ARRAYFORMULA-driven and must
+// never be written, so it's naturally excluded from any run.
+const FIELD_COLUMNS: [keyof EntryFields, number][] = [
+  ["date", IO_COL.DATE],
+  ["tag", IO_COL.TAG],
+  ["description", IO_COL.DESC],
+  ["direction", IO_COL.DIR],
+  ["amount", IO_COL.AMOUNT],
+  ["id", IO_COL.ID],
+];
+
+/**
+ * Groups whichever `fields` are present into maximal consecutive-column runs,
+ * so the live adapter can write each run with a single `setValues()` call
+ * instead of one `setValue()` per field — a failure partway through
+ * `writeEntryFields` can no longer leave a row half-written (see docs/adr/0009).
+ */
+export function planFieldWrites(
+  fields: Partial<EntryFields>
+): { startCol: number; values: unknown[] }[] {
+  const runs: { startCol: number; values: unknown[] }[] = [];
+  let current: { startCol: number; values: unknown[] } | null = null;
+  let lastCol = -Infinity;
+
+  for (const [key, col] of FIELD_COLUMNS) {
+    if (fields[key] === undefined) continue;
+    if (current && col === lastCol + 1) {
+      current.values.push(fields[key]);
+    } else {
+      current = { startCol: col, values: [fields[key]] };
+      runs.push(current);
+    }
+    lastCol = col;
+  }
+
+  return runs;
+}
+
 /** The repository port — small enough to fake. Never writes col D (MAIN_CAT, formula-driven). */
 export interface IoRepository {
   /** The single "read all data rows" operation. */

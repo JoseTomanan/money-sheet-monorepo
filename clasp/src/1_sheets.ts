@@ -45,12 +45,11 @@ function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet())
     },
     writeEntryFields(sheetRow, fields): void {
       // Never writes IO_COL.MAIN_CAT (col D) — it is ARRAYFORMULA-driven.
-      if (fields.date !== undefined) sh.getRange(sheetRow, IO_COL.DATE).setValue(fields.date);
-      if (fields.tag !== undefined) sh.getRange(sheetRow, IO_COL.TAG).setValue(fields.tag);
-      if (fields.description !== undefined) sh.getRange(sheetRow, IO_COL.DESC).setValue(fields.description);
-      if (fields.direction !== undefined) sh.getRange(sheetRow, IO_COL.DIR).setValue(fields.direction);
-      if (fields.amount !== undefined) sh.getRange(sheetRow, IO_COL.AMOUNT).setValue(fields.amount);
-      if (fields.id !== undefined) sh.getRange(sheetRow, IO_COL.ID).setValue(fields.id);
+      // Each consecutive-column run is written with one setValues() call so a
+      // failure partway through can't leave the row half-written (docs/adr/0009).
+      for (const run of planFieldWrites(fields)) {
+        sh.getRange(sheetRow, run.startCol, 1, run.values.length).setValues([run.values]);
+      }
     },
     resolveMainCategory(sheetRow: number): string {
       SpreadsheetApp.flush();
