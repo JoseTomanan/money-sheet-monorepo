@@ -22,24 +22,16 @@ interface AddEntryPayload {
 }
 
 function addEntry(payload: AddEntryPayload): Entry {
-  const lock = LockService.getDocumentLock();
-  lock.waitLock(10_000);
-  try {
-    return insertEntry(liveIoRepository(), payload);
-  } finally {
-    lock.releaseLock();
-  }
+  return runExclusive(LockService.getDocumentLock(), 10_000, () =>
+    insertEntry(liveIoRepository(), payload)
+  );
 }
 
 /** Inserts all legs under one document-lock acquisition (issue #111). */
 function addEntries(payloads: AddEntryPayload[]): Entry[] {
-  const lock = LockService.getDocumentLock();
-  lock.waitLock(10_000);
-  try {
-    return insertEntries(liveIoRepository(), payloads);
-  } finally {
-    lock.releaseLock();
-  }
+  return runExclusive(LockService.getDocumentLock(), 10_000, () =>
+    insertEntries(liveIoRepository(), payloads)
+  );
 }
 
 interface UpdateEntryPatch {
@@ -51,21 +43,11 @@ interface UpdateEntryPatch {
 }
 
 function updateEntry(id: number, patch: UpdateEntryPatch): void {
-  const lock = LockService.getDocumentLock();
-  lock.waitLock(10_000);
-  try {
-    patchEntry(liveIoRepository(), id, patch);
-  } finally {
-    lock.releaseLock();
-  }
+  runExclusive(LockService.getDocumentLock(), 10_000, () =>
+    patchEntry(liveIoRepository(), id, patch)
+  );
 }
 
 function deleteEntry(id: number): void {
-  const lock = LockService.getDocumentLock();
-  lock.waitLock(10_000);
-  try {
-    removeEntry(liveIoRepository(), id);
-  } finally {
-    lock.releaseLock();
-  }
+  runExclusive(LockService.getDocumentLock(), 10_000, () => removeEntry(liveIoRepository(), id));
 }

@@ -121,8 +121,13 @@ function _insertMissingSeparators(sh: GoogleAppsScript.Spreadsheet.Sheet): void 
   }
 }
 
+// Runs under the same document lock as every entry mutation (2_entries.ts) —
+// this trigger used to insert/shift rows without holding it, which could
+// race an in-flight addEntry/addEntries/updateEntry between its readRows()
+// snapshot and its writeEntryFields() call, leaving a blank, ID-less row
+// behind. See docs/adr/0009.
 function applyRowVisibilityForActiveSheet(): void {
-  applyRowVisibility(getIOSheet());
+  runExclusive(LockService.getDocumentLock(), 10_000, () => applyRowVisibility(getIOSheet()));
 }
 
 function installWeeklyVisibilityTrigger(): void {
