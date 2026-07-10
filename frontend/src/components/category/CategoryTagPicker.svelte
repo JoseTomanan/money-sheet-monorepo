@@ -44,9 +44,19 @@
   function handleCategoryClick(cat: string) {
     if (direction === 'I') {
       onselect(cat);
-    } else {
-      activeCategory = activeCategory === cat ? '' : cat;
+      return;
     }
+    if (activeCategory === cat) {
+      // Re-tapping the pinned pill collapses back to the Category row;
+      // the already-committed tag (bare Category or a chosen Subcategory) is kept.
+      activeCategory = '';
+      return;
+    }
+    // Tapping a Category expands its Subcategory row AND commits the bare
+    // Category itself as the default "no subcategory" tag (#123) — a
+    // Subcategory tap below refines it further.
+    activeCategory = cat;
+    onselect(cat);
   }
 
   // Pill size classes (full vs compact)
@@ -69,34 +79,24 @@
 <div class="picker-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
   {#if direction === 'O' && activeCategory}
     {@const s = resolveCategoryStyle(activeCategory)}
-    <!-- Pinned chosen-category pill with ‹ back affordance -->
+    {@const isBareCategoryActive = tag === activeCategory}
+    {@const inactivePinnedColor = darkMode.current ? s.darkColor : s.color}
+    <!-- Pinned chosen-category pill with ‹ back affordance. Also the bare-Category
+         commit target — Subcategory is optional on Outgoing (#123) — so it reflects
+         selection like a Subcategory pill: solid when the bare Category is the tag,
+         soft once a Subcategory has been chosen instead. -->
     <button
       class={catPillClass}
-      aria-pressed={true}
+      aria-pressed={isBareCategoryActive}
       aria-label={activeCategory}
-      style="background: {s.color}; color: #fff;"
+      style="background: {isBareCategoryActive ? s.color : s.soft}; color: {isBareCategoryActive ? '#fff' : inactivePinnedColor};"
       onclick={() => handleCategoryClick(activeCategory)}
     >
-      <span class={dotClass} style="background: #fff"></span>
+      <span class={dotClass} style="background: {isBareCategoryActive ? '#fff' : inactivePinnedColor}"></span>
       ‹ {activeCategory}
     </button>
     <!-- Vertical divider -->
     <span class="w-px self-stretch bg-border shrink-0"></span>
-    <!-- Commit the bare Category itself — Subcategory is optional on Outgoing (#123).
-         Hidden for an orphaned/unknown pseudo-category (no real entry in `categories`). -->
-    {#if activeCategory in categories}
-      {@const isActive = tag === activeCategory}
-      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
-      <button
-        class={catPillClass}
-        aria-pressed={isActive}
-        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
-        onclick={() => onselect(activeCategory)}
-      >
-        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
-        No subcategory
-      </button>
-    {/if}
     <!-- Subcategory pills -->
     {#each subcategories as sub}
       {@const isActive = tag === sub}
@@ -115,7 +115,7 @@
     <!-- All category pills (collapsed / Incoming) -->
     {#each sortedCategories as cat}
       {@const s = resolveCategoryStyle(cat)}
-      {@const isActive = direction === 'I' ? tag === cat : activeCategory === cat}
+      {@const isActive = direction === 'I' ? tag === cat : (activeCategory === cat || tag === cat)}
       {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
         class={catPillClass}

@@ -58,40 +58,42 @@ describe("CategoryTagPicker — Outgoing: collapse on re-tap", () => {
     await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
     expect(queryByRole("button", { name: /^Groceries$/ })).not.toBeInTheDocument();
   });
+
+  it("keeps the collapsed Category pill marked as pressed when its bare Category is the current tag", async () => {
+    // tag="FOOD" simulates an entry already saved with a bare-Category tag (no
+    // Subcategory) — mount pre-expands FOOD (see edit-prefill tests below).
+    const { getByRole } = render(CategoryTagPicker, baseProps({ tag: "FOOD" }));
+    // Collapse back to the flat category row by re-tapping the pinned pill.
+    await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
+    expect(getByRole("button", { name: /^FOOD$/ })).toHaveAttribute("aria-pressed", "true");
+  });
 });
 
 describe("CategoryTagPicker — Outgoing: selecting a bare Category (no subcategory, #123)", () => {
-  it("shows a 'No subcategory' pill once a Category is expanded", async () => {
-    const { getByRole } = render(CategoryTagPicker, baseProps());
+  it("never shows a separate 'No subcategory' pill — the big Category pill is the bare choice", async () => {
+    const { queryByRole, getByRole } = render(CategoryTagPicker, baseProps());
+    expect(queryByRole("button", { name: /No subcategory/ })).not.toBeInTheDocument();
     await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
-    expect(getByRole("button", { name: /No subcategory/ })).toBeInTheDocument();
-  });
-
-  it("does not show the 'No subcategory' pill before a Category is expanded", () => {
-    const { queryByRole } = render(CategoryTagPicker, baseProps());
     expect(queryByRole("button", { name: /No subcategory/ })).not.toBeInTheDocument();
   });
 
-  it("calls onselect with the bare Category when 'No subcategory' is tapped", async () => {
+  it("calls onselect with the bare Category as soon as the Category pill is tapped", async () => {
     const props = baseProps();
     const { getByRole } = render(CategoryTagPicker, props);
     await fireEvent.click(getByRole("button", { name: /^FOOD$/ }));
-    await fireEvent.click(getByRole("button", { name: /No subcategory/ }));
     expect(props.onselect).toHaveBeenCalledWith("FOOD");
   });
 
-  it("does not show the 'No subcategory' pill when the expanded pseudo-category is unknown (orphaned tag recovery)", () => {
+  it("does not commit anything when the expanded pseudo-category is unknown (orphaned tag recovery)", () => {
     // Simulates an orphaned entry: its tag doesn't match any known Category or
     // Subcategory, so on mount `activeCategory` is seeded to the tag itself,
     // which is not a real key in `categories`.
-    const { queryByRole, getByRole } = render(
+    const { getByRole } = render(
       CategoryTagPicker,
       baseProps({ tag: "Ghost Subcategory" })
     );
     // Pinned pseudo-category pill is shown...
     expect(getByRole("button", { name: /Ghost Subcategory/ })).toBeInTheDocument();
-    // ...but no bare-category commit affordance, since "Ghost Subcategory" isn't a Category.
-    expect(queryByRole("button", { name: /No subcategory/ })).not.toBeInTheDocument();
   });
 });
 
@@ -172,8 +174,14 @@ describe("CategoryTagPicker — Outgoing edit prefill", () => {
     expect(getByRole("button", { name: /^Dining$/ })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("marks the pre-expanded Category as pressed", () => {
+  it("does not mark the pinned Category as pressed when a Subcategory is the selected tag", () => {
     const { getByRole } = render(CategoryTagPicker, baseProps({ tag: "Dining" }));
+    expect(getByRole("button", { name: /^FOOD$/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("pre-expands and marks the pinned Category as pressed when the tag is a bare Category", () => {
+    const { getByRole } = render(CategoryTagPicker, baseProps({ tag: "FOOD" }));
+    expect(getByRole("button", { name: /^Groceries$/ })).toBeInTheDocument();
     expect(getByRole("button", { name: /^FOOD$/ })).toHaveAttribute("aria-pressed", "true");
   });
 });
