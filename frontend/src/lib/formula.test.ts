@@ -139,6 +139,23 @@ describe("evaluateAmountInput", () => {
   it("returns { error } for an empty string", () => {
     expect(evaluateAmountInput("")).toHaveProperty("error");
   });
+
+  it("allows a negative plain number when allowNegative is true", () => {
+    expect(evaluateAmountInput("-5", true)).toEqual({ value: -5 });
+  });
+
+  it("allows zero when allowNegative is true", () => {
+    expect(evaluateAmountInput("0", true)).toEqual({ value: 0 });
+    expect(evaluateAmountInput("=10-10", true)).toEqual({ value: 0 });
+  });
+
+  it("allows a negative formula result when allowNegative is true", () => {
+    expect(evaluateAmountInput("=5-10", true)).toEqual({ value: -5 });
+  });
+
+  it("still rejects an invalid formula when allowNegative is true", () => {
+    expect(evaluateAmountInput("=abc", true)).toHaveProperty("error");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -199,5 +216,10 @@ describe("resolveAmountOnBlur", () => {
   it("clears amount and error for an empty or whitespace-only string", () => {
     expect(resolveAmountOnBlur("")).toEqual({ amount: null, error: null });
     expect(resolveAmountOnBlur("   ")).toEqual({ amount: null, error: null });
+  });
+
+  it("resolves a negative amount to a formatted value when allowNegative is true", () => {
+    expect(resolveAmountOnBlur("-5", true)).toEqual({ amount: "-5.00", error: null });
+    expect(resolveAmountOnBlur("=10-10", true)).toEqual({ amount: "0.00", error: null });
   });
 });

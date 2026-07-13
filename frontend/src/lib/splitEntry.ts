@@ -40,9 +40,9 @@ export function updateLeg(state: SplitState, index: number, patch: Partial<Leg>)
   };
 }
 
-export function isSplitValid(state: SplitState): boolean {
+export function isSplitValid(state: SplitState, allowNegative = false): boolean {
   return state.legs.every(
-    (leg) => leg.tag.trim() !== "" && !leg.error && !('error' in evaluateAmountInput(leg.amount))
+    (leg) => leg.tag.trim() !== "" && !leg.error && !('error' in evaluateAmountInput(leg.amount, allowNegative))
   );
 }
 

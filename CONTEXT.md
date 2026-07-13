@@ -1,7 +1,7 @@
 # Domain Glossary
 
 ## Entry
-A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API. Amount is normally positive; a negative amount is valid only on an Incoming Entry and indicates a redistribution drain (see Fund Redistribution).
+A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API. Amount is normally positive; a negative amount (or zero) is valid only on an Incoming Entry and indicates a redistribution drain (see Fund Redistribution). The manual entry form permits typing a negative amount directly on an Incoming entry — this isn't limited to the dedicated Redistribute flow.
 
 ## Split Entry
 A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). The app groups legs by a leading `^^` (prefix match, not exact equality), so a ditto leg's description may also continue past the marker, e.g. `^^ extra detail`. All legs are submitted together as one atomic `addEntries` batch (see ADR-0008) — either every leg lands or none does; the main leg is guaranteed the lowest Entry ID in the run.

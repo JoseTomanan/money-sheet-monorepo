@@ -21,7 +21,7 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   let isEditing   = $state(false);
 
   const saveDisabled = $derived(
-    !isSplitValid(split) ||
+    !isSplitValid(split, direction === 'I') ||
     !split.legs.every(l => isValidTag(l.tag, direction, getCategories()))
   );
 

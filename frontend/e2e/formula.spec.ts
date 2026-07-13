@@ -112,6 +112,20 @@ test("negative amount -5 shows error and disables Save", async ({ page }) => {
   await expect(page.locator("button.header-btn.save")).toBeDisabled();
 });
 
+test("negative amount -5 is accepted on an Incoming entry (redistribution drain)", async ({ page }) => {
+  await openNewEntrySheet(page);
+  await page.locator("button.dir-btn", { hasText: "Incoming" }).click();
+  const input = page.locator(".amount-input");
+  await input.fill("-5");
+  await input.blur();
+  await expect(input).toHaveValue("-5.00");
+  await expect(page.locator(".leg-error")).not.toBeVisible();
+
+  await page.locator(".field-input").first().fill("redistribution drain");
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
+});
+
 test("split-leg: formula error then plain number clears the error", async ({ page }) => {
   await openNewEntrySheet(page);
 
