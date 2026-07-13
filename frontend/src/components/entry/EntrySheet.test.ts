@@ -227,4 +227,32 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
       expect(getByRole("button", { name: /^Save$/ })).toBeDisabled()
     );
   });
+
+  it("Save enabled for a negative amount on an Incoming entry (redistribution drain)", async () => {
+    const { getByPlaceholderText, getByRole } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "I", tag: "Food", mainCategory: "Food" }) })
+    );
+    const input = getByPlaceholderText("0.00") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "-50" } });
+    await fireEvent.blur(input);
+    await waitFor(() => {
+      expect(input.value).toBe("-50.00");
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled();
+    });
+  });
+
+  it("Save disabled for a negative amount on an Outgoing entry (unchanged)", async () => {
+    const { getByPlaceholderText, getByRole, getByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    const input = getByPlaceholderText("0.00") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "-50" } });
+    await fireEvent.blur(input);
+    await waitFor(() => {
+      expect(getByText("Amount must be positive")).toBeInTheDocument();
+      expect(getByRole("button", { name: /^Save$/ })).toBeDisabled();
+    });
+  });
 });

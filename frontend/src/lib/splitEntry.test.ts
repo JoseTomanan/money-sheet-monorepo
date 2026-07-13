@@ -162,6 +162,18 @@ describe("isSplitValid", () => {
     expect(isSplitValid(state)).toBe(true);
   });
 
+  it("is true for a negative or zero amount when allowNegative is true", () => {
+    const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
+    expect(isSplitValid(negative, true)).toBe(true);
+    const zero = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "0" });
+    expect(isSplitValid(zero, true)).toBe(true);
+  });
+
+  it("is still false for a negative or zero amount when allowNegative is false", () => {
+    const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
+    expect(isSplitValid(negative)).toBe(false);
+  });
+
   it("is true when all legs have a tag and a positive amount (two legs)", () => {
     const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
