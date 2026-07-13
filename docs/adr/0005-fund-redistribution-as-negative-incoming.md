@@ -21,6 +21,7 @@ Use approach 2: a pair of Incoming Entries where the drain leg carries a negativ
 
 ## Consequences
 
-- `amount` on an Incoming Entry may be negative. This is the only case where a negative amount is valid; Outgoing entries always have positive amounts.
+- `amount` on an Incoming Entry may be negative (or zero). This is the only case where a negative amount is valid; Outgoing entries must always have a positive amount.
+- This applies to the manual entry form as well, not only the dedicated Redistribute flow — a user may type a negative amount directly on an Incoming entry (`evaluateAmountInput`/`resolveAmountOnBlur` in `frontend/src/lib/formula.ts` take an `allowNegative` flag, set from `direction === 'I'`).
 - `EntryRow` must not blindly prefix a `+` sign when `direction === 'I'` — it must check `amount >= 0` first.
 - The MASTER sheet formulas are unaffected; `SUMIF` on the INCOMING/OUTGOING sheet correctly sums negative values.
