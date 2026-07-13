@@ -1,20 +1,10 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
-  import RedistributeSheet from '../components/category/RedistributeSheet.svelte';
-  import type { AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import PaceChart from '../components/charts/PaceChart.svelte';
-
-  interface Props {
-    onbulkdelete: () => void;
-  }
-
-  let { onbulkdelete }: Props = $props();
-
-  let redistOpen = $state(false);
 
   // "Low" balance heuristic: categories here have no configurable goal/target
   // yet, so a flat peso threshold stands in until a future slice adds one.
@@ -139,36 +129,6 @@
     {/each}
   </div>
 
-  <!-- Actions strip — KEPT for now; slice #131 relocates Redistribute to
-       Entries and drops the bulk-delete shortcut. Do not remove here. -->
-  <div class="actions-strip flex gap-2 px-4 pt-[14px] pb-2">
-    <button
-      class="action-chip btn-pill flex items-center gap-[6px] bg-card shadow-[var(--shadow-card)] text-foreground"
-      onclick={() => (redistOpen = true)}
-      aria-label="Redistribute"
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
-        <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
-      </svg>
-      Redistribute
-    </button>
-    <button
-      class="action-chip btn-pill flex items-center gap-[6px] bg-card shadow-[var(--shadow-card)] text-destructive"
-      onclick={onbulkdelete}
-      aria-label="Bulk delete entries"
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-        <path d="M10 11v6"/>
-        <path d="M14 11v6"/>
-        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-      </svg>
-      Bulk delete
-    </button>
-  </div>
-
   <!-- Spending pace: this month's cumulative spend vs the trailing-months average. -->
   <SectionHeader>
     Spending pace
@@ -191,11 +151,4 @@
     />
   </div>
 {/if}
-
-<RedistributeSheet
-  open={redistOpen}
-  categories={store.categories}
-  onclose={() => (redistOpen = false)}
-  onsubmit={(legs: AddEntryPayload[]) => { store.addEntry(legs); redistOpen = false; }}
-/>
 </div>

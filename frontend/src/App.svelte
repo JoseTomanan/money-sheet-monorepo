@@ -106,7 +106,7 @@
       {:else if tab === 'entries'}
         <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} bind:selectMode={entriesSelectMode} />
       {:else}
-        <SummaryView onbulkdelete={() => { entriesSelectMode = true; tab = 'entries'; }} />
+        <SummaryView />
       {/if}
     </div>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, waitFor } from "@testing-library/svelte";
+import { render } from "@testing-library/svelte";
 import SummaryView from "./SummaryView.svelte";
 
 const mockStore = vi.hoisted(() => ({
@@ -18,8 +18,6 @@ const mockStore = vi.hoisted(() => ({
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
-
-const noop = () => {};
 
 function seedHealthyStore() {
   mockStore.loading = false;
@@ -46,33 +44,33 @@ describe("SummaryView envelope rows", () => {
   beforeEach(seedHealthyStore);
 
   it("renders one row per category label", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     for (const label of ["Housing", "Food", "Transit", "Health", "Finance", "Lifestyle", "Misc"]) {
       expect(getByText(label)).toBeInTheDocument();
     }
   });
 
   it("shows each category's balance from master.budgets", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     expect(getByText("₱3,000.00")).toBeInTheDocument();   // Health balance (unique)
     expect(getByText("₱8,000.00")).toBeInTheDocument();   // Finance balance (unique)
   });
 
   it("tints a negative-balance row with the destructive surface", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     const row = getByText("Transit").closest(".envelope-row");
     expect(row?.className).toContain("bg-[var(--destructive-tint-bg)]");
   });
 
   it("marks a low (but non-negative) balance with a hairline marker and Low label", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     const row = getByText("Food").closest(".envelope-row");
     expect(row?.querySelector(".low-marker")).not.toBeNull();
     expect(row?.textContent).toContain("Low");
   });
 
   it("shows a direction chip carrying the month's net change", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     const housingRow = getByText("Housing").closest(".envelope-row");
     // positive net change → up chevron + the delta amount
     expect(housingRow?.textContent).toContain("▲");
@@ -86,13 +84,13 @@ describe("SummaryView spending pace", () => {
   beforeEach(seedHealthyStore);
 
   it("renders a faster/slower-than-usual headline from stats", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     // latest populated day depends on the wall clock; either headline is valid.
     expect(getByText(/(faster|slower) than usual/)).toBeInTheDocument();
   });
 
   it("has a Spending pace section header", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     expect(getByText("Spending pace")).toBeInTheDocument();
   });
 });
@@ -101,36 +99,28 @@ describe("SummaryView header", () => {
   beforeEach(seedHealthyStore);
 
   it("renders a Deeper stats link in the header", () => {
-    const { getByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { getByText } = render(SummaryView);
     expect(getByText("Deeper stats")).toBeInTheDocument();
   });
 
   it("no longer renders the old month stepper", () => {
-    const { queryByRole } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { queryByRole } = render(SummaryView);
     expect(queryByRole("button", { name: /Previous month/i })).toBeNull();
     expect(queryByRole("button", { name: /Next month/i })).toBeNull();
   });
 });
 
-describe("SummaryView actions strip (kept until #131)", () => {
+describe("SummaryView actions strip (relocated to Entries by #131)", () => {
   beforeEach(seedHealthyStore);
 
-  it("renders a Redistribute action button", () => {
-    const { getByRole } = render(SummaryView, { props: { onbulkdelete: noop } });
-    expect(getByRole('button', { name: /Redistribute/i })).toBeInTheDocument();
+  it("no longer renders a Redistribute action button", () => {
+    const { queryByRole } = render(SummaryView);
+    expect(queryByRole('button', { name: /Redistribute/i })).toBeNull();
   });
 
-  it("clicking Redistribute opens the bottom sheet", async () => {
-    const { getByRole, findByText } = render(SummaryView, { props: { onbulkdelete: noop } });
-    await fireEvent.click(getByRole('button', { name: /Redistribute/i }));
-    await waitFor(() => findByText('Redistribute Funds'));
-  });
-
-  it("Bulk delete invokes the onbulkdelete prop", async () => {
-    const onbulkdelete = vi.fn();
-    const { getByRole } = render(SummaryView, { props: { onbulkdelete } });
-    await fireEvent.click(getByRole('button', { name: /Bulk delete/i }));
-    expect(onbulkdelete).toHaveBeenCalledOnce();
+  it("no longer renders a Bulk delete action button", () => {
+    const { queryByRole } = render(SummaryView);
+    expect(queryByRole('button', { name: /Bulk delete/i })).toBeNull();
   });
 });
 
@@ -140,18 +130,18 @@ describe("SummaryView skeleton loading", () => {
   });
 
   it("when loading, does not render 'Loading' text", () => {
-    const { queryByText } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { queryByText } = render(SummaryView);
     expect(queryByText(/loading/i)).not.toBeInTheDocument();
   });
 
   it("when loading, renders shimmer elements", () => {
-    const { container } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { container } = render(SummaryView);
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBeGreaterThan(0);
   });
 
   it("when not loading, renders no shimmer elements", () => {
     seedHealthyStore();
-    const { container } = render(SummaryView, { props: { onbulkdelete: noop } });
+    const { container } = render(SummaryView);
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
   });
 });

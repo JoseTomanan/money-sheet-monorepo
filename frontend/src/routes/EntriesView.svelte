@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
-  import type { Entry } from '../lib/types';
+  import type { Entry, AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
   import { groupEntriesByDate, splitRunPositions } from '../lib/groupEntries';
@@ -9,6 +9,7 @@
   import { entryCountLabel, rowIntent } from '../lib/entrySelection';
   import EntryRow from '../components/entry/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
+  import RedistributeSheet from '../components/category/RedistributeSheet.svelte';
   import * as Sheet from '$lib/components/ui/sheet';
 
   interface Props {
@@ -20,6 +21,8 @@
   }
 
   let { onopenedit, onadd, scrollEl, scrollTop, selectMode = $bindable(false) }: Props = $props();
+
+  let redistOpen = $state(false);
 
   let hasScrolledToBottom = $state(false);
   $effect(() => {
@@ -122,22 +125,38 @@
       value={filter.selectedWeek}
       onSelect={(k) => filter.selectWeek(k)}
     />
-    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex items-baseline gap-[10px]">
+    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex flex-wrap items-baseline gap-[10px]">
       Entries
       <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filter.filtered.length}</span>
-      <!-- Select / Cancel toggle -->
-      {#if selectMode}
+      <!-- On the desktop sidebar (fixed 220px) there isn't room for a labeled
+           Redistribute button beside Entries/count/Select on one line, so this
+           row wraps onto its own line at md: via basis-full. -->
+      <div class="header-actions ml-auto flex items-center gap-3 md:basis-full md:ml-0 md:justify-end md:mt-1">
         <button
-          class="ml-auto font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center"
-          onclick={() => (selectMode = false)}
-        >Cancel</button>
-      {:else}
-        <button
-          class="ml-auto font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center"
-          onclick={() => (selectMode = true)}
-          aria-label="Enter bulk-select mode"
-        >Select</button>
-      {/if}
+          class="redistribute-btn flex items-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
+          onclick={() => (redistOpen = true)}
+          aria-label="Redistribute"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
+            <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+          </svg>
+          <span class="hidden md:inline">Redistribute</span>
+        </button>
+        <!-- Select / Cancel toggle -->
+        {#if selectMode}
+          <button
+            class="font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center"
+            onclick={() => (selectMode = false)}
+          >Cancel</button>
+        {:else}
+          <button
+            class="font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center"
+            onclick={() => (selectMode = true)}
+            aria-label="Enter bulk-select mode"
+          >Select</button>
+        {/if}
+      </div>
     </div>
 
     <!-- Select-all / Clear controls shown only in select mode -->
@@ -311,6 +330,13 @@
     >Cancel</button>
   </div>
 </Sheet.Root>
+
+<RedistributeSheet
+  open={redistOpen}
+  categories={store.categories}
+  onclose={() => (redistOpen = false)}
+  onsubmit={(legs: AddEntryPayload[]) => { store.addEntry(legs); redistOpen = false; }}
+/>
 
 <style>
   .add-entry-card {
