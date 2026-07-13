@@ -475,6 +475,41 @@ describe("deleteEntry", () => {
 // Cycle 9 — success shapes (backwards-compatible)
 // ──────────────────────────────────────────────────────────────
 
+// ──────────────────────────────────────────────────────────────
+// getStats — STATS sheet read action (issue #129)
+// ──────────────────────────────────────────────────────────────
+
+describe("getStats", () => {
+  const STATS_FIXTURE = {
+    categoryMonthChange: [
+      { category: "FOOD", incoming: 1500, outgoing: 900, netChange: 600 },
+    ],
+    spendingPace: [
+      { day: 1, cumulativeThisMonth: 100, cumulativeUsual: 80 },
+    ],
+  };
+
+  it("does not require auth (unauthenticated read, like getEntries/getMaster)", () => {
+    const deps = makeDeps({ getStats: () => STATS_FIXTURE });
+    const res = dispatch({ action: "getStats", secret: undefined, body: {} }, deps);
+    expect(res.ok).toBe(true);
+  });
+
+  it("returns the stats shape from deps.getStats() verbatim", () => {
+    const deps = makeDeps({ getStats: () => STATS_FIXTURE });
+    const res = dispatch({ action: "getStats", secret: undefined, body: {} }, deps);
+    expect(res.ok).toBe(true);
+    expect((res as any).stats).toEqual(STATS_FIXTURE);
+  });
+
+  it("falls back to empty tables when deps.getStats is not provided", () => {
+    const deps = makeDeps(); // no getStats override
+    const res = dispatch({ action: "getStats", secret: undefined, body: {} }, deps);
+    expect(res.ok).toBe(true);
+    expect((res as any).stats).toEqual({ categoryMonthChange: [], spendingPace: [] });
+  });
+});
+
 describe("success response shapes", () => {
   it("addEntry success returns entry in response", () => {
     const deps = makeDeps();

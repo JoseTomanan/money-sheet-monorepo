@@ -3,6 +3,7 @@ import type {
   MasterRow,
   CategoryMap,
   Config,
+  StatsData,
   AddEntryPayload,
   UpdateEntryPatch,
   GatewayAdapter,
@@ -24,6 +25,10 @@ export class MockAdapter implements GatewayAdapter {
 
   async getConfig(): Promise<Config> {
     return mock.mockGetConfig();
+  }
+
+  async getStats(): Promise<StatsData> {
+    return mock.mockGetStats();
   }
 
   async addEntry(payload: AddEntryPayload): Promise<Entry> {

@@ -19,3 +19,4 @@ type __AssertAddEntryPayload = __Expect<__Equal<AddEntryPayload, import("./lib/d
 type __AssertUpdateEntryPatch = __Expect<__Equal<UpdateEntryPatch, import("./lib/dispatch").UpdateEntryPatch>>;
 type __AssertCategoryMap = __Expect<__Equal<CategoryMap, import("./lib/dispatch").CategoryMap>>;
 type __AssertConfigMap = __Expect<__Equal<ConfigMap, import("./lib/dispatch").ConfigMap>>;
+type __AssertStatsData = __Expect<__Equal<StatsData, import("./lib/dispatch").StatsData>>;

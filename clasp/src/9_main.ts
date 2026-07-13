@@ -10,6 +10,7 @@ function apiDeps(): DispatchDeps {
     getMaster: () => getMaster(),
     getEntries: () => getEntries(),
     getConfig: () => getConfig(),
+    getStats: () => getStats(),
     getEntryById: (id) => getEntries().find((e) => e.id === id) ?? null,
     addEntry: (payload) => addEntry(payload),
     addEntries: (payloads) => addEntries(payloads),

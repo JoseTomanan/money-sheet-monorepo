@@ -2,6 +2,13 @@ const SHEET_IO = "INCOMING/OUTGOING";
 const SHEET_MASTER = "MASTER";
 const SHEET_CATEGORIES = "Categories";
 const SHEET_CONFIG = "Config";
+// Literal, not a reference to lib/stats.ts's STATS_SHEET_NAME: dist/lib/*.js
+// loads AFTER the numbered top-level files (alphabetically, "lib" > digits),
+// so a top-level const initializer here can't safely read a lib-module const
+// at load time. Kept equal to STATS_SHEET_NAME by convention; the two are
+// small enough (a single string literal) that drift risk is low, same as the
+// other SHEET_* consts in this file, none of which reference lib modules.
+const SHEET_STATS = "STATS";
 
 function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -28,6 +35,14 @@ function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
 function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(SHEET_CONFIG);
+}
+
+// Tolerant: returns null if the STATS sheet doesn't exist yet (spreadsheets
+// created before docs/adr/0011, until they re-run setup()). GAS never writes
+// to STATS — see lib/stats.ts for the formula-driven layout.
+function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(SHEET_STATS);
 }
 
 // The live GAS-backed IoRepository adapter. Defaults to the INCOMING/OUTGOING

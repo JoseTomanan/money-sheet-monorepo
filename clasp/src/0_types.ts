@@ -21,3 +21,23 @@ type CategoryMap = Record<string, string[]>;
 // { [key]: value } — key-value pairs from the Config sheet
 type ConfigMap = Record<string, string>;
 
+// STATS sheet wire shapes (docs/adr/0011) — mirrors src/lib/dispatch.ts's
+// canonical StatsData; see _contract_parity.ts for the drift guard.
+interface CategoryMonthChange {
+  category: string;
+  incoming: number;
+  outgoing: number;
+  netChange: number;
+}
+
+interface SpendingPaceDay {
+  day: number;
+  cumulativeThisMonth: number;
+  cumulativeUsual: number;
+}
+
+interface StatsData {
+  categoryMonthChange: CategoryMonthChange[];
+  spendingPace: SpendingPaceDay[];
+}
+

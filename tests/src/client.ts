@@ -22,6 +22,26 @@ export type CategoryMap = Record<string, string[]>;
 
 export type ConfigMap = Record<string, string>;
 
+// STATS wire shapes (docs/adr/0011) — mirrors clasp/src/lib/dispatch.ts's
+// canonical StatsData; see wire-contract.parity.ts for the drift guard.
+export interface CategoryMonthChange {
+  category: string;
+  incoming: number;
+  outgoing: number;
+  netChange: number;
+}
+
+export interface SpendingPaceDay {
+  day: number;
+  cumulativeThisMonth: number;
+  cumulativeUsual: number;
+}
+
+export interface StatsData {
+  categoryMonthChange: CategoryMonthChange[];
+  spendingPace: SpendingPaceDay[];
+}
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing required env var: ${name}`);
@@ -68,6 +88,11 @@ export class GasClient {
   async getConfig(): Promise<ConfigMap> {
     const data = await this.post<{ config: ConfigMap }>({ action: "getConfig" });
     return data.config;
+  }
+
+  async getStats(): Promise<StatsData> {
+    const data = await this.post<{ stats: StatsData }>({ action: "getStats" });
+    return data.stats;
   }
 
   async addEntry(payload: AddEntryPayload): Promise<Entry> {
