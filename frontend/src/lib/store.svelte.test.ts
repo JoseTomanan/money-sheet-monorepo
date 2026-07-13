@@ -69,6 +69,9 @@ function makeFetchMock() {
       case "getConfig":
         body = { config: { currency: "₱" } };
         break;
+      case "getStats":
+        body = { stats: { categoryMonthChange: [], spendingPace: [] } };
+        break;
       default:
         body = { error: `unknown action: ${action}` };
     }
@@ -85,6 +88,7 @@ function gasGetBody(url: string): Record<string, unknown> {
     case "getMaster": return { master: freshMaster };
     case "getCategories": return { categories: freshCategories };
     case "getConfig": return { config: { currency: "₱" } };
+    case "getStats": return { stats: { categoryMonthChange: [], spendingPace: [] } };
     default: return {};
   }
 }
@@ -132,8 +136,9 @@ describe("pendingIds", () => {
         if ((url as string).includes("action=getEntries") ||
             (url as string).includes("action=getMaster") ||
             (url as string).includes("action=getCategories") ||
+            (url as string).includes("action=getStats") ||
             (url as string).includes("action=getConfig")) {
-          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {} })) });
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [], master: { onHand: 0, budgets: {} }, categories: {}, stats: { categoryMonthChange: [], spendingPace: [] } })) });
         }
         return new Promise((res) => { resolveFetch = res; });
       })
