@@ -6,6 +6,12 @@
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import PaceChart from '../components/charts/PaceChart.svelte';
 
+  interface Props {
+    ondeeper: () => void;
+  }
+
+  let { ondeeper }: Props = $props();
+
   // "Low" balance heuristic: categories here have no configurable goal/target
   // yet, so a flat peso threshold stands in until a future slice adds one.
   // Chosen to flag categories running thin without firing on every small dip.
@@ -83,12 +89,10 @@
       <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">Funds health</div>
       <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
     </div>
-    <!-- TODO(#132): wire to the Deeper-statistics page once it exists. -->
     <button
-      class="deeper-stats-link bg-transparent border-0 cursor-default font-sans text-[13px] font-medium text-accent pb-1 flex items-center gap-1 opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
-      aria-label="Deeper statistics — coming soon"
-      aria-disabled="true"
-      onclick={(e) => e.preventDefault()}
+      class="deeper-stats-link bg-transparent border-0 cursor-pointer font-sans text-[13px] font-medium text-accent pb-1 flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
+      aria-label="Deeper statistics"
+      onclick={ondeeper}
     >
       Deeper stats
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>

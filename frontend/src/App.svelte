@@ -15,11 +15,20 @@
   import HomeScreen from './routes/HomeScreen.svelte';
   import EntriesView from './routes/EntriesView.svelte';
   import SummaryView from './routes/SummaryView.svelte';
+  import DeeperStatsView from './routes/DeeperStatsView.svelte';
 
   let tab = $state<TabId>('home');
   let scrollArea = $state<HTMLElement | null>(null);
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
+  let deeperOpen = $state(false);
+
+  // Deeper stats is reached only from Summary, not a tab (#132) — leaving
+  // Summary for another tab and coming back should show Summary again.
+  function setTab(t: TabId) {
+    tab = t;
+    deeperOpen = false;
+  }
 
   function handleScroll() {
     if (scrollArea) scrollTop = scrollArea.scrollTop;
@@ -102,11 +111,13 @@
           </div>
         </div>
       {:else if tab === 'home'}
-        <HomeScreen onnavigate={(t) => (tab = t)} />
+        <HomeScreen onnavigate={setTab} />
       {:else if tab === 'entries'}
         <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} bind:selectMode={entriesSelectMode} />
+      {:else if tab === 'summary' && deeperOpen}
+        <DeeperStatsView onback={() => (deeperOpen = false)} />
       {:else}
-        <SummaryView />
+        <SummaryView ondeeper={() => (deeperOpen = true)} />
       {/if}
     </div>
 
@@ -139,7 +150,7 @@
       />
     {/if}
 
-    <TabBar active={tab} onchange={(t) => (tab = t)} />
+    <TabBar active={tab} onchange={setTab} />
 
     <EntrySheet
       open={sheetOpen}

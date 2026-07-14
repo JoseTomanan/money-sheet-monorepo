@@ -99,8 +99,23 @@ describe("SummaryView header", () => {
   beforeEach(seedHealthyStore);
 
   it("renders a Deeper stats link in the header", () => {
-    const { getByText } = render(SummaryView);
+    const { getByText } = render(SummaryView, { ondeeper: vi.fn() });
     expect(getByText("Deeper stats")).toBeInTheDocument();
+  });
+
+  it("the Deeper stats link is a real, focusable button (not the disabled #130 stub)", () => {
+    const { getByRole } = render(SummaryView, { ondeeper: vi.fn() });
+    const btn = getByRole("button", { name: "Deeper statistics" });
+    expect(btn).not.toHaveAttribute("aria-disabled");
+    expect(btn.className).not.toContain("opacity-60");
+  });
+
+  it("calls ondeeper when the Deeper stats link is clicked", async () => {
+    const ondeeper = vi.fn();
+    const { getByRole } = render(SummaryView, { ondeeper });
+    const { fireEvent } = await import("@testing-library/svelte");
+    await fireEvent.click(getByRole("button", { name: "Deeper statistics" }));
+    expect(ondeeper).toHaveBeenCalledOnce();
   });
 
   it("no longer renders the old month stepper", () => {

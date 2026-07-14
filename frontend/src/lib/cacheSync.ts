@@ -2,7 +2,7 @@ import { readCache, writeCache } from './cache';
 import type { CachePayload } from './cache';
 import { dedupeEntries } from './dedupe';
 
-const EMPTY_STATS = { categoryMonthChange: [], spendingPace: [] };
+const EMPTY_STATS = { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
 
 export function loadSnapshot(): CachePayload | null {
   const cache = readCache();
