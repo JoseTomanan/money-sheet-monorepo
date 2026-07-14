@@ -1,6 +1,49 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mockGetStats } from './mock';
 
+describe('mockGetStats — #129 category-change + pace fields', () => {
+  it('every categoryMonthChange row satisfies netChange = incoming - outgoing', async () => {
+    const stats = await mockGetStats();
+    expect(stats.categoryMonthChange.length).toBeGreaterThan(0);
+    for (const c of stats.categoryMonthChange) {
+      expect(c.netChange).toBeCloseTo(c.incoming - c.outgoing);
+    }
+  });
+
+  it('categoryMonthChange has exactly one row per category (no duplicates)', async () => {
+    const stats = await mockGetStats();
+    const names = stats.categoryMonthChange.map((c) => c.category);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('spendingPace days are 1..N in order, one per day of the current month', async () => {
+    const stats = await mockGetStats();
+    const days = stats.spendingPace.map((p) => p.day);
+    expect(days[0]).toBe(1);
+    expect(days).toEqual([...days].sort((a, b) => a - b));
+    expect(days.length).toBeGreaterThanOrEqual(28); // shortest month is February
+  });
+
+  it('cumulativeThisMonth never decreases as the day advances (it is a running total)', async () => {
+    const stats = await mockGetStats();
+    const cum = stats.spendingPace.map((p) => p.cumulativeThisMonth);
+    for (let i = 1; i < cum.length; i++) {
+      // once past "today" the mock zeroes future days; guard the comparison so
+      // the running-total invariant is checked only over populated days.
+      if (cum[i] === 0 && cum[i - 1] > 0) continue;
+      expect(cum[i]).toBeGreaterThanOrEqual(cum[i - 1]);
+    }
+  });
+
+  it('zeroes cumulativeThisMonth for days after today rather than projecting spend', async () => {
+    const todayDay = new Date().getDate();
+    const stats = await mockGetStats();
+    for (const p of stats.spendingPace) {
+      if (p.day > todayDay) expect(p.cumulativeThisMonth).toBe(0);
+    }
+  });
+});
+
 describe('mockGetStats — #132 rolling-window fields', () => {
   it('returns one windowTotals row per rolling window (30d/3mo/12mo)', async () => {
     const stats = await mockGetStats();

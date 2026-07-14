@@ -1104,3 +1104,67 @@ describe("store — deleteEntries", () => {
     expect(store.entries).toEqual(freshEntries);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getStats graceful degradation (#129/#130) — a stats read is non-fatal.
+// STATS drives only the Summary envelope direction/pace numbers; a failure
+// there must NOT gate the connection-error state the way a core read does,
+// and must leave the last-good stats in place rather than surfacing an error.
+// ---------------------------------------------------------------------------
+
+describe("store — getStats graceful degradation", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  // fetch that succeeds for every read EXCEPT getStats, which rejects with a
+  // network-shaped (queueable) error — the strongest case, since a core read
+  // failing that way WOULD set errorIsConnection.
+  function makeStatsOnlyFailureFetch() {
+    return vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("action=getStats")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (typeof url === "string" && url.includes("action=")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }
+      return Promise.reject(new Error("unexpected non-action fetch"));
+    });
+  }
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem(
+      "ms_connection",
+      JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }),
+    );
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeStatsOnlyFailureFetch());
+    store = (await import("./store.svelte")).store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("does not surface an error when only getStats fails", async () => {
+    await store.refreshAll(false);
+    expect(store.error).toBeNull();
+    expect(store.errorIsConnection).toBe(false);
+  });
+
+  it("still loads the core reads when getStats fails", async () => {
+    await store.refreshAll(false);
+    expect(store.entries).toEqual(freshEntries);
+    expect(store.master).toEqual(freshMaster);
+    expect(store.categories).toEqual(freshCategories);
+  });
+
+  it("keeps the last-good (default) stats rather than corrupting them on failure", async () => {
+    await store.refreshAll(false);
+    expect(store.stats).toEqual({
+      categoryMonthChange: [],
+      spendingPace: [],
+      windowTotals: [],
+      windowCategorySpend: [],
+    });
+  });
+});
