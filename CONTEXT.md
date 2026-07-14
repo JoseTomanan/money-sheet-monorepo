@@ -70,6 +70,9 @@ The single transaction log. One row per Entry. Column layout:
 ### MASTER sheet
 A single summary row. Shows ON HAND plus the Budget for each Category. Entirely formula-driven; GAS only reads it, never writes to it.
 
+### STATS sheet
+A formula-driven sheet mirroring MASTER's read-only pattern (ADR-0011): per-Category current-calendar-month net change, a spending-pace table (cumulative outgoing this month vs. a trailing-months baseline), and rolling-window (30d/3mo/12mo) per-category spend totals. Created by `ensureStatsSheet` and read back via the `getStats` GAS action at fixed anchor rows, never `getLastRow()`. GAS never writes to it after creation. All derived/aggregated metrics — the numbers the Summary and Deeper Statistics frontend views render — are computed here or in MASTER, not in frontend code; the frontend renders sheet-sourced numbers, it does not compute them. A per-subcategory-level breakdown in STATS is a fast-follow (#128) — no client-side subcategory computation exists in the frontend to migrate as of #133.
+
 ### Categories sheet
 The Subcategory-to-Category mapping table. Column B = Subcategory name, Column C = parent Category (merged cell spanning all subcategories of that Category). Adding a subcategory here automatically propagates to VLOOKUP formulas in INCOMING/OUTGOING.
 
