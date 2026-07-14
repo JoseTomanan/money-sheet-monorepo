@@ -487,6 +487,12 @@ describe("getStats", () => {
     spendingPace: [
       { day: 1, cumulativeThisMonth: 100, cumulativeUsual: 80 },
     ],
+    windowTotals: [
+      { window: "30d" as const, incoming: 3000, outgoing: 2200, net: 800 },
+    ],
+    windowCategorySpend: [
+      { window: "30d" as const, category: "FOOD", outgoing: 1200 },
+    ],
   };
 
   it("does not require auth (unauthenticated read, like getEntries/getMaster)", () => {
@@ -506,7 +512,7 @@ describe("getStats", () => {
     const deps = makeDeps(); // no getStats override
     const res = dispatch({ action: "getStats", secret: undefined, body: {} }, deps);
     expect(res.ok).toBe(true);
-    expect((res as any).stats).toEqual({ categoryMonthChange: [], spendingPace: [] });
+    expect((res as any).stats).toEqual({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] });
   });
 });
 

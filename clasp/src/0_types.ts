@@ -36,8 +36,25 @@ interface SpendingPaceDay {
   cumulativeUsual: number;
 }
 
+type StatsWindow = "30d" | "3mo" | "12mo";
+
+interface WindowTotal {
+  window: StatsWindow;
+  incoming: number;
+  outgoing: number;
+  net: number;
+}
+
+interface WindowCategorySpend {
+  window: StatsWindow;
+  category: string;
+  outgoing: number;
+}
+
 interface StatsData {
   categoryMonthChange: CategoryMonthChange[];
   spendingPace: SpendingPaceDay[];
+  windowTotals: WindowTotal[];
+  windowCategorySpend: WindowCategorySpend[];
 }
 

@@ -23,19 +23,38 @@
  *         B = cumulative outgoing this calendar month through day A
  *         C = average, across TRAILING_MONTHS prior full calendar months, of
  *             cumulative outgoing through day A of that month ("usual" baseline)
+ * -- #132 rolling-window blocks below, added after the pace block --
+ * Row (5+N+31): blank separator
+ * Row (6+N+31): WINDOW | INCOMING | OUTGOING | NET   <- header
+ * Row (7+N+31)..(6+N+31+W): one row per rolling window (W = STATS_WINDOWS.length)
+ *         A = window key, literal ("30d" | "3mo" | "12mo")
+ *         B = SUMIFS: incoming in [window start, TODAY()]
+ *         C = SUMIFS: outgoing in [window start, TODAY()]
+ *         D = B - C  (net — the "grew/shrank" verdict)
+ * Row (7+N+31+W): blank separator
+ * Row (8+N+31+W): WINDOW | CATEGORY | OUTGOING   <- header
+ * Row (9+N+31+W)..(8+N+31+W+W*N): one row per (window, Category) pair —
+ *         windows outer loop, categories inner loop, same window/category
+ *         order as STATS_WINDOWS / STATS_CATEGORIES
+ *         A = window key, literal
+ *         B = category name, literal
+ *         C = SUMIFS: outgoing resolving to the Category in [window start, TODAY()]
  * ```
  *
- * With the current STATS_CATEGORIES (7 entries) that resolves to:
- * category rows 3-9, separator row 10, pace header row 11, pace rows 12-42.
- * `STATS_ROWS` below is the source of truth for these offsets — read it,
- * don't recompute from STATS_CATEGORIES.length by hand.
+ * With the current STATS_CATEGORIES (7 entries) and STATS_WINDOWS (3 entries)
+ * that resolves to: category rows 3-9, separator row 10, pace header row 11,
+ * pace rows 12-42, separator row 43, window-totals header row 44, window-totals
+ * rows 45-47, separator row 48, window-category header row 49, window-category
+ * rows 50-70. `STATS_ROWS` below is the source of truth for these offsets —
+ * read it, don't recompute from STATS_CATEGORIES.length/STATS_WINDOWS.length
+ * by hand.
  *
  * IMPORTANT — these formulas have NOT been executed against a live
  * spreadsheet. They're written to match MASTER's SUMIF/ARRAYFORMULA
  * conventions and are believed correct, but verifying them against a real
  * sheet (date-boundary edge cases, EOMONTH behavior across year boundaries,
  * merged/blank rows in INCOMING/OUTGOING) is explicitly deferred — flagged
- * in the issue #129 report.
+ * in the issue #129 report and, for the #132 window blocks, in the #132 report.
  */
 
 export const STATS_SHEET_NAME = "STATS";
@@ -57,6 +76,23 @@ export const PACE_DAYS = 31;
 
 const IO_SHEET = `'INCOMING/OUTGOING'`;
 
+/**
+ * Rolling windows for the Deeper Statistics page (#132), trailing back from
+ * TODAY(). Capped at ~1 year — no all-time statistics (money-sheet
+ * architecture contract). `startFormula` is the sheet-formula fragment for
+ * the window's inclusive start date bound; the end bound is always TODAY().
+ */
+export interface StatsWindowDef {
+  key: "30d" | "3mo" | "12mo";
+  startFormula: string;
+}
+
+export const STATS_WINDOWS: StatsWindowDef[] = [
+  { key: "30d", startFormula: "TODAY()-30" },
+  { key: "3mo", startFormula: "EDATE(TODAY(),-3)" },
+  { key: "12mo", startFormula: "EDATE(TODAY(),-12)" },
+];
+
 /** Fixed anchor rows — see the module doc comment for the layout diagram. */
 export const STATS_ROWS = {
   title: 1,
@@ -67,6 +103,22 @@ export const STATS_ROWS = {
   paceHeader: 4 + STATS_CATEGORIES.length,
   paceFirst: 5 + STATS_CATEGORIES.length,
   paceLast: 4 + STATS_CATEGORIES.length + PACE_DAYS,
+} as const;
+
+/**
+ * Second anchor-row block, appended AFTER `STATS_ROWS` so the existing #129
+ * blocks (category, pace) keep their exact row numbers untouched. Computed
+ * from `STATS_ROWS.paceLast`, the last fixed row of the #129 layout.
+ */
+export const STATS_WINDOW_ROWS = {
+  windowSeparator: STATS_ROWS.paceLast + 1,
+  windowTotalsHeader: STATS_ROWS.paceLast + 2,
+  windowTotalsFirst: STATS_ROWS.paceLast + 3,
+  windowTotalsLast: STATS_ROWS.paceLast + 2 + STATS_WINDOWS.length,
+  windowCatSeparator: STATS_ROWS.paceLast + 3 + STATS_WINDOWS.length,
+  windowCatHeader: STATS_ROWS.paceLast + 4 + STATS_WINDOWS.length,
+  windowCatFirst: STATS_ROWS.paceLast + 5 + STATS_WINDOWS.length,
+  windowCatLast: STATS_ROWS.paceLast + 4 + STATS_WINDOWS.length + STATS_WINDOWS.length * STATS_CATEGORIES.length,
 } as const;
 
 /**
@@ -113,6 +165,35 @@ export function spendingPaceFormulas(row: number): { thisMonth: string; usual: s
 }
 
 /**
+ * Builds the three formula cells (incoming, outgoing, net) for one rolling
+ * window's row of the window-totals table. `row` is the 1-indexed sheet row
+ * (used only for the net formula's own-row B/C references); `startFormula`
+ * is the window's inclusive start-date bound (see `STATS_WINDOWS`) — the end
+ * bound is always TODAY().
+ */
+export function windowTotalFormulas(row: number, startFormula: string): { incoming: string; outgoing: string; net: string } {
+  const bounds = `${IO_SHEET}!$B:$B,">="&${startFormula},${IO_SHEET}!$B:$B,"<="&TODAY()`;
+  const incoming = `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"I",${bounds})`;
+  const outgoing = `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",${bounds})`;
+  const net = `=B${row}-C${row}`;
+  return { incoming, outgoing, net };
+}
+
+/**
+ * Builds the outgoing formula cell for one (window, Category) row of the
+ * window-category-spend table. `row` is the 1-indexed sheet row the Category
+ * name lives in (column B), so the formula references `$B{row}` instead of
+ * hardcoding the category string twice. `startFormula` is the window's
+ * inclusive start-date bound — the end bound is always TODAY().
+ */
+export function windowCategorySpendFormulas(row: number, startFormula: string): { outgoing: string } {
+  const outgoing =
+    `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",${IO_SHEET}!$D:$D,$B${row},` +
+    `${IO_SHEET}!$B:$B,">="&${startFormula},${IO_SHEET}!$B:$B,"<="&TODAY())`;
+  return { outgoing };
+}
+
+/**
  * Creates the STATS sheet and seeds it with the fixed layout + formulas when
  * it doesn't already exist. No-op when the sheet is already present — GAS
  * never rewrites STATS cells after creation (they're live formulas; editing
@@ -143,4 +224,26 @@ export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): 
     const { thisMonth, usual } = spendingPaceFormulas(row);
     sheet.appendRow([day, thisMonth, usual]);
   }
+
+  // #132 rolling-window blocks — appended after the #129 pace block so its
+  // fixed rows are untouched. See the module doc comment for the layout.
+  sheet.appendRow(["", "", "", ""]);
+  sheet.appendRow(["WINDOW", "INCOMING", "OUTGOING", "NET"]);
+
+  STATS_WINDOWS.forEach((w, i) => {
+    const row = STATS_WINDOW_ROWS.windowTotalsFirst + i;
+    const { incoming, outgoing, net } = windowTotalFormulas(row, w.startFormula);
+    sheet.appendRow([w.key, incoming, outgoing, net]);
+  });
+
+  sheet.appendRow(["", "", ""]);
+  sheet.appendRow(["WINDOW", "CATEGORY", "OUTGOING"]);
+
+  STATS_WINDOWS.forEach((w, wi) => {
+    STATS_CATEGORIES.forEach((category, ci) => {
+      const row = STATS_WINDOW_ROWS.windowCatFirst + wi * STATS_CATEGORIES.length + ci;
+      const { outgoing } = windowCategorySpendFormulas(row, w.startFormula);
+      sheet.appendRow([w.key, category, outgoing]);
+    });
+  });
 }

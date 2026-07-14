@@ -37,9 +37,26 @@ export interface SpendingPaceDay {
   cumulativeUsual: number;
 }
 
+export type StatsWindow = "30d" | "3mo" | "12mo";
+
+export interface WindowTotal {
+  window: StatsWindow;
+  incoming: number;
+  outgoing: number;
+  net: number;
+}
+
+export interface WindowCategorySpend {
+  window: StatsWindow;
+  category: string;
+  outgoing: number;
+}
+
 export interface StatsData {
   categoryMonthChange: CategoryMonthChange[];
   spendingPace: SpendingPaceDay[];
+  windowTotals: WindowTotal[];
+  windowCategorySpend: WindowCategorySpend[];
 }
 
 function requireEnv(name: string): string {

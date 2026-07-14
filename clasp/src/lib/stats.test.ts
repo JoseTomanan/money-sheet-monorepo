@@ -3,9 +3,13 @@ import {
   ensureStatsSheet,
   categoryMonthChangeFormulas,
   spendingPaceFormulas,
+  windowTotalFormulas,
+  windowCategorySpendFormulas,
   STATS_SHEET_NAME,
   STATS_CATEGORIES,
   STATS_ROWS,
+  STATS_WINDOW_ROWS,
+  STATS_WINDOWS,
   PACE_DAYS,
 } from "./stats";
 
@@ -25,6 +29,32 @@ describe("STATS_ROWS", () => {
     expect(STATS_ROWS.paceHeader).toBe(STATS_ROWS.paceSeparator + 1);
     expect(STATS_ROWS.paceFirst).toBe(STATS_ROWS.paceHeader + 1);
     expect(STATS_ROWS.paceLast).toBe(STATS_ROWS.paceFirst + PACE_DAYS - 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// STATS_WINDOW_ROWS — #132 rolling-window anchor rows (appended after #129)
+// ---------------------------------------------------------------------------
+
+describe("STATS_WINDOW_ROWS", () => {
+  it("lays out the window-totals block right after the pace block, one row per STATS_WINDOWS entry", () => {
+    expect(STATS_WINDOW_ROWS.windowSeparator).toBe(STATS_ROWS.paceLast + 1);
+    expect(STATS_WINDOW_ROWS.windowTotalsHeader).toBe(STATS_WINDOW_ROWS.windowSeparator + 1);
+    expect(STATS_WINDOW_ROWS.windowTotalsFirst).toBe(STATS_WINDOW_ROWS.windowTotalsHeader + 1);
+    expect(STATS_WINDOW_ROWS.windowTotalsLast).toBe(STATS_WINDOW_ROWS.windowTotalsFirst + STATS_WINDOWS.length - 1);
+  });
+
+  it("lays out the window-category-spend block after its own separator, spanning windows x categories rows", () => {
+    expect(STATS_WINDOW_ROWS.windowCatSeparator).toBe(STATS_WINDOW_ROWS.windowTotalsLast + 1);
+    expect(STATS_WINDOW_ROWS.windowCatHeader).toBe(STATS_WINDOW_ROWS.windowCatSeparator + 1);
+    expect(STATS_WINDOW_ROWS.windowCatFirst).toBe(STATS_WINDOW_ROWS.windowCatHeader + 1);
+    expect(STATS_WINDOW_ROWS.windowCatLast).toBe(
+      STATS_WINDOW_ROWS.windowCatFirst + STATS_WINDOWS.length * STATS_CATEGORIES.length - 1
+    );
+  });
+
+  it("STATS_WINDOWS has exactly the 30d/3mo/12mo trio, capped at ~1 year", () => {
+    expect(STATS_WINDOWS.map((w) => w.key)).toEqual(["30d", "3mo", "12mo"]);
   });
 });
 
@@ -86,6 +116,48 @@ describe("spendingPaceFormulas", () => {
 });
 
 // ---------------------------------------------------------------------------
+// windowTotalFormulas
+// ---------------------------------------------------------------------------
+
+describe("windowTotalFormulas", () => {
+  it("bounds both sums to the given window start through TODAY()", () => {
+    const { incoming, outgoing } = windowTotalFormulas(45, "TODAY()-30");
+    expect(incoming).toContain('">="&TODAY()-30');
+    expect(incoming).toContain('"<="&TODAY()');
+    expect(outgoing).toContain('">="&TODAY()-30');
+  });
+
+  it("incoming sums direction I, outgoing sums direction O", () => {
+    const { incoming, outgoing } = windowTotalFormulas(45, "EDATE(TODAY(),-3)");
+    expect(incoming).toContain('"I"');
+    expect(outgoing).toContain('"O"');
+  });
+
+  it("net formula subtracts outgoing (col C) from incoming (col B) on the same row", () => {
+    const { net } = windowTotalFormulas(47, "EDATE(TODAY(),-12)");
+    expect(net).toBe("=B47-C47");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// windowCategorySpendFormulas
+// ---------------------------------------------------------------------------
+
+describe("windowCategorySpendFormulas", () => {
+  it("references the category's own row for the tag lookup ($B{row})", () => {
+    const { outgoing } = windowCategorySpendFormulas(50, "TODAY()-30");
+    expect(outgoing).toContain("$B50");
+  });
+
+  it("sums only outgoing, bounded to the given window start through TODAY()", () => {
+    const { outgoing } = windowCategorySpendFormulas(50, "EDATE(TODAY(),-3)");
+    expect(outgoing).toContain('"O"');
+    expect(outgoing).toContain('">="&EDATE(TODAY(),-3)');
+    expect(outgoing).toContain('"<="&TODAY()');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ensureStatsSheet — fake spreadsheet helpers (mirrors config.test.ts)
 // ---------------------------------------------------------------------------
 
@@ -119,12 +191,33 @@ describe("ensureStatsSheet", () => {
     expect(insertSheet).not.toHaveBeenCalled();
   });
 
-  it("writes one appendRow call per title/header/category/separator/pace row", () => {
+  it("writes one appendRow call per title/header/category/separator/pace/window row", () => {
     const { ss, appendRow } = makeSpreadsheet(null);
     ensureStatsSheet(ss);
     // title(1) + category header(1) + categories(N) + separator(1) + pace header(1) + pace days(31)
-    const expectedCalls = 1 + 1 + STATS_CATEGORIES.length + 1 + 1 + PACE_DAYS;
+    // + separator(1) + window-totals header(1) + windows(W) + separator(1) + window-cat header(1) + windows*categories(W*N)
+    const expectedCalls =
+      1 + 1 + STATS_CATEGORIES.length + 1 + 1 + PACE_DAYS +
+      1 + 1 + STATS_WINDOWS.length + 1 + 1 + STATS_WINDOWS.length * STATS_CATEGORIES.length;
     expect(appendRow).toHaveBeenCalledTimes(expectedCalls);
+  });
+
+  it("writes every STATS_WINDOWS key as a window-totals row's first column", () => {
+    const { ss, appendRow } = makeSpreadsheet(null);
+    ensureStatsSheet(ss);
+    for (const w of STATS_WINDOWS) {
+      expect(appendRow).toHaveBeenCalledWith(expect.arrayContaining([w.key]));
+    }
+  });
+
+  it("writes one window-category-spend row per (window, category) pair", () => {
+    const { ss, appendRow } = makeSpreadsheet(null);
+    ensureStatsSheet(ss);
+    for (const w of STATS_WINDOWS) {
+      for (const category of STATS_CATEGORIES) {
+        expect(appendRow).toHaveBeenCalledWith([w.key, category, expect.stringContaining("SUMIFS")]);
+      }
+    }
   });
 
   it("writes every STATS_CATEGORIES entry as a category row's first column", () => {

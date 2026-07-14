@@ -115,14 +115,44 @@ export interface SpendingPaceDay {
 }
 
 /**
- * Deliberately just two tables for now (#130's Summary revamp needs). The
- * shape is a plain object of named arrays so #132's rolling-window
- * (30d/3mo/12mo) extension to Deeper Statistics can add sibling fields
- * without breaking this parity contract.
+ * Rolling-window key for the Deeper Statistics page (#132). Capped at ~1
+ * year — no all-time statistics (see money-sheet-architecture-contract).
+ */
+export type StatsWindow = "30d" | "3mo" | "12mo";
+
+/**
+ * One rolling window's incoming/outgoing/net totals, trailing back from
+ * today. Drives the Deeper Statistics "Flow" readout and net verdict.
+ */
+export interface WindowTotal {
+  window: StatsWindow;
+  incoming: number;
+  outgoing: number;
+  net: number;
+}
+
+/**
+ * One (window, Category) pair's outgoing total — the per-window category
+ * distribution ("Where it went") on the Deeper Statistics page. Category
+ * level only (per CATEGORY_ORDER / STATS_CATEGORIES); subcategory
+ * drilldowns are an explicit fast-follow, not this slice.
+ */
+export interface WindowCategorySpend {
+  window: StatsWindow;
+  category: string;
+  outgoing: number;
+}
+
+/**
+ * A plain object of named arrays (#129's extensibility intent) so #132's
+ * rolling-window (30d/3mo/12mo) extension to Deeper Statistics can add
+ * sibling fields without breaking this parity contract.
  */
 export interface StatsData {
   categoryMonthChange: CategoryMonthChange[];
   spendingPace: SpendingPaceDay[];
+  windowTotals: WindowTotal[];
+  windowCategorySpend: WindowCategorySpend[];
 }
 
 export type ApiResponse =
@@ -417,7 +447,7 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
     }
 
     if (action === "getStats") {
-      const stats = deps.getStats?.() ?? { categoryMonthChange: [], spendingPace: [] };
+      const stats = deps.getStats?.() ?? { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
       return { ok: true, stats };
     }
 

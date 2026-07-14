@@ -6,3 +6,5 @@
 declare const ensureStatsSheet: typeof import("./lib/stats").ensureStatsSheet;
 declare const STATS_SHEET_NAME: typeof import("./lib/stats").STATS_SHEET_NAME;
 declare const STATS_ROWS: typeof import("./lib/stats").STATS_ROWS;
+declare const STATS_WINDOW_ROWS: typeof import("./lib/stats").STATS_WINDOW_ROWS;
+declare const STATS_WINDOWS: typeof import("./lib/stats").STATS_WINDOWS;

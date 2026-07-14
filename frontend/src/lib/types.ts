@@ -45,9 +45,28 @@ export interface SpendingPaceDay {
   cumulativeUsual: number;
 }
 
+// Rolling-window key for the Deeper Statistics page (#132). Capped at ~1
+// year — no all-time statistics.
+export type StatsWindow = "30d" | "3mo" | "12mo";
+
+export interface WindowTotal {
+  window: StatsWindow;
+  incoming: number;
+  outgoing: number;
+  net: number;
+}
+
+export interface WindowCategorySpend {
+  window: StatsWindow;
+  category: string;
+  outgoing: number;
+}
+
 export interface StatsData {
   categoryMonthChange: CategoryMonthChange[];
   spendingPace: SpendingPaceDay[];
+  windowTotals: WindowTotal[];
+  windowCategorySpend: WindowCategorySpend[];
 }
 
 export interface AddEntryPayload {
