@@ -16,6 +16,7 @@
  * - `getMaster`:   `{ ok: true, master: MasterRow }`
  * - `getCategories`: `{ ok: true, categories: CategoryMap }`
  * - `getConfig`:   `{ ok: true, config: ConfigMap }`
+ * - `getStats`:    `{ ok: true, stats: StatsData }`
  * - `addEntry`:    `{ ok: true, entry: Entry }`
  * - `updateEntry`: `{ ok: true }`
  * - `deleteEntry`: `{ ok: true }`
@@ -81,11 +82,85 @@ export type CategoryMap = Record<string, string[]>;
 // { [key]: value } — key-value pairs from the Config sheet
 export type ConfigMap = Record<string, string>;
 
+// ──────────────────────────────────────────────────────────────
+// STATS — derived metrics, formula-driven in the STATS sheet
+// (docs/adr/0011). GAS only reads this shape; nothing in this repo
+// computes it — every field here is populated straight from sheet cells.
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * One Category's net change for the *current calendar month* — incoming
+ * tagged to the Category minus outgoing resolving to it (Subcategory or
+ * bare Category tag both roll up via col D, same as MASTER's budget SUMIFs).
+ */
+export interface CategoryMonthChange {
+  category: string;
+  incoming: number;
+  outgoing: number;
+  netChange: number;
+}
+
+/**
+ * One day-of-month row of the spending-pace table: this calendar month's
+ * cumulative outgoing through that day, and the trailing-months-average
+ * cumulative outgoing through that same day ("usual" baseline). `day` is
+ * 1-31; rows for days past the current month's length carry `0`/unused
+ * values (the sheet formula suppresses them via IF(...,"","")) — see
+ * lib/stats.ts for the exact cell math.
+ */
+export interface SpendingPaceDay {
+  day: number;
+  cumulativeThisMonth: number;
+  cumulativeUsual: number;
+}
+
+/**
+ * Rolling-window key for the Deeper Statistics page (#132). Capped at ~1
+ * year — no all-time statistics (see money-sheet-architecture-contract).
+ */
+export type StatsWindow = "30d" | "3mo" | "12mo";
+
+/**
+ * One rolling window's incoming/outgoing/net totals, trailing back from
+ * today. Drives the Deeper Statistics "Flow" readout and net verdict.
+ */
+export interface WindowTotal {
+  window: StatsWindow;
+  incoming: number;
+  outgoing: number;
+  net: number;
+}
+
+/**
+ * One (window, Category) pair's outgoing total — the per-window category
+ * distribution ("Where it went") on the Deeper Statistics page. Category
+ * level only (per CATEGORY_ORDER / STATS_CATEGORIES); subcategory
+ * drilldowns are an explicit fast-follow, not this slice.
+ */
+export interface WindowCategorySpend {
+  window: StatsWindow;
+  category: string;
+  outgoing: number;
+}
+
+/**
+ * A plain object of named arrays (#129's extensibility intent) so #132's
+ * rolling-window (30d/3mo/12mo) extension to Deeper Statistics can add
+ * sibling fields without breaking this parity contract.
+ */
+export interface StatsData {
+  categoryMonthChange: CategoryMonthChange[];
+  spendingPace: SpendingPaceDay[];
+  windowTotals: WindowTotal[];
+  windowCategorySpend: WindowCategorySpend[];
+}
+
 export type ApiResponse =
   | { ok: true; entries: EntryData[] }
   | { ok: true; master: unknown }
   | { ok: true; categories: CategoryMap }
   | { ok: true; config: unknown }
+  | { ok: true; stats: StatsData }
   | { ok: true; entry: EntryData }
   | { ok: true }
   | { ok: false; error: string; code: ErrorCode; message: string };
@@ -108,6 +183,7 @@ export interface DispatchDeps {
   getMaster?: () => unknown;
   getEntries?: () => EntryData[];
   getConfig?: () => unknown;
+  getStats?: () => StatsData;
   getEntryById: (id: number) => EntryData | null;
   addEntry: (payload: AddEntryPayload) => EntryData;
   /** Inserts all legs under one document-lock acquisition; returns entries in array order. */
@@ -315,7 +391,7 @@ function validateUpdatePayload(
 // ──────────────────────────────────────────────────────────────
 
 // Public reads — no secret required (ADR-0002).
-const READ_ACTIONS = new Set(["getEntries", "getMaster", "getCategories", "getConfig"]);
+const READ_ACTIONS = new Set(["getEntries", "getMaster", "getCategories", "getConfig", "getStats"]);
 // Actions gated behind the shared secret. `validate` is the secret-check
 // endpoint itself, so it must be authenticated even though it mutates nothing —
 // the frontend's connection check relies on a wrong secret being rejected here.
@@ -368,6 +444,11 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
     if (action === "getConfig") {
       const config = deps.getConfig?.();
       return { ok: true, config };
+    }
+
+    if (action === "getStats") {
+      const stats = deps.getStats?.() ?? { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
+      return { ok: true, stats };
     }
 
     if (action === "validate") {

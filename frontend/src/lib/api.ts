@@ -3,6 +3,7 @@ import type {
   MasterRow,
   CategoryMap,
   Config,
+  StatsData,
   AddEntryPayload,
   UpdateEntryPatch,
   GatewayAdapter,
@@ -47,6 +48,10 @@ export async function getCategories(): Promise<CategoryMap> {
 
 export async function getConfig(): Promise<Config> {
   return adapter().getConfig();
+}
+
+export async function getStats(): Promise<StatsData> {
+  return adapter().getStats();
 }
 
 export async function addEntry(payload: AddEntryPayload): Promise<Entry> {

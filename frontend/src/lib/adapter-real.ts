@@ -4,6 +4,7 @@ import type {
   MasterRow,
   CategoryMap,
   Config,
+  StatsData,
   AddEntryPayload,
   UpdateEntryPatch,
   GatewayAdapter,
@@ -144,6 +145,11 @@ export class RealAdapter implements GatewayAdapter {
     } catch {
       return DEFAULT_CONFIG;
     }
+  }
+
+  async getStats(): Promise<StatsData> {
+    const data = await this.gasGet<{ stats: StatsData }>("getStats");
+    return data.stats;
   }
 
   async addEntry(payload: AddEntryPayload): Promise<Entry> {

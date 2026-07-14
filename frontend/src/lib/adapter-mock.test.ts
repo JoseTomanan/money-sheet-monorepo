@@ -106,4 +106,24 @@ describe("MockAdapter — read methods return expected shapes", () => {
     const config = await adapter.getConfig();
     expect(typeof config.currency).toBe("string");
   });
+
+  it("getStats returns categoryMonthChange and spendingPace arrays", async () => {
+    const adapter = new MockAdapter();
+    const stats = await adapter.getStats();
+    expect(Array.isArray(stats.categoryMonthChange)).toBe(true);
+    expect(stats.categoryMonthChange.length).toBeGreaterThan(0);
+    expect(Array.isArray(stats.spendingPace)).toBe(true);
+    expect(stats.spendingPace.length).toBeGreaterThan(0);
+    for (const row of stats.categoryMonthChange) {
+      expect(typeof row.category).toBe("string");
+      expect(typeof row.incoming).toBe("number");
+      expect(typeof row.outgoing).toBe("number");
+      expect(row.netChange).toBeCloseTo(row.incoming - row.outgoing);
+    }
+    for (const row of stats.spendingPace) {
+      expect(typeof row.day).toBe("number");
+      expect(typeof row.cumulativeThisMonth).toBe("number");
+      expect(typeof row.cumulativeUsual).toBe("number");
+    }
+  });
 });

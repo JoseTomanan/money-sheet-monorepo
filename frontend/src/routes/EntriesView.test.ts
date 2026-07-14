@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent } from "@testing-library/svelte";
+import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import type { Entry } from "../lib/types";
 import EntriesView from "./EntriesView.svelte";
 
@@ -14,6 +14,8 @@ const mockStore = vi.hoisted(() => ({
   masterLoading: false,
   draining: false,
   drainQueue: vi.fn(),
+  addEntry: vi.fn(),
+  deleteEntries: vi.fn(),
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
@@ -296,6 +298,29 @@ describe("EntriesView Sync Now button", () => {
     const { getByRole } = render(EntriesView, baseProps());
     await fireEvent.click(getByRole("button", { name: /sync now/i }));
     expect(mockStore.drainQueue).toHaveBeenCalledOnce();
+  });
+});
+
+describe("EntriesView Redistribute action", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-17"));
+    mockStore.loading = false;
+    mockStore.entries = [];
+    mockStore.localIds = new Set();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("renders a Redistribute action beside Select in the header", () => {
+    const { getByRole } = render(EntriesView, baseProps());
+    expect(getByRole("button", { name: /Redistribute/i })).toBeInTheDocument();
+    expect(getByRole("button", { name: /Enter bulk-select mode/i })).toBeInTheDocument();
+  });
+
+  it("clicking Redistribute opens the RedistributeSheet", async () => {
+    const { getByRole, findByText } = render(EntriesView, baseProps());
+    await fireEvent.click(getByRole("button", { name: /Redistribute/i }));
+    await waitFor(() => findByText("Redistribute Funds"));
   });
 });
 

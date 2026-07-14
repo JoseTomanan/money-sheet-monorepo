@@ -10,6 +10,7 @@ import type {
   MasterRow,
   CategoryMap,
   Config,
+  StatsData,
   AddEntryPayload,
   UpdateEntryPatch,
 } from './types';
@@ -18,6 +19,7 @@ let entries = $state<Entry[]>([]);
 let master = $state<MasterRow>({ onHand: 0, budgets: {} });
 let categories = $state<CategoryMap>({});
 let config = $state<Config>({ currency: "₱" });
+let stats = $state<StatsData>({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] });
 let loading = $state(false);
 let error = $state<string | null>(null);
 let errorIsConnection = $state(false);
@@ -45,16 +47,21 @@ async function refreshAll(silent = false): Promise<void> {
     errorIsConnection = false;
   }
   try {
-    const [e, m, c, cfg] = await Promise.allSettled([
+    const [e, m, c, cfg, st] = await Promise.allSettled([
       api.getEntries(),
       api.getMaster(),
       api.getCategories(),
       api.getConfig(),
+      api.getStats(),
     ]);
     if (e.status === 'fulfilled') entries = e.value;
     if (m.status === 'fulfilled') master = m.value;
     if (c.status === 'fulfilled') categories = c.value;
     if (cfg.status === 'fulfilled') config = cfg.value;
+    // Stats is a non-fatal read, same spirit as master/config: a failure here
+    // degrades gracefully (envelope rows just miss direction/pace data) rather
+    // than gating the connection-error state below.
+    if (st.status === 'fulfilled') stats = st.value;
 
     const failure = [e, m, c].find((r): r is PromiseRejectedResult => r.status === 'rejected');
     if (failure) {
@@ -67,7 +74,7 @@ async function refreshAll(silent = false): Promise<void> {
 
     engine.injectQueue();
     localIds = getLocalEntryIds();
-    saveSnapshot({ entries, master, categories, config });
+    saveSnapshot({ entries, master, categories, config, stats });
   } finally {
     if (!silent) loading = false;
   }
@@ -138,6 +145,7 @@ async function init(): Promise<void> {
     master = cache.master;
     categories = cache.categories;
     if (cache.config) config = cache.config;
+    if (cache.stats) stats = cache.stats;
     engine.injectQueue();
     localIds = getLocalEntryIds();
     syncing = true;
@@ -159,6 +167,7 @@ export const store = {
   get master() { return master; },
   get categories() { return categories; },
   get config() { return config; },
+  get stats() { return stats; },
   get loading() { return loading; },
   get error() { return error; },
   get errorIsConnection() { return errorIsConnection; },

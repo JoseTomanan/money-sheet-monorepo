@@ -51,12 +51,15 @@ npx tsc --noEmit   # type-check locally
 | `getMaster` | GET | none |
 | `getCategories` | GET | none |
 | `getConfig` | GET | none |
+| `getStats` | GET | none |
 | `addEntry` | POST | secret |
 | `addEntries` | POST | secret |
 | `updateEntry` | POST | secret |
 | `deleteEntry` | POST | secret |
 
-The per-subcategory breakdown is computed client-side from `getEntries` + `getCategories` — there is no `getSubcategoryBreakdown` action in the GAS dispatcher.
+`getStats` reads the STATS sheet — a formula-driven, GAS-read-only sheet mirroring MASTER (per-category current-calendar-month net change, plus a spending-pace table). See ADR-0011: all derived/computed metrics belong in formula-driven sheets, not in code.
+
+The frontend renders derived metrics sourced from MASTER/STATS (`getStats`) — it does not compute them (ADR-0011). The old "per-subcategory breakdown is computed client-side" note is superseded: as of #133, no client-side subcategory-spend computation exists in the frontend (there was no live consumer left to migrate). A per-subcategory-level `getStats`/STATS breakdown, with a `getSubcategoryBreakdown`-equivalent action, remains a fast-follow to be added when a consumer needs it.
 
 `addEntry` writes `ENTRY ID` to col H as an auto-incrementing integer (max existing ID + 1). `addEntries` inserts an ordered array of entries atomically under one document lock (validate-then-write, no partial writes) — see ADR-0008.
 

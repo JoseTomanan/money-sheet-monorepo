@@ -2,6 +2,12 @@ import type {
   Entry,
   MasterRow,
   Config,
+  StatsData,
+  CategoryMonthChange,
+  SpendingPaceDay,
+  StatsWindow,
+  WindowTotal,
+  WindowCategorySpend,
   AddEntryPayload,
   UpdateEntryPatch,
 } from "./types";
@@ -124,4 +130,108 @@ export function mockDeleteEntry(id: number): Promise<void> {
 
 export function mockGetConfig(): Promise<Config> {
   return Promise.resolve({ currency: "₱" });
+}
+
+// ---------------------------------------------------------------------------
+// mockGetStats — client-side stand-in for the STATS sheet's formulas
+// (docs/adr/0011). This is Mock-Mode-only: there is no real GAS backend to
+// hit, so (like mockGetMaster above) this recomputes what the sheet would
+// have produced. It is NOT a precedent for computing stats client-side
+// against a real Connection — RealAdapter.getStats() only ever reads.
+// ---------------------------------------------------------------------------
+
+function monthKey(date: string): string {
+  return date.slice(0, 7); // "YYYY-MM"
+}
+
+function dayOfMonth(date: string): number {
+  return Number(date.slice(8, 10));
+}
+
+function shiftMonthKey(key: string, delta: number): string {
+  const [y, m] = key.split('-').map(Number);
+  const total = y * 12 + (m - 1) + delta;
+  const ny = Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12 + 1;
+  return `${ny}-${String(nm).padStart(2, '0')}`;
+}
+
+function daysInMonth(key: string): number {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+const STATS_TRAILING_MONTHS = 3;
+
+// #132 rolling-window stand-ins — trailing back from today, capped at ~1
+// year (STATS_WINDOWS below). Same Mock-Mode-only caveat as the rest of this
+// section: RealAdapter.getStats() never computes, only reads.
+const STATS_WINDOWS: StatsWindow[] = ["30d", "3mo", "12mo"];
+
+function dateStr(y: number, m: number, d: number): string {
+  const date = new Date(y, m - 1, d);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** Inclusive start date for a rolling window, trailing back from today(). */
+function windowStart(window: StatsWindow): string {
+  const [y, m, d] = today().split('-').map(Number);
+  if (window === "30d") return dateStr(y, m, d - 30);
+  const monthsBack = window === "3mo" ? 3 : 12;
+  return dateStr(y, m - monthsBack, d);
+}
+
+export function mockGetStats(): Promise<StatsData> {
+  const currentMonth = monthKey(today());
+  const todayDay = dayOfMonth(today());
+
+  const categoryMonthChange: CategoryMonthChange[] = Object.keys(CATEGORY_MAP).map((category) => {
+    const incoming = entries
+      .filter(e => e.direction === "I" && e.mainCategory === category && monthKey(e.date) === currentMonth)
+      .reduce((s, e) => s + e.amount, 0);
+    const outgoing = entries
+      .filter(e => e.direction === "O" && e.mainCategory === category && monthKey(e.date) === currentMonth)
+      .reduce((s, e) => s + e.amount, 0);
+    return { category, incoming, outgoing, netChange: incoming - outgoing };
+  });
+
+  const daysThisMonth = daysInMonth(currentMonth);
+  const spendingPace: SpendingPaceDay[] = [];
+  for (let day = 1; day <= daysThisMonth; day++) {
+    const cumulativeThisMonth = day > todayDay ? 0 : entries
+      .filter(e => e.direction === "O" && monthKey(e.date) === currentMonth && dayOfMonth(e.date) <= day)
+      .reduce((s, e) => s + e.amount, 0);
+
+    let trailingTotal = 0;
+    for (let m = 1; m <= STATS_TRAILING_MONTHS; m++) {
+      const key = shiftMonthKey(currentMonth, -m);
+      trailingTotal += entries
+        .filter(e => e.direction === "O" && monthKey(e.date) === key && dayOfMonth(e.date) <= day)
+        .reduce((s, e) => s + e.amount, 0);
+    }
+    const cumulativeUsual = trailingTotal / STATS_TRAILING_MONTHS;
+
+    spendingPace.push({ day, cumulativeThisMonth, cumulativeUsual });
+  }
+
+  const todayStr = today();
+  const windowTotals: WindowTotal[] = STATS_WINDOWS.map((window) => {
+    const start = windowStart(window);
+    const inWindow = entries.filter(e => e.date >= start && e.date <= todayStr);
+    const incoming = inWindow.filter(e => e.direction === "I").reduce((s, e) => s + e.amount, 0);
+    const outgoing = inWindow.filter(e => e.direction === "O").reduce((s, e) => s + e.amount, 0);
+    return { window, incoming, outgoing, net: incoming - outgoing };
+  });
+
+  const windowCategorySpend: WindowCategorySpend[] = STATS_WINDOWS.flatMap((window) => {
+    const start = windowStart(window);
+    return Object.keys(CATEGORY_MAP).map((category) => {
+      const outgoing = entries
+        .filter(e => e.direction === "O" && e.mainCategory === category && e.date >= start && e.date <= todayStr)
+        .reduce((s, e) => s + e.amount, 0);
+      return { window, category, outgoing };
+    });
+  });
+
+  return Promise.resolve({ categoryMonthChange, spendingPace, windowTotals, windowCategorySpend });
 }

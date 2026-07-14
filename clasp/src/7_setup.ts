@@ -6,4 +6,5 @@ function setup(): void {
     () => Utilities.getUuid()
   );
   ensureConfigSheet(ss);
+  ensureStatsSheet(ss);
 }

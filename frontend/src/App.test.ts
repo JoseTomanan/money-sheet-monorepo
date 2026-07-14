@@ -18,6 +18,12 @@ const mockStore = vi.hoisted(() => ({
   categories: {},
   master: { onHand: 0, budgets: {} },
   config: { currency: "₱" },
+  stats: {
+    categoryMonthChange: [] as Array<{ category: string; incoming: number; outgoing: number; netChange: number }>,
+    spendingPace: [] as Array<{ day: number; cumulativeThisMonth: number; cumulativeUsual: number }>,
+    windowTotals: [] as Array<{ window: "30d" | "3mo" | "12mo"; incoming: number; outgoing: number; net: number }>,
+    windowCategorySpend: [] as Array<{ window: "30d" | "3mo" | "12mo"; category: string; outgoing: number }>,
+  },
   pendingIds: new Set<number>(),
   toastMsg: null as string | null,
   toastIsConnection: false,
@@ -136,5 +142,46 @@ describe("App — SettingsGate shown when mockMode is false and no connection", 
   it("does not render MockBanner when mockMode is false", () => {
     const { queryByText } = render(App);
     expect(queryByText("Mock mode")).toBeNull();
+  });
+});
+
+// ── Deeper statistics navigation (#132) — reached from Summary, not a tab ──
+
+describe("App — Deeper statistics navigation", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+    mockStore.error = null;
+    mockStore.toastMsg = null;
+    mockConnection.current = {
+      gasUrl: "https://fake.example",
+      apiSecret: "secret",
+    };
+    mockMockMode.current = false;
+  });
+
+  it("clicking Deeper stats from Summary shows the Deeper statistics page", async () => {
+    const { getByRole, getByText } = render(App);
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    await fireEvent.click(getByRole("button", { name: "Deeper statistics" }));
+    expect(getByText("Deeper stats")).toBeInTheDocument();
+    expect(getByText("Flow")).toBeInTheDocument();
+  });
+
+  it("the Deeper page's back link returns to Summary", async () => {
+    const { getByRole, queryByText, getByText } = render(App);
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    await fireEvent.click(getByRole("button", { name: "Deeper statistics" }));
+    await fireEvent.click(getByRole("button", { name: "Back to Summary" }));
+    expect(queryByText("Flow")).toBeNull();
+    expect(getByText("Funds health")).toBeInTheDocument();
+  });
+
+  it("leaving Summary for another tab and returning shows Summary, not the Deeper page", async () => {
+    const { getByRole, queryByText } = render(App);
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    await fireEvent.click(getByRole("button", { name: "Deeper statistics" }));
+    await fireEvent.click(getByRole("button", { name: "Home" }));
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    expect(queryByText("Flow")).toBeNull();
   });
 });

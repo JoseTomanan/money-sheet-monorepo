@@ -13,13 +13,14 @@
  * app code, so it contributes nothing to the built bundle.
  */
 
-import type { Entry, AddEntryPayload, AddEntriesPayload, UpdateEntryPatch, CategoryMap, Config, ApiErrorEnvelope } from './types';
+import type { Entry, AddEntryPayload, AddEntriesPayload, UpdateEntryPatch, CategoryMap, Config, ApiErrorEnvelope, StatsData } from './types';
 import type {
   EntryData,
   AddEntryPayload as ClaspAddEntryPayload,
   AddEntriesPayload as ClaspAddEntriesPayload,
   UpdateEntryPatch as ClaspUpdateEntryPatch,
   CategoryMap as ClaspCategoryMap,
+  StatsData as ClaspStatsData,
   ApiResponse,
 } from '../../../clasp/src/lib/dispatch';
 
@@ -33,6 +34,7 @@ type __AssertAddEntryPayload = __Expect<__Equal<AddEntryPayload, ClaspAddEntryPa
 type __AssertAddEntriesPayload = __Expect<__Equal<AddEntriesPayload, ClaspAddEntriesPayload>>;
 type __AssertUpdateEntryPatch = __Expect<__Equal<UpdateEntryPatch, ClaspUpdateEntryPatch>>;
 type __AssertCategoryMap = __Expect<__Equal<CategoryMap, ClaspCategoryMap>>;
+type __AssertStatsData = __Expect<__Equal<StatsData, ClaspStatsData>>;
 
 // The error envelope's failure arm: `{ ok: false; error; code; message }`.
 type __ApiErrorFromDispatch = Extract<ApiResponse, { ok: false }>;
