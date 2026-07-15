@@ -139,6 +139,29 @@ describe("SummaryView actions strip (relocated to Entries by #131)", () => {
   });
 });
 
+describe("SummaryView desktop layout (#responsive)", () => {
+  beforeEach(seedHealthyStore);
+
+  it("wraps the envelope list and spending pace in a shared two-column grid", () => {
+    const { container, getByText } = render(SummaryView);
+    const cols = container.querySelector(".summary-cols");
+    expect(cols).not.toBeNull();
+    expect(getByText("Housing").closest(".summary-cols")).toBe(cols);
+    expect(getByText("Spending pace").closest(".summary-cols")).toBe(cols);
+  });
+
+  it("keeps envelopes in the left pane and spending pace in a distinct right-hand pane", () => {
+    const { getByText } = render(SummaryView);
+    expect(getByText("Housing").closest(".summary-aside")).toBeNull();
+    expect(getByText("Spending pace").closest(".summary-aside")).not.toBeNull();
+  });
+
+  it("declares the desktop reflow via a responsive grid class, not just structure", () => {
+    const { container } = render(SummaryView);
+    expect(container.querySelector(".summary-cols")?.className).toContain("md:grid");
+  });
+});
+
 describe("SummaryView skeleton loading", () => {
   beforeEach(() => {
     mockStore.loading = true;
@@ -158,5 +181,10 @@ describe("SummaryView skeleton loading", () => {
     seedHealthyStore();
     const { container } = render(SummaryView);
     expect(container.querySelectorAll('[class*="shimmer"]').length).toBe(0);
+  });
+
+  it("uses the same two-column grid as the loaded state, so desktop layout doesn't shift on load", () => {
+    const { container } = render(SummaryView);
+    expect(container.querySelector(".summary-cols")).not.toBeNull();
   });
 });
