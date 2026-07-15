@@ -65,22 +65,26 @@
     <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
     <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
   </div>
-  <div class="card mx-4 mt-[14px] overflow-hidden">
-    {#each [0, 1, 2, 3, 4, 5, 6] as i (i)}
-      <div class="py-4 px-4 border-b border-border last:border-0 flex items-center justify-between">
-        <div class="flex items-center gap-[10px]">
-          <div class="size-[10px] rounded-full bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
-          <div class="h-[14px] w-[90px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+  <div class="summary-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+    <div class="summary-left card mx-4 mt-[14px] overflow-hidden">
+      {#each [0, 1, 2, 3, 4, 5, 6] as i (i)}
+        <div class="py-4 px-4 border-b border-border last:border-0 flex items-center justify-between">
+          <div class="flex items-center gap-[10px]">
+            <div class="size-[10px] rounded-full bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+            <div class="h-[14px] w-[90px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+          </div>
+          <div class="h-[18px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         </div>
-        <div class="h-[18px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      {/each}
+    </div>
+    <div class="summary-aside md:border-l md:border-border md:min-h-full">
+      <div class="px-5 pt-[14px] pb-2">
+        <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-    {/each}
-  </div>
-  <div class="px-5 pt-[14px] pb-2">
-    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-  </div>
-  <div class="card mx-4 p-4">
-    <div class="h-[110px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="card mx-4 p-4">
+        <div class="h-[110px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      </div>
+    </div>
   </div>
 {:else}
   <!-- Page header -->
@@ -99,60 +103,66 @@
     </button>
   </div>
 
-  <!-- Envelope rows: one per Category. Balance is the anchor number. -->
-  <div class="envelope-list card mx-4 mt-[14px] overflow-hidden">
-    {#each envelopes as e (e.key)}
-      <div
-        class="envelope-row flex items-center justify-between gap-3 py-4 px-4 border-b border-border last:border-b-0 relative"
-        class:bg-[var(--destructive-tint-bg)]={e.negative}
-      >
-        {#if e.low}
-          <span class="low-marker absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-muted-foreground/40" aria-hidden="true"></span>
-        {/if}
-        <div class="flex items-center gap-[10px] min-w-0">
-          <span class="cat-dot size-[6px] rounded-full shrink-0" style="background: {darkMode.current ? e.c.darkDot : e.c.dot};"></span>
-          <span class="cat-label font-sans text-sm font-medium text-foreground truncate">{e.c.label}</span>
-          {#if e.low}
-            <span class="low-label font-sans text-[10px] font-medium text-muted-foreground shrink-0">Low</span>
-          {/if}
-        </div>
-        <div class="text-right shrink-0">
-          <Money value={e.balance} size={20} weight={700} />
-          <div class="direction-chip flex items-center justify-end gap-1 mt-[2px]">
-            {#if e.netChange > 0}
-              <span class="font-sans text-[10px] text-positive" aria-hidden="true">▲</span>
-            {:else if e.netChange < 0}
-              <span class="font-sans text-[10px] text-destructive" aria-hidden="true">▼</span>
-            {:else}
-              <span class="font-sans text-[10px] text-muted-foreground" aria-hidden="true">–</span>
+  <div class="summary-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+    <!-- Left: envelope rows, one per Category. Balance is the anchor number. -->
+    <div class="summary-left">
+      <div class="envelope-list card mx-4 mt-[14px] overflow-hidden">
+        {#each envelopes as e (e.key)}
+          <div
+            class="envelope-row flex items-center justify-between gap-3 py-4 px-4 border-b border-border last:border-b-0 relative"
+            class:bg-[var(--destructive-tint-bg)]={e.negative}
+          >
+            {#if e.low}
+              <span class="low-marker absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-muted-foreground/40" aria-hidden="true"></span>
             {/if}
-            <Money value={e.netChange} size={11} weight={500} />
+            <div class="flex items-center gap-[10px] min-w-0">
+              <span class="cat-dot size-[6px] rounded-full shrink-0" style="background: {darkMode.current ? e.c.darkDot : e.c.dot};"></span>
+              <span class="cat-label font-sans text-sm font-medium text-foreground truncate">{e.c.label}</span>
+              {#if e.low}
+                <span class="low-label font-sans text-[10px] font-medium text-muted-foreground shrink-0">Low</span>
+              {/if}
+            </div>
+            <div class="text-right shrink-0">
+              <Money value={e.balance} size={20} weight={700} />
+              <div class="direction-chip flex items-center justify-end gap-1 mt-[2px]">
+                {#if e.netChange > 0}
+                  <span class="font-sans text-[10px] text-positive" aria-hidden="true">▲</span>
+                {:else if e.netChange < 0}
+                  <span class="font-sans text-[10px] text-destructive" aria-hidden="true">▼</span>
+                {:else}
+                  <span class="font-sans text-[10px] text-muted-foreground" aria-hidden="true">–</span>
+                {/if}
+                <Money value={e.netChange} size={11} weight={500} />
+              </div>
+            </div>
           </div>
-        </div>
+        {/each}
       </div>
-    {/each}
-  </div>
+    </div>
 
-  <!-- Spending pace: this month's cumulative spend vs the trailing-months average. -->
-  <SectionHeader>
-    Spending pace
-    {#snippet right()}
-      {#if paceHeadline}
-        <span
-          class="font-mono tabular-nums text-[11px] font-semibold"
-          style="color: {paceDeltaPct !== null && paceDeltaPct > 0 ? 'var(--destructive)' : 'var(--positive)'};"
-        >{paceHeadline}</span>
-      {/if}
-    {/snippet}
-  </SectionHeader>
-  <div class="card mx-4 px-4 pt-3 pb-3">
-    <PaceChart
-      {current}
-      previous={usual}
-      {upToDay}
-      curLabel="This month"
-      prevLabel="Usual"
-    />
+    <!-- Right: spending pace — this month's cumulative spend vs the trailing-months average. -->
+    <div class="summary-aside md:border-l md:border-border md:min-h-full">
+      <SectionHeader>
+        Spending pace
+        {#snippet right()}
+          {#if paceHeadline}
+            <span
+              class="font-mono tabular-nums text-[11px] font-semibold"
+              style="color: {paceDeltaPct !== null && paceDeltaPct > 0 ? 'var(--destructive)' : 'var(--positive)'};"
+            >{paceHeadline}</span>
+          {/if}
+        {/snippet}
+      </SectionHeader>
+      <div class="card mx-4 px-4 pt-3 pb-3">
+        <PaceChart
+          {current}
+          previous={usual}
+          {upToDay}
+          curLabel="This month"
+          prevLabel="Usual"
+        />
+      </div>
+    </div>
   </div>
 {/if}
 </div>
