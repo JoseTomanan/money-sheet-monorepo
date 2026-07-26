@@ -6,9 +6,16 @@ import {
   addLeg,
   removeLeg,
   updateLeg,
-  isSplitValid,
+  validateLeg,
+  validateSplit,
   toAddEntryPayloads,
 } from "./splitEntry";
+import type { CategoryMap } from "./types";
+
+const CATEGORIES: CategoryMap = {
+  FOOD: ["Groceries", "Dining"],
+  HOUSING: ["Rent", "Utilities"],
+};
 
 describe("DITTO_DESCRIPTION", () => {
   it("is exported and equals the sentinel '^^' value", () => {
@@ -132,60 +139,102 @@ describe("toAddEntryPayloads", () => {
   });
 });
 
-describe("isSplitValid", () => {
-  it("is false when any leg has no tag", () => {
+describe("validateSplit — superseding isSplitValid (#136 follow-up)", () => {
+  it("fails when any leg has no tag", () => {
     // single-leg state: amount set but no tag
     const state = updateLeg(initSplitState(), 0, { amount: "100" });
-    expect(isSplitValid(state)).toBe(false);
+    expect(validateSplit(state, "O", CATEGORIES).ok).toBe(false);
   });
 
-  it("is false when any leg has an unparseable amount", () => {
+  it("fails when any leg has an unparseable amount", () => {
     const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
       updateLeg(twoLegs, 0, { tag: "FOOD", amount: "abc" }),
       1, { tag: "HOUSING", amount: "200" }
     );
-    expect(isSplitValid(state)).toBe(false);
+    expect(validateSplit(state, "O", CATEGORIES).ok).toBe(false);
   });
 
-  it("is true when all legs have a tag and a positive amount (single leg)", () => {
+  it("is ok when all legs have a tag and a positive amount (single leg)", () => {
     const state = updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" });
-    expect(isSplitValid(state)).toBe(true);
+    expect(validateSplit(state, "O", CATEGORIES)).toEqual({ ok: true });
   });
 
-  it("is true for a negative or zero amount, on either direction (#136)", () => {
+  it("is ok for a negative or zero amount, on either direction (#136)", () => {
     const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
-    expect(isSplitValid(negative)).toBe(true);
+    expect(validateSplit(negative, "O", CATEGORIES)).toEqual({ ok: true });
     const zero = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "0" });
-    expect(isSplitValid(zero)).toBe(true);
+    expect(validateSplit(zero, "O", CATEGORIES)).toEqual({ ok: true });
   });
 
-  it("is true when all legs have a tag and a positive amount (two legs)", () => {
+  it("is ok when all legs have a tag and a positive amount (two legs)", () => {
     const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
       updateLeg(twoLegs, 0, { tag: "FOOD", amount: "500" }),
       1, { tag: "HOUSING", amount: "200" }
     );
-    expect(isSplitValid(state)).toBe(true);
+    expect(validateSplit(state, "O", CATEGORIES)).toEqual({ ok: true });
   });
 
-  it("is false when any leg has a formula error set, even if amount string looks numeric", () => {
+  it("fails when any leg has a formula error set, even if amount string looks numeric", () => {
     // error flag must be checked independently — parseFloat("100") > 0 would pass without the check
     const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
       updateLeg(twoLegs, 0, { tag: "FOOD", amount: "100", error: "Invalid formula" }),
       1, { tag: "HOUSING", amount: "200" }
     );
-    expect(isSplitValid(state)).toBe(false);
+    expect(validateSplit(state, "O", CATEGORIES).ok).toBe(false);
   });
 
-  it("is true when all legs are valid and error is explicitly cleared (undefined)", () => {
+  it("is ok when all legs are valid and error is explicitly cleared (undefined)", () => {
     const twoLegs = addLeg(initSplitState());
     const state = updateLeg(
       updateLeg(twoLegs, 0, { tag: "FOOD", amount: "100", error: undefined }),
       1, { tag: "HOUSING", amount: "200" }
     );
-    expect(isSplitValid(state)).toBe(true);
+    expect(validateSplit(state, "O", CATEGORIES)).toEqual({ ok: true });
+  });
+});
+
+describe("validateLeg", () => {
+  it("rejects an empty tag with a reason", () => {
+    const leg = { tag: "", amount: "50" };
+    const result = validateLeg(leg, "O", CATEGORIES);
+    expect(result.ok).toBe(false);
+    expect(result).toHaveProperty("reason");
+  });
+
+  it("rejects a Subcategory tag on an Incoming leg, with a direction-specific reason (#50)", () => {
+    // Silent-corruption scenario: direction='I' but tag is a Subcategory ('Dining').
+    const leg = { tag: "Dining", amount: "50" };
+    const result = validateLeg(leg, "I", CATEGORIES);
+    expect(result).toEqual({ ok: false, reason: "Tag must be a Category" });
+  });
+
+  it("accepts a zero or negative amount on an Outgoing leg (#136 regression pin, at the validateLeg interface)", () => {
+    const zero = validateLeg({ tag: "Dining", amount: "0" }, "O", CATEGORIES);
+    expect(zero).toEqual({ ok: true });
+    const negative = validateLeg({ tag: "Dining", amount: "-50" }, "O", CATEGORIES);
+    expect(negative).toEqual({ ok: true });
+  });
+});
+
+describe("validateSplit", () => {
+  it("returns the first failing leg's reason across multiple legs", () => {
+    const state = updateLeg(
+      updateLeg(addLeg(initSplitState()), 0, { tag: "FOOD", amount: "500" }),
+      1, { tag: "", amount: "200" } // leg 1 has no tag
+    );
+    const result = validateSplit(state, "O", CATEGORIES);
+    expect(result).toEqual({ ok: false, reason: "Pick a tag" });
+  });
+
+  it("is ok when every leg is individually valid", () => {
+    const state = updateLeg(
+      updateLeg(addLeg(initSplitState()), 0, { tag: "Dining", amount: "500" }),
+      1, { tag: "Rent", amount: "200" }
+    );
+    expect(validateSplit(state, "O", CATEGORIES)).toEqual({ ok: true });
   });
 });
 

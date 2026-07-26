@@ -1,11 +1,10 @@
-import { isValidTag } from './domain';
 import { today as todayStr } from './format';
 import {
   initSplitState,
   addLeg,
   removeLeg,
   updateLeg,
-  isSplitValid,
+  validateSplit,
   toAddEntryPayloads,
   type SplitState,
 } from './splitEntry';
@@ -20,10 +19,8 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   let split       = $state<SplitState>(initSplitState());
   let isEditing   = $state(false);
 
-  const saveDisabled = $derived(
-    !isSplitValid(split) ||
-    !split.legs.every(l => isValidTag(l.tag, direction, getCategories()))
-  );
+  const validity = $derived(validateSplit(split, direction, getCategories()));
+  const saveDisabled = $derived(!validity.ok);
 
   const title = $derived(
     (isEditing ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing')
