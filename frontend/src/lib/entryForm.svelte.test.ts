@@ -160,3 +160,17 @@ describe("createEntryForm — saveDisabled / #50 guard", () => {
     expect(form.saveDisabled).toBe(false);
   });
 });
+
+describe("createEntryForm — saveDisabledReason", () => {
+  it("is null when the form is valid", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "Dining", amount: "100" }] };
+    expect(form.saveDisabledReason).toBeNull();
+  });
+
+  it("explains why Save is disabled when the tag is missing", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "", amount: "100" }] };
+    expect(form.saveDisabledReason).toBe("Pick a tag");
+  });
+});

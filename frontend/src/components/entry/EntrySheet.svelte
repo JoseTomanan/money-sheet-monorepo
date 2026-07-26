@@ -137,6 +137,14 @@
     >Save</button>
   </Sheet.Header>
 
+  {#if form.saveDisabledReason && !form.split.legs.some((l) => l.error)}
+    <!-- A per-leg formula error already renders inline next to its field
+         (SplitLegCarousel's .leg-error) — don't repeat that message here. -->
+    <p class="save-disabled-reason text-[11px] font-sans text-muted-foreground text-center -mt-1 mb-1">
+      {form.saveDisabledReason}
+    </p>
+  {/if}
+
   <!-- direction toggle -->
   <div class="flex gap-2 px-4 pt-[10px] pb-1">
     <button

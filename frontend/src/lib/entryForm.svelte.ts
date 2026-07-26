@@ -21,6 +21,14 @@ export function createEntryForm(getCategories: () => CategoryMap) {
 
   const validity = $derived(validateSplit(split, direction, getCategories()));
   const saveDisabled = $derived(!validity.ok);
+  /**
+   * Why Save is disabled, or null when the form is valid — see validateSplit.
+   * Uses 'in' rather than `validity.ok ? ... : ...` — this project's tsconfig
+   * has strict:false, and without strictNullChecks, ternary/if narrowing over
+   * a boolean discriminant doesn't reliably exclude the `{ok:true}` member of
+   * LegValidity; `in` narrowing does.
+   */
+  const saveDisabledReason = $derived('reason' in validity ? validity.reason : null);
 
   const title = $derived(
     (isEditing ? 'Edit' : 'New') + (direction === 'I' ? ' Incoming' : ' Outgoing')
@@ -73,6 +81,7 @@ export function createEntryForm(getCategories: () => CategoryMap) {
     get split()       { return split; },
     set split(v: SplitState) { split = v; },
     get saveDisabled() { return saveDisabled; },
+    get saveDisabledReason() { return saveDisabledReason; },
     get title()       { return title; },
     reset,
     buildMutation,

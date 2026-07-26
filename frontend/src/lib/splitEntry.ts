@@ -60,6 +60,7 @@ export function validateLeg(leg: Leg, direction: Direction, categories: Category
     };
   }
   if (leg.error) return { ok: false, reason: leg.error };
+  if (leg.amount.trim() === "") return { ok: false, reason: "Enter an amount" };
   const amount = entryAmount.validate(leg.amount);
   if ('error' in amount) return { ok: false, reason: amount.error };
   return { ok: true };

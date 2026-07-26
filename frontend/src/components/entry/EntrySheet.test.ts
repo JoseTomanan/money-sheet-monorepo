@@ -286,6 +286,22 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
+  it("shows the disabled reason under Save when the tag is missing (#136 follow-up)", async () => {
+    const { getByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "" }) })
+    );
+    await waitFor(() => expect(getByText("Pick a tag")).toBeInTheDocument());
+  });
+
+  it("shows no reason once the form is valid", async () => {
+    const { queryByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    await waitFor(() => expect(queryByText("Pick a tag")).not.toBeInTheDocument());
+  });
+
   it("Save stays disabled while typing (before blur resolves it) for -5 on Outgoing — reactive check, not just blur (#136)", async () => {
     const { getByPlaceholderText, getByRole } = render(
       EntrySheet,

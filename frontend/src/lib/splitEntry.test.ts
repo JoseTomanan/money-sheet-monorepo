@@ -211,6 +211,13 @@ describe("validateLeg", () => {
     expect(result).toEqual({ ok: false, reason: "Tag must be a Category" });
   });
 
+  it("gives a plain 'Enter an amount' reason for a blank amount, not the raw formula error (#136 follow-up)", () => {
+    // Distinguishing blank-because-untouched from a malformed formula matters once the
+    // UI surfaces `reason` directly — see EntrySheet.svelte's saveDisabledReason banner.
+    const result = validateLeg({ tag: "Dining", amount: "" }, "O", CATEGORIES);
+    expect(result).toEqual({ ok: false, reason: "Enter an amount" });
+  });
+
   it("accepts a zero or negative amount on an Outgoing leg (#136 regression pin, at the validateLeg interface)", () => {
     const zero = validateLeg({ tag: "Dining", amount: "0" }, "O", CATEGORIES);
     expect(zero).toEqual({ ok: true });
