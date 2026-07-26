@@ -109,3 +109,37 @@ describe('RedistributeSheet — formula amount', () => {
     await waitFor(() => expect(input.value).toBe('1500.00'));
   });
 });
+
+// --- Regression pin: unlike entryAmount, redistributionAmount must stay strict.
+// A zero or negative "Amount to move" is meaningless (ADR-0005) and must keep the
+// submit button disabled -- even before blur resolves the field, since a user can
+// click Redistribute without ever blurring the amount input.
+
+describe('RedistributeSheet — non-positive amount stays disabled (ADR-0005)', () => {
+  it('submit stays disabled for a zero amount, before and after blur', async () => {
+    const { getAllByRole, getByPlaceholderText, getByRole } = render(RedistributeSheet, baseProps());
+    const housingBtns = getAllByRole('button', { name: /^HOUSING$/ });
+    const financeBtns = getAllByRole('button', { name: /^FINANCE$/ });
+    await fireEvent.click(housingBtns[0]);
+    await fireEvent.click(financeBtns[1]);
+    const input = getByPlaceholderText('0.00') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: '0' } });
+    expect(getByRole('button', { name: /^Redistribute$/ })).toBeDisabled();
+    await fireEvent.blur(input);
+    expect(getByRole('button', { name: /^Redistribute$/ })).toBeDisabled();
+  });
+
+  it('submit stays disabled for a negative amount, before and after blur, and blur shows the positivity error', async () => {
+    const { getAllByRole, getByPlaceholderText, getByRole, getByText } = render(RedistributeSheet, baseProps());
+    const housingBtns = getAllByRole('button', { name: /^HOUSING$/ });
+    const financeBtns = getAllByRole('button', { name: /^FINANCE$/ });
+    await fireEvent.click(housingBtns[0]);
+    await fireEvent.click(financeBtns[1]);
+    const input = getByPlaceholderText('0.00') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: '-5' } });
+    expect(getByRole('button', { name: /^Redistribute$/ })).toBeDisabled();
+    await fireEvent.blur(input);
+    expect(getByRole('button', { name: /^Redistribute$/ })).toBeDisabled();
+    expect(getByText('Amount must be positive')).toBeInTheDocument();
+  });
+});

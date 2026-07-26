@@ -222,4 +222,17 @@ describe("resolveAmountOnBlur", () => {
     expect(resolveAmountOnBlur("-5", true)).toEqual({ amount: "-5.00", error: null });
     expect(resolveAmountOnBlur("=10-10", true)).toEqual({ amount: "0.00", error: null });
   });
+
+  it("reports 'Invalid formula' (not 'Amount must be positive') for unsupported operators (#136 follow-up)", () => {
+    // sanitizeAmountInput allows '*' and '/' through, but evaluateFormula's grammar
+    // only ever supports +, -, and SUM(...) -- "5*3" is malformed, not non-positive.
+    expect(resolveAmountOnBlur("5*3", true)).toEqual({ amount: null, error: "Invalid formula" });
+    expect(resolveAmountOnBlur("10/2", true)).toEqual({ amount: null, error: "Invalid formula" });
+    expect(resolveAmountOnBlur("(5)", true)).toEqual({ amount: null, error: "Invalid formula" });
+  });
+
+  it("still reports the right error for non-numeric and non-positive plain input (guards against over-correction)", () => {
+    expect(evaluateAmountInput("abc")).toEqual({ error: "Invalid formula" });
+    expect(evaluateAmountInput("0")).toEqual({ error: "Amount must be positive" });
+  });
 });

@@ -150,4 +150,27 @@ describe("createEntryForm — saveDisabled / #50 guard", () => {
     form.split = { legs: [{ tag: "Dining", amount: "" }] };
     expect(form.saveDisabled).toBe(true);
   });
+
+  it("saveDisabled false for a negative or zero amount on an Outgoing entry (#136)", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "Dining", amount: "-50" }] };
+    // direction defaults to O
+    expect(form.saveDisabled).toBe(false);
+    form.split = { legs: [{ tag: "Dining", amount: "0" }] };
+    expect(form.saveDisabled).toBe(false);
+  });
+});
+
+describe("createEntryForm — saveDisabledReason", () => {
+  it("is null when the form is valid", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "Dining", amount: "100" }] };
+    expect(form.saveDisabledReason).toBeNull();
+  });
+
+  it("explains why Save is disabled when the tag is missing", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "", amount: "100" }] };
+    expect(form.saveDisabledReason).toBe("Pick a tag");
+  });
 });

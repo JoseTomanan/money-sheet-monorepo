@@ -4,6 +4,17 @@ const FORMULA_INVALID: FormulaResult = { error: "Invalid formula" };
 const FORMULA_NOT_POSITIVE: FormulaResult = { error: "Amount must be positive" };
 
 /**
+ * Characters that make an amount input something other than a bare plain
+ * number: arithmetic operators and parens. Shared by evaluateAmountInput and
+ * resolveAmountOnBlur so both agree on what counts as "plain" — a mismatch
+ * here previously let "5*3" fall into evaluateAmountInput's plain-number
+ * branch (Number("5*3") is NaN) while resolveAmountOnBlur treated it as an
+ * expression, producing the misleading "Amount must be positive" instead of
+ * "Invalid formula" for a malformed expression.
+ */
+const HAS_OPERATOR = /[+\-*/()]/;
+
+/**
  * Evaluates an amount input string. Accepts: plain numbers ("50", "3.14"),
  * formula strings ("=10+5"), and arithmetic strings with operators ("10+5", "100-30").
  * Returns { value } on success, { error } on invalid input.
@@ -17,9 +28,9 @@ export function evaluateAmountInput(raw: string, allowNegative = false): Formula
   if (!trimmed) return FORMULA_INVALID;
 
   // Plain number (no operators, no leading =)
-  if (!isFormula(trimmed) && !/[+\-]/.test(trimmed)) {
+  if (!isFormula(trimmed) && !HAS_OPERATOR.test(trimmed)) {
     const n = Number(trimmed);
-    if (!Number.isFinite(n)) return FORMULA_NOT_POSITIVE;
+    if (!Number.isFinite(n)) return FORMULA_INVALID;
     if (!allowNegative && n <= 0) return FORMULA_NOT_POSITIVE;
     return { value: n };
   }
@@ -65,7 +76,7 @@ export interface AmountBlurResult {
 export function resolveAmountOnBlur(raw: string, allowNegative = false): AmountBlurResult {
   const trimmed = raw.trim();
   if (!trimmed) return { amount: null, error: null };
-  if (!isFormula(trimmed) && !/[+\-*/()]/.test(trimmed)) return { amount: null, error: null };
+  if (!isFormula(trimmed) && !HAS_OPERATOR.test(trimmed)) return { amount: null, error: null };
   const result = evaluateAmountInput(raw, allowNegative);
   if ("error" in result) return { amount: null, error: result.error };
   return { amount: result.value.toFixed(2), error: null };

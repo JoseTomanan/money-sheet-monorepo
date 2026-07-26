@@ -51,13 +51,17 @@ test("formula error disables Save button", async ({ page }) => {
   await expect(page.locator("button.header-btn.save")).toBeDisabled();
 });
 
-test("non-positive formula =5-10 shows error and disables Save", async ({ page }) => {
+test("non-positive formula =5-10 resolves cleanly and enables Save (#136)", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
   await input.fill("=5-10");
   await input.blur();
-  await expect(page.locator(".leg-error")).toHaveText("Amount must be positive");
-  await expect(page.locator("button.header-btn.save")).toBeDisabled();
+  await expect(input).toHaveValue("-5.00");
+  await expect(page.locator(".leg-error")).not.toBeVisible();
+
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
+  await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
 });
 
 test("plain numeric input is unaffected by formula logic", async ({ page }) => {
@@ -103,13 +107,41 @@ test("arithmetic 100-50 disables Save until blur resolves it", async ({ page }) 
   await expect(input).toHaveValue("50.00");
 });
 
-test("negative amount -5 shows error and disables Save", async ({ page }) => {
+test("zero amount is accepted on an Outgoing entry (#136)", async ({ page }) => {
+  await openNewEntrySheet(page);
+  const input = page.locator(".amount-input");
+  await input.fill("0");
+  await input.blur();
+  await expect(page.locator(".leg-error")).not.toBeVisible();
+
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
+  await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
+});
+
+test("zero amount is accepted on an Incoming entry (#136)", async ({ page }) => {
+  await openNewEntrySheet(page);
+  await page.locator("button.dir-btn", { hasText: "Incoming" }).click();
+  const input = page.locator(".amount-input");
+  await input.fill("0");
+  await input.blur();
+  await expect(page.locator(".leg-error")).not.toBeVisible();
+
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
+});
+
+test("negative amount -5 is accepted on an Outgoing entry (#136)", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
   await input.fill("-5");
   await input.blur();
-  await expect(page.locator(".leg-error")).toHaveText("Amount must be positive");
-  await expect(page.locator("button.header-btn.save")).toBeDisabled();
+  await expect(input).toHaveValue("-5.00");
+  await expect(page.locator(".leg-error")).not.toBeVisible();
+
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
+  await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
 });
 
 test("negative amount -5 is accepted on an Incoming entry (redistribution drain)", async ({ page }) => {

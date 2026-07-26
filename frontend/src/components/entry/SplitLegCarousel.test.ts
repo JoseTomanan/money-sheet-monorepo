@@ -139,15 +139,39 @@ describe("SplitLegCarousel", () => {
     expect(clearCall[1]).toEqual({ error: undefined });
   });
 
-  it("on blur with formula resolving to non-positive calls onupdate with an error", async () => {
+  it("on blur with formula resolving to non-positive resolves cleanly, no error (#136)", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
     const inputs = getAllByPlaceholderText("0.00");
     await fireEvent.input(inputs[0], { target: { value: "=5-10" } });
     await fireEvent.blur(inputs[0]);
-    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { error: string }];
+    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { amount: string; error?: string }];
     expect(lastCall[0]).toBe(0);
-    expect(lastCall[1]).toHaveProperty("error");
+    expect(lastCall[1]).toEqual({ amount: "-5.00", error: undefined });
+  });
+
+  it("on blur with a plain negative amount (-50) resolves cleanly, no error (#136)", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "-50" } });
+    const lastInputCall = props.onupdate.mock.calls.at(-1) as [number, { amount: string }];
+    expect(lastInputCall[1].amount).toBe("-50"); // sanitizeAmountInput keeps the leading '-'
+    await fireEvent.blur(inputs[0]);
+    // "-50" contains an operator char, so blur resolves it via evaluateAmountInput
+    // (like a formula) rather than leaving it as bare typed text.
+    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { amount: string; error?: string }];
+    expect(lastCall[1]).toEqual({ amount: "-50.00", error: undefined });
+  });
+
+  it("on blur with a plain zero amount (0) resolves cleanly, no error (#136)", async () => {
+    const props = baseProps();
+    const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
+    const inputs = getAllByPlaceholderText("0.00");
+    await fireEvent.input(inputs[0], { target: { value: "0" } });
+    await fireEvent.blur(inputs[0]);
+    const lastCall = props.onupdate.mock.calls.at(-1) as [number, { error?: string }];
+    expect(lastCall[1]).toEqual({ error: undefined });
   });
 
   it("calls onupdate with subcategory tag via two-step picker (FOOD → Dining)", async () => {

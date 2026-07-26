@@ -81,8 +81,8 @@ describe("EntrySheet — formula evaluation on blur", () => {
     );
   });
 
-  it("disables Save when formula resolves to a non-positive value", async () => {
-    const { getByPlaceholderText, getByRole, getByText } = render(
+  it("enables Save when formula resolves to a non-positive value (#136)", async () => {
+    const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
     );
@@ -90,8 +90,9 @@ describe("EntrySheet — formula evaluation on blur", () => {
     await fireEvent.input(input, { target: { value: "=5-10" } });
     await fireEvent.blur(input);
     await waitFor(() => {
-      expect(getByRole("button", { name: /^Save$/ })).toBeDisabled();
-      expect(getByText("Amount must be positive")).toBeInTheDocument();
+      expect(input.value).toBe("-5.00");
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled();
+      expect(queryByText("Amount must be positive")).not.toBeInTheDocument();
     });
   });
 
@@ -242,8 +243,8 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
-  it("Save disabled for a negative amount on an Outgoing entry (unchanged)", async () => {
-    const { getByPlaceholderText, getByRole, getByText } = render(
+  it("Save enabled for a negative amount on an Outgoing entry (#136)", async () => {
+    const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
     );
@@ -251,8 +252,65 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     await fireEvent.input(input, { target: { value: "-50" } });
     await fireEvent.blur(input);
     await waitFor(() => {
-      expect(getByText("Amount must be positive")).toBeInTheDocument();
-      expect(getByRole("button", { name: /^Save$/ })).toBeDisabled();
+      expect(input.value).toBe("-50.00");
+      expect(queryByText("Amount must be positive")).not.toBeInTheDocument();
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled();
     });
+  });
+
+  it("Save enabled for a zero amount on an Outgoing entry (#136)", async () => {
+    const { getByPlaceholderText, getByRole, queryByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    const input = getByPlaceholderText("0.00") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "0" } });
+    await fireEvent.blur(input);
+    await waitFor(() => {
+      expect(queryByText("Amount must be positive")).not.toBeInTheDocument();
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled();
+    });
+  });
+
+  it("Save enabled for a zero amount on an Incoming entry (#136)", async () => {
+    const { getByPlaceholderText, getByRole, queryByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "I", tag: "Food", mainCategory: "Food" }) })
+    );
+    const input = getByPlaceholderText("0.00") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "0" } });
+    await fireEvent.blur(input);
+    await waitFor(() => {
+      expect(queryByText("Amount must be positive")).not.toBeInTheDocument();
+      expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled();
+    });
+  });
+
+  it("shows the disabled reason under Save when the tag is missing (#136 follow-up)", async () => {
+    const { getByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "" }) })
+    );
+    await waitFor(() => expect(getByText("Pick a tag")).toBeInTheDocument());
+  });
+
+  it("shows no reason once the form is valid", async () => {
+    const { queryByText } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    await waitFor(() => expect(queryByText("Pick a tag")).not.toBeInTheDocument());
+  });
+
+  it("Save stays disabled while typing (before blur resolves it) for -5 on Outgoing — reactive check, not just blur (#136)", async () => {
+    const { getByPlaceholderText, getByRole } = render(
+      EntrySheet,
+      baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
+    );
+    const input = getByPlaceholderText("0.00") as HTMLInputElement;
+    // No blur() here — saveDisabled is a $derived over the raw leg amount string,
+    // so it must already reflect the new value from oninput alone.
+    await fireEvent.input(input, { target: { value: "-5" } });
+    await waitFor(() => expect(getByRole("button", { name: /^Save$/ })).not.toBeDisabled());
   });
 });

@@ -5,7 +5,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
-  import { sanitizeAmountInput, resolveAmountOnBlur } from '../../lib/formula';
+  import { redistributionAmount } from '../../lib/amountField';
   import { store } from '../../lib/store.svelte';
   import { today as todayStr } from '../../lib/format';
   import type { CategoryMap, AddEntryPayload } from '../../lib/types';
@@ -44,8 +44,11 @@
 
   const parsedAmount = $derived(parseFloat(amount) || 0);
 
+  // Single source of truth for "is the typed amount acceptable" — reactive over the
+  // raw string, so it catches a non-positive or malformed amount immediately, not
+  // only after blur (see splitEntry.ts's validateSplit for the entry-form analogue).
   const submitDisabled = $derived(
-    !source || !target || source === target || !amount || !!amountError || parsedAmount <= 0
+    !source || !target || source === target || !amount || 'error' in redistributionAmount.validate(amount)
   );
 
   function handleSubmit() {
@@ -108,10 +111,10 @@
             bind:value={amount}
             oninput={(e) => {
               const v = (e.target as HTMLInputElement).value;
-              amount = sanitizeAmountInput(v);
+              amount = redistributionAmount.sanitize(v);
             }}
             onblur={() => {
-              const result = resolveAmountOnBlur(amount);
+              const result = redistributionAmount.resolve(amount);
               if (result.amount !== null) amount = result.amount;
               amountError = result.error ?? '';
             }}
