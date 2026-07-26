@@ -1,7 +1,7 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
   import type { SplitState, Leg } from '../../lib/splitEntry';
-  import { sanitizeAmountInput, resolveAmountOnBlur } from '../../lib/formula';
+  import { entryAmount } from '../../lib/amountField';
   import type { Direction, CategoryMap } from '../../lib/types';
   import { store } from '../../lib/store.svelte';
   import CategoryTagPicker from '../category/CategoryTagPicker.svelte';
@@ -47,11 +47,11 @@
           value={leg.amount}
           oninput={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            onupdate(i, { amount: sanitizeAmountInput(v) });
+            onupdate(i, { amount: entryAmount.sanitize(v) });
           }}
           onblur={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            const { amount, error } = resolveAmountOnBlur(v, true);
+            const { amount, error } = entryAmount.resolve(v);
             onupdate(i, { ...(amount !== null && { amount }), error: error ?? undefined });
           }}
           placeholder="0.00"
