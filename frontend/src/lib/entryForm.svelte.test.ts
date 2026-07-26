@@ -150,4 +150,13 @@ describe("createEntryForm — saveDisabled / #50 guard", () => {
     form.split = { legs: [{ tag: "Dining", amount: "" }] };
     expect(form.saveDisabled).toBe(true);
   });
+
+  it("saveDisabled false for a negative or zero amount on an Outgoing entry (#136)", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "Dining", amount: "-50" }] };
+    // direction defaults to O
+    expect(form.saveDisabled).toBe(false);
+    form.split = { legs: [{ tag: "Dining", amount: "0" }] };
+    expect(form.saveDisabled).toBe(false);
+  });
 });

@@ -21,7 +21,8 @@ Use approach 2: a pair of Incoming Entries where the drain leg carries a negativ
 
 ## Consequences
 
-- `amount` on an Incoming Entry may be negative (or zero). This is the only case where a negative amount is valid; Outgoing entries must always have a positive amount.
-- This applies to the manual entry form as well, not only the dedicated Redistribute flow — a user may type a negative amount directly on an Incoming entry (`evaluateAmountInput`/`resolveAmountOnBlur` in `frontend/src/lib/formula.ts` take an `allowNegative` flag, set from `direction === 'I'`).
+- `amount` on an Incoming Entry may be negative (or zero) — this is the redistribution drain leg.
+- **Update (#136):** the manual entry form accepts any amount — positive, negative, or zero — on **either** direction, not only Incoming. Restricting Outgoing to positive-only amounts turned out to actively block legitimate use (e.g. logging a refund adjustment as a zero/negative Outgoing correction), and the direction-conditional rule was a frequent source of confusing, unexplained "Save" greyouts. `isSplitValid` (`frontend/src/lib/splitEntry.ts`) now always validates amounts with `evaluateAmountInput(amount, true)`, regardless of direction.
+- Positivity is still enforced, but only where it is actually meaningful: the dedicated Redistribute flow's "Amount to move" field calls `resolveAmountOnBlur(amount)` with the default `allowNegative=false` — moving zero or a negative amount between Categories has no sensible meaning, so that field alone keeps the positive-only rule.
 - `EntryRow` must not blindly prefix a `+` sign when `direction === 'I'` — it must check `amount >= 0` first.
 - The MASTER sheet formulas are unaffected; `SUMIF` on the INCOMING/OUTGOING sheet correctly sums negative values.

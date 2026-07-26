@@ -148,30 +148,16 @@ describe("isSplitValid", () => {
     expect(isSplitValid(state)).toBe(false);
   });
 
-  it("is false when any leg has amount <= 0", () => {
-    const twoLegs = addLeg(initSplitState());
-    const state = updateLeg(
-      updateLeg(twoLegs, 0, { tag: "FOOD", amount: "0" }),
-      1, { tag: "HOUSING", amount: "200" }
-    );
-    expect(isSplitValid(state)).toBe(false);
-  });
-
   it("is true when all legs have a tag and a positive amount (single leg)", () => {
     const state = updateLeg(initSplitState(), 0, { tag: "FOOD", amount: "500" });
     expect(isSplitValid(state)).toBe(true);
   });
 
-  it("is true for a negative or zero amount when allowNegative is true", () => {
+  it("is true for a negative or zero amount, on either direction (#136)", () => {
     const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
-    expect(isSplitValid(negative, true)).toBe(true);
+    expect(isSplitValid(negative)).toBe(true);
     const zero = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "0" });
-    expect(isSplitValid(zero, true)).toBe(true);
-  });
-
-  it("is still false for a negative or zero amount when allowNegative is false", () => {
-    const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
-    expect(isSplitValid(negative)).toBe(false);
+    expect(isSplitValid(zero)).toBe(true);
   });
 
   it("is true when all legs have a tag and a positive amount (two legs)", () => {

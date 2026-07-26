@@ -51,7 +51,7 @@
           }}
           onblur={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            const { amount, error } = resolveAmountOnBlur(v, direction === 'I');
+            const { amount, error } = resolveAmountOnBlur(v, true);
             onupdate(i, { ...(amount !== null && { amount }), error: error ?? undefined });
           }}
           placeholder="0.00"
