@@ -51,7 +51,7 @@ test("formula error disables Save button", async ({ page }) => {
   await expect(page.locator("button.header-btn.save")).toBeDisabled();
 });
 
-test("non-positive formula =5-10 resolves cleanly and enables Save (#136)", async ({ page }) => {
+test("non-positive formula =5-10 resolves cleanly and enables Save (ADR-0012)", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
   await input.fill("=5-10");
@@ -107,7 +107,7 @@ test("arithmetic 100-50 disables Save until blur resolves it", async ({ page }) 
   await expect(input).toHaveValue("50.00");
 });
 
-test("zero amount is accepted on an Outgoing entry (#136)", async ({ page }) => {
+test("zero amount is accepted on an Outgoing entry (ADR-0012)", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
   await input.fill("0");
@@ -119,7 +119,7 @@ test("zero amount is accepted on an Outgoing entry (#136)", async ({ page }) => 
   await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
 });
 
-test("zero amount is accepted on an Incoming entry (#136)", async ({ page }) => {
+test("zero amount is accepted on an Incoming entry (ADR-0012)", async ({ page }) => {
   await openNewEntrySheet(page);
   await page.locator("button.dir-btn", { hasText: "Incoming" }).click();
   const input = page.locator(".amount-input");
@@ -131,7 +131,7 @@ test("zero amount is accepted on an Incoming entry (#136)", async ({ page }) => 
   await expect(page.locator("button.header-btn.save")).not.toBeDisabled();
 });
 
-test("negative amount -5 is accepted on an Outgoing entry (#136)", async ({ page }) => {
+test("negative amount -5 is accepted on an Outgoing entry (ADR-0012)", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
   await input.fill("-5");

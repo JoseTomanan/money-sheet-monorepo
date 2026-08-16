@@ -81,7 +81,7 @@ describe("EntrySheet — formula evaluation on blur", () => {
     );
   });
 
-  it("enables Save when formula resolves to a non-positive value (#136)", async () => {
+  it("enables Save when formula resolves to a non-positive value (ADR-0012)", async () => {
     const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
@@ -243,7 +243,7 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
-  it("Save enabled for a negative amount on an Outgoing entry (#136)", async () => {
+  it("Save enabled for a negative amount on an Outgoing entry (ADR-0012)", async () => {
     const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
@@ -258,7 +258,7 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
-  it("Save enabled for a zero amount on an Outgoing entry (#136)", async () => {
+  it("Save enabled for a zero amount on an Outgoing entry (ADR-0012)", async () => {
     const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })
@@ -272,7 +272,7 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
-  it("Save enabled for a zero amount on an Incoming entry (#136)", async () => {
+  it("Save enabled for a zero amount on an Incoming entry (ADR-0012)", async () => {
     const { getByPlaceholderText, getByRole, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "I", tag: "Food", mainCategory: "Food" }) })
@@ -286,7 +286,7 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     });
   });
 
-  it("shows the disabled reason under Save when the tag is missing (#136 follow-up)", async () => {
+  it("shows the disabled reason under Save when the tag is missing (ADR-0012)", async () => {
     const { getByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "" }) })
@@ -302,7 +302,7 @@ describe("EntrySheet — saveDisabled direction/tag validation", () => {
     await waitFor(() => expect(queryByText("Pick a tag")).not.toBeInTheDocument());
   });
 
-  it("Save stays disabled while typing (before blur resolves it) for -5 on Outgoing — reactive check, not just blur (#136)", async () => {
+  it("Save stays disabled while typing (before blur resolves it) for -5 on Outgoing — reactive check, not just blur (ADR-0012)", async () => {
     const { getByPlaceholderText, getByRole } = render(
       EntrySheet,
       baseProps({ entry: makeEntry({ direction: "O", tag: "Dining" }) })

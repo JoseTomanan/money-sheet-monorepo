@@ -223,7 +223,7 @@ describe("resolveAmountOnBlur", () => {
     expect(resolveAmountOnBlur("=10-10", true)).toEqual({ amount: "0.00", error: null });
   });
 
-  it("reports 'Invalid formula' (not 'Amount must be positive') for unsupported operators (#136 follow-up)", () => {
+  it("reports 'Invalid formula' (not 'Amount must be positive') for unsupported operators (ADR-0012)", () => {
     // sanitizeAmountInput allows '*' and '/' through, but evaluateFormula's grammar
     // only ever supports +, -, and SUM(...) -- "5*3" is malformed, not non-positive.
     expect(resolveAmountOnBlur("5*3", true)).toEqual({ amount: null, error: "Invalid formula" });
