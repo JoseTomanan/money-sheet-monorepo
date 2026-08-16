@@ -99,13 +99,20 @@ export interface IoRepository {
   resolveMainCategory(sheetRow: number): string;
 }
 
-/** Reads all Entries (skipping separator rows), formatting each row's date via `formatDate`. */
+/**
+ * Reads all Entries (skipping separator rows), formatting each row's date via
+ * `formatDate`. Each entry is stamped with its true 1-based sheet row — data
+ * rows start at row 2, and separator rows still consume a row number even
+ * though they're skipped, so later entries' numbering isn't shifted.
+ */
 export function listEntries(
   repo: Pick<IoRepository, "readRows">,
   formatDate: (raw: unknown) => string
 ): EntryData[] {
+  const rows = repo.readRows();
   const entries: EntryData[] = [];
-  for (const row of repo.readRows()) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const id = row[ID_INDEX];
     if (isSeparatorRow(id)) continue;
     entries.push({
@@ -116,6 +123,7 @@ export function listEntries(
       description: String(row[3]),
       direction: String(row[4]) as Direction,
       amount: Number(row[5]) || 0,
+      row: 2 + i,
     });
   }
   return entries;
@@ -182,6 +190,7 @@ export function insertEntry(repo: IoRepository, payload: AddEntryPayload): Entry
     description: payload.description,
     direction: payload.direction,
     amount: payload.amount,
+    row: targetRow,
   };
 }
 
@@ -245,6 +254,7 @@ export function insertEntries(repo: IoRepository, payloads: AddEntryPayload[]): 
       description: payload.description,
       direction: payload.direction,
       amount: payload.amount,
+      row: targetRow,
     });
   }
 

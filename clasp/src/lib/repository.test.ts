@@ -78,8 +78,21 @@ describe("listEntries", () => {
         description: "Groceries",
         direction: "O",
         amount: 100,
+        row: 3, // sheet row 2 is the separator; this entry sits at row 3
       },
     ]);
+  });
+
+  it("stamps each entry with its true 1-based sheet row, unaffected by a separator in the middle", () => {
+    const rows = [
+      [new Date("2026-01-06"), "FOOD", "FOOD", "Groceries", "O", 100, 1], // row 2
+      [new Date("2026-01-08"), "", "", "Week of Jan 8", "", "", ""], // row 3, separator
+      [new Date("2026-01-09"), "FOOD", "FOOD", "Snacks", "O", 50, 2], // row 4
+    ];
+    const repo = { readRows: () => rows };
+    const entries = listEntries(repo, (d) => (d as Date).toISOString().slice(0, 10));
+
+    expect(entries.map((e) => e.row)).toEqual([2, 4]);
   });
 });
 
@@ -175,6 +188,7 @@ describe("insertEntry", () => {
       description: "Groceries",
       direction: "O",
       amount: 100,
+      row: 3,
     });
   });
 
@@ -208,6 +222,7 @@ describe("insertEntry", () => {
     expect(repo.insertRowBefore).not.toHaveBeenCalled();
     expect(repo.writeEntryFields).toHaveBeenCalledWith(2, expect.objectContaining({ id: 1 }));
     expect(entry.id).toBe(1);
+    expect(entry.row).toBe(2);
   });
 
   it("appends after the last row without inserting when the new date is latest", () => {
@@ -215,7 +230,7 @@ describe("insertEntry", () => {
       [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
     ]);
 
-    insertEntry(repo, {
+    const entry = insertEntry(repo, {
       date: "2026-01-10",
       tag: "FOOD",
       description: "Snacks",
@@ -225,6 +240,7 @@ describe("insertEntry", () => {
 
     expect(repo.insertRowBefore).not.toHaveBeenCalled();
     expect(repo.writeEntryFields).toHaveBeenCalledWith(3, expect.objectContaining({ id: 2 }));
+    expect(entry.row).toBe(3);
   });
 });
 
@@ -289,8 +305,8 @@ describe("insertEntries", () => {
     expect(repo.resolveMainCategory).toHaveBeenNthCalledWith(1, 3);
     expect(repo.resolveMainCategory).toHaveBeenNthCalledWith(2, 4);
     expect(entries).toEqual([
-      { id: 2, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "Split A", direction: "O", amount: 40 },
-      { id: 3, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "^^", direction: "O", amount: 60 },
+      { id: 2, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "Split A", direction: "O", amount: 40, row: 3 },
+      { id: 3, date: "2026-01-10", tag: "FOOD", mainCategory: "FOOD", description: "^^", direction: "O", amount: 60, row: 4 },
     ]);
   });
 
@@ -302,7 +318,7 @@ describe("insertEntries", () => {
 
     // Both new legs date 2026-01-10 — must land between the existing rows
     // (row 3), shifting the existing 2026-01-20 row down each time.
-    insertEntries(repo, [
+    const entries = insertEntries(repo, [
       { date: "2026-01-10", tag: "FOOD", description: "Split A", direction: "O", amount: 40 },
       { date: "2026-01-10", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
     ]);
@@ -311,6 +327,7 @@ describe("insertEntries", () => {
     expect(repo.insertRowBefore).toHaveBeenNthCalledWith(2, 4);
     expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 3, expect.objectContaining({ id: 3 }));
     expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 4, expect.objectContaining({ id: 4 }));
+    expect(entries.map((e) => e.row)).toEqual([3, 4]);
   });
 
   it("appends to an empty sheet without inserting a row", () => {
@@ -325,5 +342,6 @@ describe("insertEntries", () => {
     expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 2, expect.objectContaining({ id: 1 }));
     expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 3, expect.objectContaining({ id: 2 }));
     expect(entries.map((e) => e.id)).toEqual([1, 2]);
+    expect(entries.map((e) => e.row)).toEqual([2, 3]);
   });
 });

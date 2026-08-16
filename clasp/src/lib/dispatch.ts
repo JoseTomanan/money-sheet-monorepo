@@ -55,6 +55,8 @@ export interface EntryData {
   description: string;
   direction: Direction;
   amount: number;
+  /** 1-based INCOMING/OUTGOING sheet row. Absent for entries not yet written to the sheet. */
+  row?: number;
 }
 
 export interface AddEntryPayload {
