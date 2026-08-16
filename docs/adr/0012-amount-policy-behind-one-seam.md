@@ -2,6 +2,15 @@
 
 **Status:** Accepted
 
+> **Provenance.** This work landed directly on `main` from branch
+> `refactor/amount-field-policy` (merge `3eab499`, 2026-07-26). It has no
+> issue and no PR of its own — this ADR is its record. Earlier revisions of
+> this file, ADR-0005, CONTEXT.md and ~19 test names cited a "#136" for it;
+> that number was never allocated to this work, and #136 in the tracker is an
+> unrelated entry-ordering bug. Cite **ADR-0012**, not an issue number.
+> PR #134 (the earlier, Incoming-only fix) is a real reference and is cited
+> as such below.
+
 ## Context
 
 Two amount-input fields in the frontend need different positivity rules: the
@@ -16,12 +25,13 @@ boolean parameter that every call site had to pass consistently.
 
 That shape produced two bugs:
 
-- **#134/#136.** The Add Entry sheet's blur handler and its `saveDisabled`
-  check each independently decided `allowNegative = direction === 'I'`. The
-  sheet defaults to Outgoing, so #134's fix silently didn't apply to the
-  common case — Save stayed greyed out for a negative or zero amount on a
-  fresh Outgoing entry, with no visible reason.
-- **A live grammar bug found while investigating #136.** `sanitizeAmountInput`'s
+- **PR #134's fix not reaching the default case.** The Add Entry sheet's blur
+  handler and its `saveDisabled` check each independently decided
+  `allowNegative = direction === 'I'`. The sheet defaults to Outgoing, so
+  #134's fix silently didn't apply to the common case — Save stayed greyed
+  out for a negative or zero amount on a fresh Outgoing entry, with no
+  visible reason.
+- **A live grammar bug found while fixing the above.** `sanitizeAmountInput`'s
   character allowlist (`0-9 . + - * / ( )`) is wider than `evaluateFormula`'s
   actual grammar (`+`, `-`, `SUM(...)` only), and `evaluateAmountInput` /
   `resolveAmountOnBlur` each had their own regex for "is this a plain number"
