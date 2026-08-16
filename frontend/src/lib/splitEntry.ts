@@ -45,7 +45,7 @@ export type LegValidity = { ok: true } | { ok: false; reason: string };
 
 /**
  * Validates one Leg, returning *why* it fails so the UI can explain a disabled
- * Save button instead of just greying it out (the original #136 complaint).
+ * Save button instead of just greying it out (the original ADR-0012 complaint).
  * Checks in order, first failure wins: tag present -> tag valid for direction
  * (delegates to isValidTag, which is pinned to the GAS backend's
  * checkTagDirection by parity.test.ts -- never reimplemented here) -> no

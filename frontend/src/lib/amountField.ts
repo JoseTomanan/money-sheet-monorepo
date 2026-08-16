@@ -13,7 +13,7 @@ import {
  * exactly once, here.
  *
  * This exists because that choice used to be a boolean threaded separately
- * through every call site (#134/#136): the blur handler and the validity
+ * through every call site (PR #134, then ADR-0012): the blur handler and the validity
  * check could — and did — desync, since the sheet defaults to a direction
  * whose call site nobody had updated. Two call sites now import a named
  * adapter instead of deciding the flag themselves.
