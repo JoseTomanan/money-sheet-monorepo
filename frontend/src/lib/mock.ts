@@ -21,7 +21,7 @@ function daysAgo(n: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-let entries: Entry[] = [
+const seedEntries: Entry[] = [
   // 3 weeks ago (days 20–15)
   { id: 1,  date: daysAgo(20), tag: "Groceries",        mainCategory: "FOOD",      description: "57 cans of anchovies (why)",         direction: "O", amount: 720 },
   { id: 2,  date: daysAgo(20), tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "segway rental, fell immediately",    direction: "O", amount: 40 },
@@ -78,6 +78,9 @@ let entries: Entry[] = [
   { id: 49, date: daysAgo(0),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "THIS IS MOCK DATA — safe travels",   direction: "O", amount: 55 },
 ];
 
+// Stamp plausible sheet rows (already in date+id order) so mock mode exercises the real row-based ordering path.
+let entries: Entry[] = seedEntries.map((e, i) => ({ ...e, row: i + 2 }));
+
 export function mockGetEntries(): Promise<Entry[]> {
   return Promise.resolve([...entries]);
 }
@@ -100,7 +103,7 @@ export function mockGetMaster(): Promise<MasterRow> {
 
 export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
   const nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const entry = buildEntry(nextId, payload, CATEGORY_MAP);
+  const entry = { ...buildEntry(nextId, payload, CATEGORY_MAP), row: entries.length + 2 };
   entries = [...entries, entry];
   return Promise.resolve(entry);
 }
@@ -108,7 +111,8 @@ export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
 /** Assigns a contiguous id block in array order, mirroring the real addEntries contract. */
 export function mockAddEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
   let nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const newEntries = payloads.map((payload) => buildEntry(nextId++, payload, CATEGORY_MAP));
+  let nextRow = entries.length + 2;
+  const newEntries = payloads.map((payload) => ({ ...buildEntry(nextId++, payload, CATEGORY_MAP), row: nextRow++ }));
   entries = [...entries, ...newEntries];
   return Promise.resolve(newEntries);
 }

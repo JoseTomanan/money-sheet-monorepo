@@ -58,20 +58,24 @@ export function groupEntriesByDate(entries: Entry[]): Entry[][] {
 }
 
 /**
- * Comparator for display-order sort: ascending by date, then ascending by id.
- * Optimistic entries (negative temp ids) always sort last within their date group
- * so they appear at the bottom — where they'll settle once the server confirms a
- * real (largest) id — avoiding a visible reorder/flicker.
+ * Comparator for display-order sort: ascending by date, then ascending by sheet
+ * row, then ascending by id. Row order mirrors the INCOMING/OUTGOING sheet, so
+ * dragging rows in Sheets reorders the website to match. Entries with no row yet
+ * (optimistic entries awaiting server confirmation, and entries replayed from the
+ * offline queue) always sort last within their date group — the position the
+ * server will give them on append — avoiding a visible reorder/flicker on confirm.
+ * Id is a final tiebreak so the sort is a total order even when two entries
+ * momentarily carry the same row.
  */
 export function compareEntriesForDisplay(a: Entry, b: Entry): number {
   return (
     a.date.localeCompare(b.date) ||
-    (a.id < 0 ? Number.MAX_SAFE_INTEGER : a.id) -
-    (b.id < 0 ? Number.MAX_SAFE_INTEGER : b.id)
+    (a.row ?? Number.MAX_SAFE_INTEGER) - (b.row ?? Number.MAX_SAFE_INTEGER) ||
+    (a.id - b.id)
   );
 }
 
-/** The last `count` entries in display order (date asc, then id — see compareEntriesForDisplay). */
+/** The last `count` entries in display order (date asc, then row, then id — see compareEntriesForDisplay). */
 export function recentForDisplay(entries: Entry[], count: number): Entry[] {
   return [...entries].sort(compareEntriesForDisplay).slice(-count);
 }

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { groupByWeek, dateRunPositions, groupEntriesByDate, compareEntriesForDisplay, splitRunPositions, weekStartOf, weekLabel, recentForDisplay } from "./groupEntries";
 import type { Entry } from "./types";
 
-function entry(id: number, date: string, description = ""): Entry {
-  return { id, date, tag: "T", mainCategory: "C", description, direction: "O", amount: 1 };
+function entry(id: number, date: string, description = "", row?: number): Entry {
+  return { id, date, tag: "T", mainCategory: "C", description, direction: "O", amount: 1, row };
 }
 
 describe("groupByWeek", () => {
@@ -263,8 +263,8 @@ describe("recentForDisplay", () => {
 });
 
 describe("compareEntriesForDisplay", () => {
-  describe("same date — committed entries", () => {
-    it("sorts by id ascending when both ids are positive", () => {
+  describe("same date, no rows — falls through to id tiebreak", () => {
+    it("sorts by id ascending when neither entry has a row", () => {
       const a = entry(1, "2026-06-01");
       const b = entry(2, "2026-06-01");
       expect(compareEntriesForDisplay(a, b)).toBeLessThan(0);
@@ -278,40 +278,57 @@ describe("compareEntriesForDisplay", () => {
     });
   });
 
-  describe("same date — optimistic (negative) temp id sorts last", () => {
-    it("places a negative-id entry after a positive-id entry", () => {
-      const committed  = entry(10, "2026-06-01");
-      const optimistic = entry(-Date.now(), "2026-06-01");
+  describe("same date — row order wins over id order", () => {
+    it("sorts by row ascending even when id order disagrees", () => {
+      // id 7 sits at the earlier row (3); id 3 was dragged after it (row 4).
+      const earlierRow = entry(7, "2026-06-01", "", 3);
+      const laterRow    = entry(3, "2026-06-01", "", 4);
+      const sorted = [laterRow, earlierRow].sort(compareEntriesForDisplay);
+      expect(sorted).toEqual([earlierRow, laterRow]);
+    });
+
+    it("two entries sharing the same row fall through to id ascending (total order, no ties)", () => {
+      const a = entry(9, "2026-06-01", "", 5);
+      const b = entry(2, "2026-06-01", "", 5);
+      const sorted = [a, b].sort(compareEntriesForDisplay);
+      expect(sorted).toEqual([b, a]);
+    });
+  });
+
+  describe("same date — entry with no row sorts last within the group", () => {
+    it("places a rowless entry after a rowed entry", () => {
+      const committed = entry(10, "2026-06-01", "", 2);
+      const optimistic = entry(-Date.now(), "2026-06-01"); // no row yet
       const sorted = [optimistic, committed].sort(compareEntriesForDisplay);
       expect(sorted[0]).toBe(committed);
       expect(sorted[1]).toBe(optimistic);
     });
 
-    it("places multiple negative-id entries after all positive-id entries", () => {
-      const c1 = entry(3,    "2026-06-01");
-      const c2 = entry(7,    "2026-06-01");
-      const t1 = entry(-1000, "2026-06-01");
-      const t2 = entry(-1001, "2026-06-01");
+    it("places multiple rowless entries after all rowed entries", () => {
+      const c1 = entry(3, "2026-06-01", "", 2);
+      const c2 = entry(7, "2026-06-01", "", 3);
+      const t1 = entry(-1000, "2026-06-01"); // optimistic, no row
+      const t2 = entry(-1001, "2026-06-01"); // offline-queued, no row
       const sorted = [t2, c2, t1, c1].sort(compareEntriesForDisplay);
       expect(sorted[0]).toBe(c1);
       expect(sorted[1]).toBe(c2);
-      expect(sorted[2].id).toBeLessThan(0);
-      expect(sorted[3].id).toBeLessThan(0);
+      expect(sorted[2].row).toBeUndefined();
+      expect(sorted[3].row).toBeUndefined();
     });
   });
 
-  describe("different dates — date takes priority over id", () => {
-    it("earlier date before later date regardless of id sign", () => {
-      const early      = entry(999,  "2026-05-31");
-      const late       = entry(1,    "2026-06-01");
-      const optimistic = entry(-1,   "2026-06-01");
+  describe("different dates — date takes priority over row and id", () => {
+    it("earlier date before later date regardless of row or id", () => {
+      const early      = entry(999, "2026-05-31", "", 10);
+      const late       = entry(1,   "2026-06-01", "", 2);
+      const optimistic = entry(-1,  "2026-06-01"); // no row
       const sorted = [late, optimistic, early].sort(compareEntriesForDisplay);
       expect(sorted[0]).toBe(early);
     });
 
-    it("negative id on an earlier date sorts before positive id on a later date", () => {
-      const yesterday = entry(-9999, "2026-05-31");
-      const today     = entry(1,     "2026-06-01");
+    it("a rowless entry on an earlier date sorts before a rowed entry on a later date", () => {
+      const yesterday = entry(-9999, "2026-05-31"); // no row
+      const today     = entry(1,     "2026-06-01", "", 2);
       expect(compareEntriesForDisplay(yesterday, today)).toBeLessThan(0);
     });
   });
