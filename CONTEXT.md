@@ -70,6 +70,9 @@ The ordered list of pending mutations (addEntry, addEntries, updateEntry, delete
 The single transaction log. One row per Entry. Column layout:
 `B=DATE | C=TAG | D=[VLOOKUP] MAIN CATEGORY | E=DESCRIPTION | F=I/O | G=AMOUNT | H=ENTRY ID`
 
+#### Week Separator
+A non-Entry row in INCOMING/OUTGOING that visually divides one week's Entries from the next. Identified solely by a **blank Entry ID (column H)** — that blank is what tells every reader the row is not an Entry. Carries the week-start date in column B and an italic week label in column E; all other columns are blank. Inserted only for **completed** weeks — the current week is never separated. Separators are never removed once placed: deleting the last Entry of a week leaves its separator behind as an empty week heading (see issue #141).
+
 ### MASTER sheet
 A single summary row. Shows ON HAND plus the Budget for each Category. Entirely formula-driven; GAS only reads it, never writes to it.
 
@@ -103,9 +106,14 @@ return date.toISOString().slice(0, 10);           // "YYYY-MM-DD" of week start
 
 Both functions produce identical output for the same input. Tests covering Dec 31 / Jan 1 crossings, all seven weekdays, and a multi-year range live in the corresponding `*.test.ts` files.
 
-**Week label format** (used in the frontend UI week picker and — via `weekLabelFromStr` — in clasp's spreadsheet separator rows):
-- Same month: `"Mon D – D, YYYY"` (e.g. `"May 11 – 17, 2025"`)
-- Cross-month: `"Mon D – Mon D, YYYY"` (e.g. `"Apr 27 – May 3, 2025"`)
-- Year is always the year of the Saturday (end of week)
+**Week label format** — two different formats exist today:
 
-**Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem — both are the single-responsibility implementations of this calculation.
+- **Frontend UI week picker**, via `weekLabel` (`frontend/src/lib/groupEntries.ts`), kept in parity with `weekLabelFromStr` (`clasp/src/lib/weeks.ts`) by `frontend/src/lib/parity.test.ts`:
+  - Same month: `"Mon D – D, YYYY"` (e.g. `"May 11 – 17, 2025"`)
+  - Cross-month: `"Mon D – Mon D, YYYY"` (e.g. `"Apr 27 – May 3, 2025"`)
+  - Year is always the year of the Saturday (end of week)
+- **Spreadsheet separator rows**, via `formatWeekLabel` (`clasp/src/lib/weeks.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
+
+**Known divergence (issue #141)**: the canonical definition above is implemented and parity-tested in the frontend, but clasp's only production consumer of week logic — the separator/visibility trigger in `clasp/src/5_visibility.ts` — does not use it. That file computes week starts with `weekStartSunday(date, "Asia/Manila")`, a parallel `Date`-and-timezone-based implementation, and labels with `formatWeekLabel`. `weekStartOfStr` and `weekLabelFromStr` have no production call sites in clasp at all — they exist for the parity tests. #141 tracks converging the separator writer onto the canonical string-based pair.
+
+**Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem — both are the single-responsibility implementations of this calculation. Until #141 lands, also update `weekStartSunday` (`clasp/src/lib/weeks.ts`) — the separator writer uses it independently of the canonical pair, so changing only the two functions named above would silently leave the spreadsheet on Sunday-start weeks.
