@@ -139,7 +139,7 @@ describe("SplitLegCarousel", () => {
     expect(clearCall[1]).toEqual({ error: undefined });
   });
 
-  it("on blur with formula resolving to non-positive resolves cleanly, no error (#136)", async () => {
+  it("on blur with formula resolving to non-positive resolves cleanly, no error (ADR-0012)", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
     const inputs = getAllByPlaceholderText("0.00");
@@ -150,7 +150,7 @@ describe("SplitLegCarousel", () => {
     expect(lastCall[1]).toEqual({ amount: "-5.00", error: undefined });
   });
 
-  it("on blur with a plain negative amount (-50) resolves cleanly, no error (#136)", async () => {
+  it("on blur with a plain negative amount (-50) resolves cleanly, no error (ADR-0012)", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
     const inputs = getAllByPlaceholderText("0.00");
@@ -164,7 +164,7 @@ describe("SplitLegCarousel", () => {
     expect(lastCall[1]).toEqual({ amount: "-50.00", error: undefined });
   });
 
-  it("on blur with a plain zero amount (0) resolves cleanly, no error (#136)", async () => {
+  it("on blur with a plain zero amount (0) resolves cleanly, no error (ADR-0012)", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
     const inputs = getAllByPlaceholderText("0.00");

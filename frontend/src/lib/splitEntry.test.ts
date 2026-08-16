@@ -139,7 +139,7 @@ describe("toAddEntryPayloads", () => {
   });
 });
 
-describe("validateSplit — superseding isSplitValid (#136 follow-up)", () => {
+describe("validateSplit — superseding isSplitValid (ADR-0012)", () => {
   it("fails when any leg has no tag", () => {
     // single-leg state: amount set but no tag
     const state = updateLeg(initSplitState(), 0, { amount: "100" });
@@ -160,7 +160,7 @@ describe("validateSplit — superseding isSplitValid (#136 follow-up)", () => {
     expect(validateSplit(state, "O", CATEGORIES)).toEqual({ ok: true });
   });
 
-  it("is ok for a negative or zero amount, on either direction (#136)", () => {
+  it("is ok for a negative or zero amount, on either direction (ADR-0012)", () => {
     const negative = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "-50" });
     expect(validateSplit(negative, "O", CATEGORIES)).toEqual({ ok: true });
     const zero = updateLeg(initSplitState(), 0, { tag: "HOUSING", amount: "0" });
@@ -211,14 +211,14 @@ describe("validateLeg", () => {
     expect(result).toEqual({ ok: false, reason: "Tag must be a Category" });
   });
 
-  it("gives a plain 'Enter an amount' reason for a blank amount, not the raw formula error (#136 follow-up)", () => {
+  it("gives a plain 'Enter an amount' reason for a blank amount, not the raw formula error (ADR-0012)", () => {
     // Distinguishing blank-because-untouched from a malformed formula matters once the
     // UI surfaces `reason` directly — see EntrySheet.svelte's saveDisabledReason banner.
     const result = validateLeg({ tag: "Dining", amount: "" }, "O", CATEGORIES);
     expect(result).toEqual({ ok: false, reason: "Enter an amount" });
   });
 
-  it("accepts a zero or negative amount on an Outgoing leg (#136 regression pin, at the validateLeg interface)", () => {
+  it("accepts a zero or negative amount on an Outgoing leg (ADR-0012 regression pin, at the validateLeg interface)", () => {
     const zero = validateLeg({ tag: "Dining", amount: "0" }, "O", CATEGORIES);
     expect(zero).toEqual({ ok: true });
     const negative = validateLeg({ tag: "Dining", amount: "-50" }, "O", CATEGORIES);
