@@ -47,7 +47,9 @@ Click **Deploy** and copy the web app URL.
 
 ### 4. Configure the app
 
-Open the Money Sheet app (your GitHub Pages URL). On first launch you'll see a setup screen — paste your web app URL and API secret into the fields and click **Save**.
+Open the Money Sheet app (your GitHub Pages URL). On first launch the app opens in **Mock mode** — a demo populated with sample data so you can look around before connecting anything. Nothing you enter in Mock mode is saved to a spreadsheet.
+
+When you're ready to connect, click **Exit** in the `Mock mode` banner across the top. The **Connect your spreadsheet** screen then appears — paste your web app URL and API secret into the fields and click **Save**.
 
 That's it. The app is connected to your spreadsheet.
 
