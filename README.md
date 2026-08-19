@@ -1,6 +1,6 @@
 # money-sheet-monorepo
 
-> **[Live app →](https://josecomanan.github.io/money-sheet-monorepo/)** *(replace with your GitHub Pages URL)*
+> **[Live app →](https://josetomanan.github.io/money-sheet-monorepo/)**
 
 A mobile-friendly personal finance tracker for people who already live in Google Sheets — built so you can log and review your finances from your phone without wrestling with the Sheets mobile app.
 
@@ -32,7 +32,8 @@ Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/1dW0X378
 
 In your new sheet, open the **Autohide → Run setup** menu item. This:
 - Generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
-- Creates a **Config** sheet with default settings (currency symbol: `₱`).
+- Creates a **Config** sheet with default settings (currency symbol: `₱`, plus an empty `nickname`).
+- Creates the formula-driven **STATS** sheet that powers the summary view.
 
 Alternatively, open **Extensions → Apps Script**, select the `setup` function, and click **Run**.
 
