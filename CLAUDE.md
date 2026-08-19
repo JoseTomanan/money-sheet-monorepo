@@ -18,7 +18,7 @@ Each package has its own `package.json`. There is no root workspace. They share 
 
 Read `CONTEXT.md` for canonical term definitions before touching any code. Key rules:
 
-- **Tag is polymorphic**: Category on Incoming entries, Subcategory on Outgoing entries
+- **Tag is polymorphic**: Category on Incoming entries; on Outgoing entries a Subcategory *or* its bare parent Category (Subcategory is optional — issue #123)
 - **GAS never writes to MASTER** — it is entirely formula-driven
 - **Entry ID** (col H, INCOMING/OUTGOING) is the stable identifier for edit/delete — written by GAS on insert, never reused
 - **Budget** = Category incoming − outgoing under its subcategories, rolling all-time
