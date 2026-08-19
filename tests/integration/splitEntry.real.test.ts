@@ -156,14 +156,17 @@ describe("split outgoing entry — real GAS API", () => {
       const picks = pickSubcategories(cats, 1);
       const date = new Date().toISOString().slice(0, 10);
       const description = markerDescription(RUN, "atomic-reject");
-      const invalidCategoryTag = Object.keys(cats)[0]; // Category name — invalid as an Outgoing tag
+      // Neither a Subcategory nor a Category, so it fails checkTagDirection for
+      // either direction. A bare Category name would NOT work here: since issue
+      // #123 it is a permanently valid Outgoing tag (see CONTEXT.md).
+      const invalidTag = "__NOT_A_REAL_TAG__";
 
       const before = await client.getEntries();
 
       await expect(
         client.addEntries([
           { date, tag: picks[0].subcategory, description, direction: "O", amount: 50 },
-          { date, tag: invalidCategoryTag, description, direction: "O", amount: 60 },
+          { date, tag: invalidTag, description, direction: "O", amount: 60 },
         ]),
       ).rejects.toThrow();
 
