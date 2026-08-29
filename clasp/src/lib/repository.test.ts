@@ -215,7 +215,7 @@ class MutableIoRepository {
   }
 
   writeEntryFields(sheetRow: number, fields: Record<string, unknown>) {
-    const row = this.rows[sheetRow - 2];
+    const row = this.rows[sheetRow - 2] ?? (this.rows[sheetRow - 2] = Array(8).fill(""));
     if (fields.date !== undefined) row[0] = fields.date;
     if (fields.tag !== undefined) row[1] = fields.tag;
     if (fields.description !== undefined) row[3] = fields.description;
@@ -247,7 +247,9 @@ describe("patchEntry date repositioning", () => {
     patchEntry(repo, 3, { date: "2026-01-10", amount: 99 }, String);
 
     expect(ids(repo)).toEqual([1, 3, 2]);
-    expect(repo.rows[1]).toEqual(["2026-01-10", "Dining", "FOOD", "moved", "O", 99, 3, "mutation-3"]);
+    // The fake does not run the real sheet's ARRAYFORMULA in col D; the
+    // production repository deliberately leaves that formula-owned cell alone.
+    expect(repo.rows[1]).toEqual(["2026-01-10", "Dining", "", "moved", "O", 99, 3, "mutation-3"]);
   });
 
   it("moves an Entry later after existing Entries on the destination date", () => {
