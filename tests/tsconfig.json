@@ -11,5 +11,5 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "integration/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts", "integration/**/*.ts", "vitest.config.ts", "../clasp/src/lib/dispatch.ts"]
 }
