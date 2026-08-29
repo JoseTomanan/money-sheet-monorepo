@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatWeekLabel, weekStartSunday, weekTier, findInsertionIndex, weekStartOfStr, weekLabelFromStr } from "./weeks";
-
-const TZ = "Asia/Manila";
+import {
+  findInsertionIndex,
+  spreadsheetWeekLabelFromStr,
+  weekLabelFromStr,
+  weekStartOfStr,
+  weekTierFromStr,
+} from "./weeks";
 
 describe("findInsertionIndex", () => {
   const d = (iso: string) => new Date(iso);
@@ -28,55 +32,33 @@ describe("findInsertionIndex", () => {
   });
 });
 
-describe("weekStartSunday", () => {
-  it("Wednesday returns the prior Sunday at 00:00 in tz", () => {
-    // Wednesday 2025-05-14 10:00 Manila
-    const wed = new Date("2025-05-14T02:00:00Z"); // UTC+8 = 10:00 Manila
-    const result = weekStartSunday(wed, TZ);
-    // Expected: Sunday 2025-05-11 00:00 Manila = 2025-05-10T16:00:00Z
-    expect(result.toISOString()).toBe("2025-05-10T16:00:00.000Z");
-  });
-
-  it("Sunday returns itself at 00:00 in tz", () => {
-    // Sunday 2025-05-11 12:00 Manila
-    const sun = new Date("2025-05-11T04:00:00Z"); // UTC+8 = 12:00 Manila
-    const result = weekStartSunday(sun, TZ);
-    expect(result.toISOString()).toBe("2025-05-10T16:00:00.000Z");
-  });
-});
-
-describe("weekTier", () => {
-  const current = new Date("2025-05-11T16:00:00.000Z"); // Sun May 11 00:00 Manila
+describe("weekTierFromStr", () => {
+  const current = "2025-05-11";
 
   it("same week → current", () => {
-    expect(weekTier(current, current)).toBe("current");
+    expect(weekTierFromStr(current, current)).toBe("current");
   });
 
   it("1 week ago → recent", () => {
-    const oneWeekAgo = new Date(current.getTime() - 7 * 24 * 3600 * 1000);
-    expect(weekTier(oneWeekAgo, current)).toBe("recent");
+    expect(weekTierFromStr("2025-05-04", current)).toBe("recent");
   });
 
   it("4 weeks ago → recent", () => {
-    const fourWeeksAgo = new Date(current.getTime() - 4 * 7 * 24 * 3600 * 1000);
-    expect(weekTier(fourWeeksAgo, current)).toBe("recent");
+    expect(weekTierFromStr("2025-04-13", current)).toBe("recent");
   });
 
   it("5 weeks ago → old", () => {
-    const fiveWeeksAgo = new Date(current.getTime() - 5 * 7 * 24 * 3600 * 1000);
-    expect(weekTier(fiveWeeksAgo, current)).toBe("old");
+    expect(weekTierFromStr("2025-04-06", current)).toBe("old");
   });
 });
 
-describe("formatWeekLabel", () => {
+describe("spreadsheetWeekLabelFromStr", () => {
   it("same-month week: MAY 11-17", () => {
-    const sunday = new Date("2025-05-11T00:00:00+08:00");
-    expect(formatWeekLabel(sunday, TZ)).toBe("MAY 11-17");
+    expect(spreadsheetWeekLabelFromStr("2025-05-11")).toBe("MAY 11-17");
   });
 
   it("cross-month week: APR 27 - MAY 3", () => {
-    const sunday = new Date("2025-04-27T00:00:00+08:00");
-    expect(formatWeekLabel(sunday, TZ)).toBe("APR 27 - MAY 3");
+    expect(spreadsheetWeekLabelFromStr("2025-04-27")).toBe("APR 27 - MAY 3");
   });
 });
 

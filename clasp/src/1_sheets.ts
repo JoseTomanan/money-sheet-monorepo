@@ -48,7 +48,9 @@ function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
 // The live GAS-backed IoRepository adapter. Defaults to the INCOMING/OUTGOING
 // sheet, but accepts an explicit handle so callers (e.g. visibility) that
 // already hold one don't re-resolve it.
-function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet()): IoRepository {
+function liveIoRepository(
+  sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet()
+): IoRepository & VisibilityRepository {
   return {
     readRows(): IoRow[] {
       const lastRow = sh.getLastRow();
@@ -57,6 +59,24 @@ function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet())
     },
     insertRowBefore(sheetRow: number): void {
       sh.insertRowBefore(sheetRow);
+    },
+    insertSeparatorRow(sheetRow: number, weekStart: string, label: string): void {
+      sh.insertRowBefore(sheetRow);
+      // A UTC midnight Date renders as the same calendar day in the
+      // spreadsheet's Asia/Manila timezone. The planner owns the canonical
+      // week-start string; this adapter only materialises it in Sheets.
+      sh.getRange(sheetRow, IO_COL.DATE).setValue(new Date(`${weekStart}T00:00:00Z`));
+      const labelRange = sh.getRange(sheetRow, IO_COL.DESC);
+      labelRange.setValue(label);
+      labelRange.setFontStyle("italic");
+      // All other fields, especially Entry ID (col H), stay blank.
+    },
+    setRowVisibility(sheetRow: number, numRows: number, visible: boolean): void {
+      if (visible) {
+        sh.showRows(sheetRow, numRows);
+      } else {
+        sh.hideRows(sheetRow, numRows);
+      }
     },
     writeEntryFields(sheetRow, fields): void {
       // Never writes IO_COL.MAIN_CAT (col D) — it is ARRAYFORMULA-driven.
