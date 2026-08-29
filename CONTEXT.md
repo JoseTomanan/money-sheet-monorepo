@@ -1,7 +1,7 @@
 # Domain Glossary
 
 ## Entry
-A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID. The unit of all reads and writes via the GAS API. Amount is normally positive, but the manual entry form permits typing a negative amount or zero directly on **either** direction (ADR-0012) — most commonly to indicate a redistribution drain on an Incoming Entry (see Fund Redistribution), but not restricted to that case. See Amount Field for where that rule lives. Within a date, display order follows the Entry's 1-based sheet row position (not Entry ID) — dragging rows in the sheet reorders the website to match; an Entry not yet written to the sheet (optimistic or offline-queued) has no row and sorts last in its date group until confirmed.
+A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: date, tag, main category (formula-resolved), description, direction, amount, entry ID, and a write-once Mutation ID. The unit of all reads and writes via the GAS API. Amount is normally positive, but the manual entry form permits typing a negative amount or zero directly on **either** direction (ADR-0012) — most commonly to indicate a redistribution drain on an Incoming Entry (see Fund Redistribution), but not restricted to that case. See Amount Field for where that rule lives. Within a date, display order follows the Entry's 1-based sheet row position (not Entry ID) — dragging rows in the sheet reorders the website to match; an Entry not yet written to the sheet (optimistic or offline-queued) has no row and sorts last in its date group until confirmed.
 
 ## Amount Field
 A policy-bearing amount input in the frontend (`frontend/src/lib/amountField.ts`, ADR-0012): sanitizing keystrokes, resolving formulas/arithmetic on blur, and validating for save/submit are all decided by one named adapter, never a boolean threaded separately through each. Two adapters exist: `entryAmount` (manual Add/Edit Entry, either direction — accepts any sign, including zero) and `redistributionAmount` (Fund Redistribution's "Amount to move" — must be strictly positive; moving zero or less between Categories has no sensible meaning).
@@ -37,6 +37,9 @@ Whether an Entry is **Incoming** (`I`) or **Outgoing** (`O`). Stored in column F
 ## Entry ID
 A stable, auto-incrementing integer stored in column H of INCOMING/OUTGOING. Written by GAS when the row is first created; never changes. Used to identify a specific Entry for edit and delete operations. Values are never reused after deletion.
 
+## Mutation ID
+An opaque browser-generated key stored in column I of INCOMING/OUTGOING for a new Entry save operation. Every delivery attempt of one single Entry or atomic batch uses the same key. GAS uses it under the document lock to return the original Entry or ordered batch on a retry, and rejects a reused key with different content. It is not an Entry identifier: GAS alone assigns Entry IDs, and historical rows intentionally retain blank Mutation IDs.
+
 ## Main Category
 Column D of INCOMING/OUTGOING. A VLOOKUP formula that resolves any Tag (Category or Subcategory) to its parent Category. Formula-driven; GAS never writes to it. Used by MASTER sheet SUMIF formulas to aggregate Outgoing Entries by Category.
 
@@ -62,16 +65,16 @@ The permanent opt-out from Mock Mode. Recorded as a truthy value under the `ms_m
 An Entry that is visible in the app's UI but has not yet been confirmed written to the spreadsheet. Holds a temporary negative integer ID until it syncs and receives a real Entry ID from GAS. Displayed with a visual indicator to distinguish it from confirmed entries. A Local Entry exists because its originating mutation was queued in the Offline Queue rather than successfully sent.
 
 ## Offline Queue
-The ordered list of pending mutations (addEntry, addEntries, updateEntry, deleteEntry) that failed to reach GAS. Persisted in localStorage (`ms_queue`) so it survives page reloads. Drained in order when connectivity is restored — either automatically on the browser `online` event, or manually via a "Sync now" trigger. Coalescing rules apply: a later operation on the same logical entry merges into or cancels the earlier one rather than appending a new queue item. A failed Split Entry / Fund Redistribution batch queues as a single self-contained `addBatch` item rather than one item per leg; its legs are **frozen** (read-only) until the batch syncs — editing or deleting one is blocked, not coalesced (see ADR-0004's amendment).
+The ordered list of pending mutations (addEntry, addEntries, updateEntry, deleteEntry) that failed to reach GAS. Persisted in localStorage (`ms_queue`) so it survives page reloads. Drained in order when connectivity is restored — either automatically on the browser `online` event, or manually via a "Sync now" trigger. Coalescing rules apply to confirmed-entry edits/deletes. A failed new Entry save is immutable because its request may already have committed before the browser timed out: its single `add` or self-contained `addBatch` queue item retains the original Mutation ID and payload, and its Local Entries are **frozen** (read-only) until sync (ADR-0013).
 
 ## Sheets
 
 ### INCOMING/OUTGOING sheet
 The single transaction log. One row per Entry. Column layout:
-`B=DATE | C=TAG | D=[VLOOKUP] MAIN CATEGORY | E=DESCRIPTION | F=I/O | G=AMOUNT | H=ENTRY ID`
+`B=DATE | C=TAG | D=[VLOOKUP] MAIN CATEGORY | E=DESCRIPTION | F=I/O | G=AMOUNT | H=ENTRY ID | I=MUTATION ID`
 
 #### Week Separator
-A non-Entry row in INCOMING/OUTGOING that visually divides one week's Entries from the next. Identified solely by a **blank Entry ID (column H)** — that blank is what tells every reader the row is not an Entry. Carries the week-start date in column B and an italic week label in column E; all other columns are blank. Inserted only for **completed** weeks — the current week is never separated. Separators are never removed once placed: deleting the last Entry of a week leaves its separator behind as an empty week heading (see issue #141).
+A non-Entry row in INCOMING/OUTGOING that visually divides one week's Entries from the next. Identified solely by a **blank Entry ID (column H)** — that blank is what tells every reader the row is not an Entry. Carries the week-start date in column B and an italic week label in column E; all other columns, including Mutation ID (column I), are blank. Inserted only for **completed** weeks — the current week is never separated. Separators are never removed once placed: deleting the last Entry of a week leaves its separator behind as an empty week heading (see issue #141).
 
 ### MASTER sheet
 A single summary row. Shows ON HAND plus the Budget for each Category. Entirely formula-driven; GAS only reads it, never writes to it.

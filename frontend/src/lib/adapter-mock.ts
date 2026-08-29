@@ -31,11 +31,11 @@ export class MockAdapter implements GatewayAdapter {
     return mock.mockGetStats();
   }
 
-  async addEntry(payload: AddEntryPayload): Promise<Entry> {
+  async addEntry(payload: AddEntryPayload, _mutationId?: string): Promise<Entry> {
     return mock.mockAddEntry(payload);
   }
 
-  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+  async addEntries(payloads: AddEntryPayload[], _mutationId?: string): Promise<Entry[]> {
     return mock.mockAddEntries(payloads);
   }
 

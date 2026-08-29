@@ -790,7 +790,7 @@ describe("offline queue — deleteEntry connection failure", () => {
 // Offline queue — edit/delete a Local Entry skips API call (Slice 5)
 // ---------------------------------------------------------------------------
 
-describe("offline queue — edit/delete a Local Entry coalesces without API call", () => {
+describe("offline queue — queued add is immutable", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
   let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -811,7 +811,7 @@ describe("offline queue — edit/delete a Local Entry coalesces without API call
     vi.unstubAllGlobals();
   });
 
-  it("updateEntry on local entry: queue is coalesced (still 1 item), no extra fetch", async () => {
+  it("updateEntry on local entry: keeps the original queued request", async () => {
     const [localId] = [...store.localIds];
     const callsBefore = fetchMock.mock.calls.length;
     store.updateEntry(localId, { amount: 99 });
@@ -819,18 +819,18 @@ describe("offline queue — edit/delete a Local Entry coalesces without API call
     await new Promise(r => setTimeout(r, 10));
     expect(fetchMock.mock.calls.length).toBe(callsBefore); // no new fetch
     const q = JSON.parse(localStorage.getItem("ms_queue")!);
-    expect(q).toHaveLength(1); // still 1 item (coalesced)
+    expect(q).toHaveLength(1);
     expect(q[0].op).toBe("add");
-    expect(q[0].payload.amount).toBe(99); // merged
+    expect(q[0].payload.amount).toBe(50); // immutable retry payload
   });
 
-  it("deleteEntry on local entry: queue becomes empty (net zero), entry removed", async () => {
+  it("deleteEntry on local entry: keeps the pending add until it is reconciled", async () => {
     const [localId] = [...store.localIds];
     store.deleteEntry(localId);
-    await vi.waitFor(() => expect(store.localIds.size).toBe(0));
-    expect(store.entries.some(e => e.id === localId)).toBe(false);
+    await vi.waitFor(() => expect(store.localIds.size).toBe(1));
+    expect(store.entries.some(e => e.id === localId)).toBe(true);
     const q = JSON.parse(localStorage.getItem("ms_queue") ?? "[]");
-    expect(q).toHaveLength(0);
+    expect(q).toHaveLength(1);
   });
 });
 

@@ -54,12 +54,12 @@ export async function getStats(): Promise<StatsData> {
   return adapter().getStats();
 }
 
-export async function addEntry(payload: AddEntryPayload): Promise<Entry> {
-  return adapter().addEntry(payload);
+export async function addEntry(payload: AddEntryPayload, mutationId?: string): Promise<Entry> {
+  return adapter().addEntry(payload, mutationId);
 }
 
-export async function addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
-  return adapter().addEntries(payloads);
+export async function addEntries(payloads: AddEntryPayload[], mutationId?: string): Promise<Entry[]> {
+  return adapter().addEntries(payloads, mutationId);
 }
 
 export async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {

@@ -7,6 +7,8 @@ import {
   insertEntry,
   insertEntries,
   planFieldWrites,
+  findEntriesByMutationId,
+  payloadsMatch,
 } from "./repository";
 
 describe("planFieldWrites", () => {
@@ -57,6 +59,47 @@ describe("isSeparatorRow", () => {
     expect(isSeparatorRow(1)).toBe(false);
     expect(isSeparatorRow("1")).toBe(false);
     expect(isSeparatorRow(0)).toBe(false);
+  });
+});
+
+describe("mutation ID lookup", () => {
+  const payloads = [
+    { date: "2026-01-10", tag: "Dining", description: "first", direction: "O" as const, amount: 40 },
+    { date: "2026-01-05", tag: "Rent", description: "^^", direction: "O" as const, amount: 60 },
+  ];
+
+  it("returns a batch in original request order (Entry ID order), not sheet date order", () => {
+    const rows = [
+      [new Date("2026-01-05"), "Rent", "HOUSING", "^^", "O", 60, 12, "mutation-1"],
+      [new Date("2026-01-10"), "Dining", "FOOD", "first", "O", 40, 11, "mutation-1"],
+      [new Date("2026-01-12"), "Dining", "FOOD", "other", "O", 20, 13, "mutation-2"],
+      [new Date("2026-01-19"), "", "", "Week", "", "", "", ""],
+    ];
+
+    const entries = findEntriesByMutationId(rows, "mutation-1", (date) =>
+      (date as Date).toISOString().slice(0, 10),
+    );
+
+    expect(entries.map((entry) => entry.id)).toEqual([11, 12]);
+    expect(entries.map((entry) => entry.row)).toEqual([3, 2]);
+    expect(payloadsMatch(entries, payloads)).toBe(true);
+  });
+
+  it("rejects a reused key whose payload content differs", () => {
+    const rows = [[new Date("2026-01-10"), "Dining", "FOOD", "first", "O", 40, 11, "mutation-1"]];
+    const entries = findEntriesByMutationId(rows, "mutation-1", (date) =>
+      (date as Date).toISOString().slice(0, 10),
+    );
+
+    expect(payloadsMatch(entries, [{ ...payloads[0], amount: 41 }])).toBe(false);
+  });
+
+  it("ignores historical and separator rows with blank mutation IDs", () => {
+    const rows = [
+      [new Date("2026-01-10"), "Dining", "FOOD", "historical", "O", 40, 11, ""],
+      [new Date("2026-01-12"), "", "", "Week", "", "", "", ""],
+    ];
+    expect(findEntriesByMutationId(rows, "mutation-1", String)).toEqual([]);
   });
 });
 
@@ -156,6 +199,11 @@ class FakeIoRepository {
 }
 
 describe("insertEntry", () => {
+  it("writes a mutation ID beside a newly-created Entry", () => {
+    const repo = new FakeIoRepository([]);
+    insertEntry(repo, { date: "2026-01-07", tag: "FOOD", description: "Groceries", direction: "O", amount: 100 }, "mutation-1");
+    expect(repo.writeEntryFields).toHaveBeenCalledWith(2, expect.objectContaining({ id: 1, mutationId: "mutation-1" }));
+  });
   it("computes the next Entry ID, inserts in date order, writes fields, and resolves mainCategory", () => {
     const repo = new FakeIoRepository([
       [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
@@ -245,6 +293,15 @@ describe("insertEntry", () => {
 });
 
 describe("insertEntries", () => {
+  it("writes one shared mutation ID for every batch leg", () => {
+    const repo = new FakeIoRepository([]);
+    insertEntries(repo, [
+      { date: "2026-01-07", tag: "FOOD", description: "first", direction: "O", amount: 40 },
+      { date: "2026-01-07", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ], "mutation-1");
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(1, 2, expect.objectContaining({ mutationId: "mutation-1" }));
+    expect(repo.writeEntryFields).toHaveBeenNthCalledWith(2, 3, expect.objectContaining({ mutationId: "mutation-1" }));
+  });
   it("reads the IO data rows exactly once for the whole batch", () => {
     const repo = new FakeIoRepository([
       [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],

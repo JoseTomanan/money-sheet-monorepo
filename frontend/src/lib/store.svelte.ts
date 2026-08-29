@@ -111,15 +111,15 @@ const engine = createMutationEngine(storeSeam, mutApi);
 // ---------------------------------------------------------------------------
 // Public mutation surface — delegates to the engine
 // ---------------------------------------------------------------------------
-function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<void> {
+function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<boolean> {
   return Array.isArray(payload) ? engine.addLegs(payload) : engine.add(payload);
 }
 
-function updateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
+function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean> {
   return engine.edit(id, patch);
 }
 
-function deleteEntry(id: number): Promise<void> {
+function deleteEntry(id: number): Promise<boolean> {
   return engine.remove(id, entries);
 }
 

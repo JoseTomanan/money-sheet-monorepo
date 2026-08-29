@@ -1,8 +1,9 @@
-import { submitAdd, submitAddBatch, submitEdit, submitDelete, drain, getLocalEntryIds, isBatchLegId } from './offlineMutation';
+import { submitAdd, submitAddBatch, submitEdit, submitDelete, drain, getLocalEntryIds, isQueuedAddId } from './offlineMutation';
 import { buildEntry, getMainCategory } from './domain';
 import { isAuthError } from './api';
 import { readQueue } from './queue';
 import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch } from './types';
+import { createMutationId } from './mutationId';
 
 // ---------------------------------------------------------------------------
 // EntryStore seam — all state reads/writes go through this interface so the
@@ -26,8 +27,8 @@ export interface EntryStoreSeam {
 
 // API callbacks injected by the store — the adapter seam owns request timeout.
 export interface MutationApi {
-  addEntry(payload: AddEntryPayload): Promise<Entry>;
-  addEntries(payloads: AddEntryPayload[]): Promise<Entry[]>;
+  addEntry(payload: AddEntryPayload, mutationId: string): Promise<Entry>;
+  addEntries(payloads: AddEntryPayload[], mutationId: string): Promise<Entry[]>;
   updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
   deleteEntry(id: number): Promise<void>;
 }
@@ -39,34 +40,40 @@ let _nextId = -1;
 export function nextTempId(): number { return _nextId--; }
 export function _resetTempIdCounter(): void { _nextId = -1; }
 
-// A leg of a queued (not-yet-synced) batch add is read-only until it syncs —
-// no per-leg coalescing rules are introduced for it (ADR-0004 amendment).
-const BATCH_FROZEN_MESSAGE = "This entry is part of a split that hasn't synced yet — sync it first, then try again.";
+// A queued add may already exist on GAS after a timed-out response. Its request
+// body and mutation ID must remain immutable until replay resolves it.
+const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
 
 // ---------------------------------------------------------------------------
 // Engine factory
 // ---------------------------------------------------------------------------
 export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) {
 
-  async function add(payload: AddEntryPayload): Promise<void> {
+  async function add(payload: AddEntryPayload): Promise<boolean> {
     const tempId = nextTempId();
+    const mutationId = createMutationId();
     seam.appendEntry(buildEntry(tempId, payload, seam.getCategories()));
     seam.setPending(tempId, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitAdd(tempId, payload, () => mutApi.addEntry(payload));
+      const outcome = await submitAdd(tempId, payload, mutationId, () => mutApi.addEntry(payload, mutationId));
       seam.setPending(tempId, false);
       if (outcome.status === 'confirmed') {
         seam.swapEntry(tempId, outcome.entry);
         seam.setPending(outcome.entry.id, true);
         await seam.refreshAll();
         seam.setPending(outcome.entry.id, false);
-      } else {
+      } else if (outcome.status === 'queued') {
         seam.syncLocalIds();
         if (isAuthError(outcome.error)) {
           seam.showToast(outcome.error, 'destructive');
         }
+      } else {
+        seam.removeEntry(tempId);
+        seam.showToast(outcome.error, 'destructive');
+        return false;
       }
+      return true;
     } finally {
       seam.setMasterLoading(false);
     }
@@ -76,15 +83,16 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
   // addEntries POST under a single GAS document lock (issue #111): the
   // server assigns array-order ids, so no client-side sequencing is needed
   // to keep the main leg's id lowest (contrast the old per-leg awaiting).
-  async function addLegs(legs: AddEntryPayload[]): Promise<void> {
+  async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
     const tempIds = legs.map(() => nextTempId());
+    const mutationId = createMutationId();
     for (let i = 0; i < legs.length; i++) {
       seam.appendEntry(buildEntry(tempIds[i], legs[i], seam.getCategories()));
     }
     for (const id of tempIds) seam.setPending(id, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitAddBatch(tempIds, legs, () => mutApi.addEntries(legs));
+      const outcome = await submitAddBatch(tempIds, legs, mutationId, () => mutApi.addEntries(legs, mutationId));
       for (const id of tempIds) seam.setPending(id, false);
 
       if (outcome.status === 'confirmed') {
@@ -98,19 +106,24 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
         seam.showToast(outcome.error, 'destructive');
       } else if (outcome.status === 'confirmed') {
         seam.clearToast();
+      } else if (outcome.status === 'failed') {
+        seam.removeEntries(tempIds);
+        seam.showToast(outcome.error, 'destructive');
+        return false;
       }
       await seam.refreshAll();
+      return true;
     } finally {
       seam.setMasterLoading(false);
     }
   }
 
-  async function edit(id: number, patch: UpdateEntryPatch): Promise<void> {
+  async function edit(id: number, patch: UpdateEntryPatch): Promise<boolean> {
     const prev = seam.getEntries().find((e) => e.id === id);
-    if (!prev) return;
-    if (isBatchLegId(id)) {
-      seam.showToast(BATCH_FROZEN_MESSAGE);
-      return;
+    if (!prev) return false;
+    if (isQueuedAddId(id)) {
+      seam.showToast(QUEUED_ADD_FROZEN_MESSAGE);
+      return false;
     }
     const optimistic: Entry = {
       ...prev,
@@ -132,18 +145,20 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
       } else {
         seam.swapEntry(id, prev);
         seam.showToast(outcome.error);
+        return false;
       }
+      return true;
     } finally {
       seam.setPending(id, false);
       seam.setMasterLoading(false);
     }
   }
 
-  async function remove(id: number, entries: Entry[]): Promise<void> {
-    if (!entries.some((e) => e.id === id)) return;
-    if (isBatchLegId(id)) {
-      seam.showToast(BATCH_FROZEN_MESSAGE);
-      return;
+  async function remove(id: number, entries: Entry[]): Promise<boolean> {
+    if (!entries.some((e) => e.id === id)) return false;
+    if (isQueuedAddId(id)) {
+      seam.showToast(QUEUED_ADD_FROZEN_MESSAGE);
+      return false;
     }
     const wasLocal = getLocalEntryIds().has(id);
     seam.setDeletePending(id, true);
@@ -159,7 +174,9 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
         if (isAuthError(outcome.error)) seam.showToast(outcome.error, 'destructive');
       } else {
         seam.showToast(outcome.error);
+        return false;
       }
+      return true;
     } finally {
       seam.setDeletePending(id, false);
       seam.setMasterLoading(false);
@@ -172,9 +189,9 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
 
     // Legs of a queued (not-yet-synced) batch are frozen: skip them and tell
     // the user to sync first, same as a single edit/delete on a batch leg.
-    const frozen = present.filter((id) => isBatchLegId(id));
-    const deletable = present.filter((id) => !isBatchLegId(id));
-    if (frozen.length > 0) seam.showToast(BATCH_FROZEN_MESSAGE);
+    const frozen = present.filter((id) => isQueuedAddId(id));
+    const deletable = present.filter((id) => !isQueuedAddId(id));
+    if (frozen.length > 0) seam.showToast(QUEUED_ADD_FROZEN_MESSAGE);
     if (deletable.length === 0) return;
 
     const currentLocalIds = getLocalEntryIds();

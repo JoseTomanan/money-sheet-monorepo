@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { normalizeDate } from "./format";
 import { dedupeEntries } from "./dedupe";
+import { createMutationId } from "./mutationId";
 
 export class ConnectionError extends Error {}
 export class ConnectionMissingError extends ConnectionError {}
@@ -152,18 +153,20 @@ export class RealAdapter implements GatewayAdapter {
     return data.stats;
   }
 
-  async addEntry(payload: AddEntryPayload): Promise<Entry> {
+  async addEntry(payload: AddEntryPayload, mutationId = createMutationId()): Promise<Entry> {
     const data = await this.gasPost<{ ok: boolean; entry: Entry }>({
       action: "addEntry",
       ...payload,
+      mutationId,
     });
     return data.entry;
   }
 
-  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+  async addEntries(payloads: AddEntryPayload[], mutationId = createMutationId()): Promise<Entry[]> {
     const data = await this.gasPost<{ ok: boolean; entries: Entry[] }>({
       action: "addEntries",
       entries: payloads,
+      mutationId,
     });
     return data.entries;
   }

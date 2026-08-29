@@ -12,7 +12,7 @@
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
-    onsave: (m: EntryMutation) => void;
+    onsave: (m: EntryMutation) => Promise<boolean>;
     ondelete?: (id: number) => void;
     defaultDirection?: Direction;
   }
@@ -27,23 +27,33 @@
   let snapping    = $state(false);
   let dismissing  = $state(false);
   let springTimer: ReturnType<typeof setTimeout> | null = null;
+  let saving = $state(false);
+  let wasOpen = false;
 
   $effect(() => {
-    if (open) {
+    if (open && !wasOpen) {
       form.reset(entry, defaultDirection);
       snap       = 'default';
       activeDrag = null;
       dragOffset = 0;
       snapping   = false;
       dismissing = false;
+      saving = false;
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
+    wasOpen = open;
   });
 
-  function handleSave() {
-    onsave(form.buildMutation(entry?.id));
-    onclose();
+  async function handleSave() {
+    if (saving || form.saveDisabled) return;
+    saving = true;
+    try {
+      const saved = await onsave(form.buildMutation(entry?.id));
+      if (saved) onclose();
+    } finally {
+      saving = false;
+    }
   }
 
   // During drag: track finger exactly with no transition.
@@ -133,8 +143,8 @@
     <button
       class="header-btn save bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
       onclick={handleSave}
-      disabled={form.saveDisabled}
-    >Save</button>
+      disabled={form.saveDisabled || saving}
+    >{saving ? 'Saving…' : 'Save'}</button>
   </Sheet.Header>
 
   {#if form.saveDisabledReason && !form.split.legs.some((l) => l.error)}

@@ -34,6 +34,7 @@ In your new sheet, open the **Autohide → Run setup** menu item. This:
 - Generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
 - Creates a **Config** sheet with default settings (currency symbol: `₱`, plus an empty `nickname`).
 - Creates the formula-driven **STATS** sheet that powers the summary view.
+- Adds the `MUTATION ID` header in column I of **INCOMING/OUTGOING**; existing rows remain blank.
 
 Alternatively, open **Extensions → Apps Script**, select the `setup` function, and click **Run**.
 

@@ -20,7 +20,7 @@ Read `CONTEXT.md` for canonical term definitions before touching any code. Key r
 
 - **Tag is polymorphic**: Category on Incoming entries; on Outgoing entries a Subcategory *or* its bare parent Category (Subcategory is optional — issue #123)
 - **GAS never writes to MASTER** — it is entirely formula-driven
-- **Entry ID** (col H, INCOMING/OUTGOING) is the stable identifier for edit/delete — written by GAS on insert, never reused
+- **Entry ID** (col H, INCOMING/OUTGOING) is the stable identifier for edit/delete — written by GAS on insert, never reused; **Mutation ID** (col I) makes new saves idempotent across retries
 - **Budget** = Category incoming − outgoing under its subcategories, rolling all-time
 - **Per-subcategory breakdown** = outgoing spend only (no incoming at subcategory level)
 
@@ -28,7 +28,7 @@ Read `CONTEXT.md` for canonical term definitions before touching any code. Key r
 
 | Sheet | Purpose |
 |---|---|
-| INCOMING/OUTGOING | All entries. `B=DATE \| C=TAG \| D=[VLOOKUP] MAIN CATEGORY \| E=DESCRIPTION \| F=I/O \| G=AMOUNT \| H=ENTRY ID` |
+| INCOMING/OUTGOING | All entries. `B=DATE \| C=TAG \| D=[VLOOKUP] MAIN CATEGORY \| E=DESCRIPTION \| F=I/O \| G=AMOUNT \| H=ENTRY ID \| I=MUTATION ID` |
 | MASTER | Single formula row: ON HAND + per-Category Budget. Read-only for GAS. |
 | Categories | Subcategory→Category mapping. Adding a row here auto-updates VLOOKUP in col D. |
 

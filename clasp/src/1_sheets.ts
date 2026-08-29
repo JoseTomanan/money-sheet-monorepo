@@ -53,7 +53,7 @@ function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet())
     readRows(): IoRow[] {
       const lastRow = sh.getLastRow();
       if (lastRow < 2) return [];
-      return sh.getRange(2, IO_COL.DATE, lastRow - 1, 7).getValues();
+      return sh.getRange(2, IO_COL.DATE, lastRow - 1, 8).getValues();
     },
     insertRowBefore(sheetRow: number): void {
       sh.insertRowBefore(sheetRow);
@@ -74,4 +74,9 @@ function liveIoRepository(sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet())
       sh.deleteRow(sheetRow);
     },
   };
+}
+
+/** Adds the idempotency-key column on a migration/setup run; historical rows stay blank. */
+function ensureMutationIdColumn(): void {
+  getIOSheet().getRange(1, IO_COL.MUTATION_ID).setValue("MUTATION ID");
 }

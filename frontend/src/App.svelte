@@ -53,12 +53,14 @@
   }
 
   async function handleSave(m: EntryMutation) {
-    if (m.type === 'add') store.addEntry(m.payload);
-    else store.updateEntry(m.id, m.patch);
-    if (m.type === 'add' && scrollArea) {
+    const saved = m.type === 'add'
+      ? await store.addEntry(m.payload)
+      : await store.updateEntry(m.id, m.patch);
+    if (saved && m.type === 'add' && scrollArea) {
       await tick();
       scrollArea.scrollTop = scrollArea.scrollHeight;
     }
+    return saved;
   }
 
   // Settings overlay state
@@ -177,4 +179,3 @@
     </Sheet.Root>
   </div>
 {/if}
-

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { isLocalEntryId, getLocalEntryIds } from './offlineMutation';
+import { ConnectionError } from './adapter-real';
 import { writeQueue } from './queue';
 
 // ---------------------------------------------------------------------------
@@ -74,27 +75,28 @@ describe('offlineMutation — submitAdd success', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Slice 3 — submitAdd failure → enqueued (any error)
+// Slice 3 — submitAdd failure → enqueued (connection errors only)
 // ---------------------------------------------------------------------------
 
 describe('offlineMutation — submitAdd failure', () => {
   beforeEach(() => localStorage.clear());
 
-  it('returns queued when tryAdd rejects', async () => {
-    const outcome = await submitAdd(-1001, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new Error('Network error')));
+  it('returns queued when a connection failure occurs', async () => {
+    const outcome = await submitAdd(-1001, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new ConnectionError('Network error')));
     expect(outcome.status).toBe('queued');
   });
 
   it('enqueues the add item with the given tempId', async () => {
     const payload = { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O' as const, amount: 50 };
-    await submitAdd(-1001, payload, () => Promise.reject(new Error('Network error')));
+    await submitAdd(-1001, payload, () => Promise.reject(new ConnectionError('Network error')));
     const ids = getLocalEntryIds();
     expect(ids.has(-1001)).toBe(true);
   });
 
-  it('enqueues even on non-connection errors (add never fails permanently)', async () => {
-    await submitAdd(-2000, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new Error('API returned error')));
-    expect(getLocalEntryIds().has(-2000)).toBe(true);
+  it('returns failed without queuing a validation error', async () => {
+    const outcome = await submitAdd(-2000, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new Error('API returned error')));
+    expect(outcome.status).toBe('failed');
+    expect(getLocalEntryIds().has(-2000)).toBe(false);
   });
 });
 
@@ -130,7 +132,7 @@ describe('offlineMutation — submitAddBatch failure', () => {
   beforeEach(() => localStorage.clear());
 
   it('returns queued and enqueues exactly one addBatch item (not per-leg) when tryAddBatch rejects', async () => {
-    const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.reject(new Error('Network error')));
+    const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.reject(new ConnectionError('Network error')));
     expect(outcome.status).toBe('queued');
     const q = readQueue();
     expect(q).toHaveLength(1);
@@ -142,7 +144,7 @@ describe('offlineMutation — submitAddBatch failure', () => {
   });
 
   it('all legs become Local Entries after a queued batch', async () => {
-    await submitAddBatch([-5, -6], [LEG_A, LEG_B], () => Promise.reject(new Error('offline')));
+    await submitAddBatch([-5, -6], [LEG_A, LEG_B], () => Promise.reject(new ConnectionError('offline')));
     expect(getLocalEntryIds()).toEqual(new Set([-5, -6]));
   });
 });
@@ -152,7 +154,6 @@ describe('offlineMutation — submitAddBatch failure', () => {
 // ---------------------------------------------------------------------------
 
 import { submitEdit } from './offlineMutation';
-import { ConnectionError } from './adapter-real';
 import { readQueue } from './queue';
 
 describe('offlineMutation — submitEdit', () => {
@@ -246,7 +247,7 @@ describe('offlineMutation — ADR-0004 coalescing', () => {
   // Rule 1: add A + edit A → merged add (covered in submitEdit local-entry test above)
   // Here we verify the merged payload in isolation
   it('add + edit on local entry → single add with merged fields', async () => {
-    await submitAdd(-1001, { date: '2026-01-01', tag: 'Groceries', description: 'orig', direction: 'O', amount: 50 }, () => Promise.reject(new Error('offline')));
+    await submitAdd(-1001, { date: '2026-01-01', tag: 'Groceries', description: 'orig', direction: 'O', amount: 50 }, () => Promise.reject(new ConnectionError('offline')));
     await submitEdit(-1001, { amount: 75, description: 'updated' }, () => Promise.resolve());
     const q = readQueue();
     expect(q).toHaveLength(1);
@@ -260,7 +261,7 @@ describe('offlineMutation — ADR-0004 coalescing', () => {
 
   // Rule 2: add A + delete A → net zero (covered in submitDelete local-entry test above)
   it('add + delete on local entry → empty queue', async () => {
-    await submitAdd(-1002, { date: '2026-01-01', tag: 'Dining', description: 'to delete', direction: 'O', amount: 20 }, () => Promise.reject(new Error('offline')));
+    await submitAdd(-1002, { date: '2026-01-01', tag: 'Dining', description: 'to delete', direction: 'O', amount: 20 }, () => Promise.reject(new ConnectionError('offline')));
     await submitDelete(-1002, () => Promise.resolve());
     expect(readQueue()).toHaveLength(0);
   });
@@ -374,6 +375,35 @@ describe('offlineMutation — drain', () => {
     const remaining = readQueue();
     expect(remaining).toHaveLength(1);
     if (remaining[0].op === 'add') expect(remaining[0].tempId).toBe(-1002);
+  });
+
+  it('persists a Mutation ID for a legacy queued add before its first retry', async () => {
+    writeQueue([{ op: 'add', tempId: -1001, payload: BASE_PAYLOAD }]);
+    let firstAttemptId = '';
+    await drain({
+      add: (_payload, mutationId) => {
+        firstAttemptId = mutationId;
+        return Promise.reject(new Error('timed out after commit'));
+      },
+      addEntries: () => Promise.resolve([]),
+      edit: () => Promise.resolve(),
+      delete: () => Promise.resolve(),
+    });
+    const queued = readQueue();
+    expect(firstAttemptId).not.toBe('');
+    expect(queued[0]).toMatchObject({ op: 'add', mutationId: firstAttemptId });
+
+    let replayId = '';
+    await drain({
+      add: (_payload, mutationId) => {
+        replayId = mutationId;
+        return Promise.resolve(REAL_ENTRY);
+      },
+      addEntries: () => Promise.resolve([]),
+      edit: () => Promise.resolve(),
+      delete: () => Promise.resolve(),
+    });
+    expect(replayId).toBe(firstAttemptId);
   });
 
   it('drains an addBatch item as one call: returns entries in order, queue emptied', async () => {

@@ -7,4 +7,5 @@ function setup(): void {
   );
   ensureConfigSheet(ss);
   ensureStatsSheet(ss);
+  ensureMutationIdColumn();
 }

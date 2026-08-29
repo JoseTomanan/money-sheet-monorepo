@@ -3,12 +3,12 @@ import type { AddEntryPayload, UpdateEntryPatch } from "./types";
 const KEY = "ms_queue";
 
 export type QueueItem =
-  | { op: "add"; tempId: number; payload: AddEntryPayload }
+  | { op: "add"; tempId: number; payload: AddEntryPayload; mutationId?: string }
   // A Split Entry / Fund Redistribution batch that failed to reach GAS online.
   // Self-contained: all data needed to replay it as one addEntries lives on
   // this item — see ADR-0004's amendment. Frozen until synced (issue #111):
   // no per-leg edit/delete coalescing is introduced for it.
-  | { op: "addBatch"; tempIds: number[]; payloads: AddEntryPayload[] }
+  | { op: "addBatch"; tempIds: number[]; payloads: AddEntryPayload[]; mutationId?: string }
   | { op: "edit"; id: number; patch: UpdateEntryPatch }
   | { op: "delete"; id: number };
 
@@ -61,6 +61,7 @@ export function enqueue(item: QueueItem): void {
         op: "add",
         tempId: existing.tempId,
         payload: { ...existing.payload, ...item.patch },
+        mutationId: existing.mutationId,
       };
     } else if (existing.op === "edit") {
       merged[existingIdx] = {

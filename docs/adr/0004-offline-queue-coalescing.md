@@ -23,3 +23,7 @@ A Split Entry / Fund Redistribution now submits as one atomic `addEntries` call 
 `addBatch` is a deliberate, **self-contained** exception to "every queue item is independently replayable": all the data needed to replay the whole batch as one `addEntries` call lives on that single item, so there is still no inter-item dependency — just one item covering N legs instead of N items covering one leg each.
 
 **Freeze rule:** while a batch's legs sit in the queue (unsynced), those legs are **read-only** Local Entries. Editing or deleting an individual leg is blocked with a user-facing message asking the user to sync first, rather than being queued. This keeps the existing four coalescing rules untouched — no new merge rule is introduced for a batch leg, because a batch leg is never allowed to reach `enqueue()` for an edit or delete in the first place. Once the batch drains successfully, its legs become ordinary synced Entries and the freeze no longer applies.
+
+## Amendment (issue #149): pending new saves are immutable
+
+A timed-out `addEntry` can have committed at GAS before the browser receives a response. Its queue item now retains the original payload and Mutation ID so replay can use the server's idempotency lookup. A queued single add is therefore frozen just like `addBatch`; edit/delete is blocked until it syncs. Coalescing remains available for operations on already-confirmed Entries.

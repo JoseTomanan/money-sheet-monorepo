@@ -67,9 +67,23 @@ export interface AddEntryPayload {
   amount: number;
 }
 
+/** One immutable browser-initiated add operation. */
+export interface AddEntryRequest extends AddEntryPayload {
+  mutationId: string;
+}
+
 export interface AddEntriesPayload {
   entries: AddEntryPayload[];
+  mutationId: string;
 }
+
+export type IdempotentAddEntryResult =
+  | { status: "created" | "duplicate"; entry: EntryData }
+  | { status: "mismatch" };
+
+export type IdempotentAddEntriesResult =
+  | { status: "created" | "duplicate"; entries: EntryData[] }
+  | { status: "mismatch" };
 
 export interface UpdateEntryPatch {
   date?: string;
@@ -187,9 +201,9 @@ export interface DispatchDeps {
   getConfig?: () => unknown;
   getStats?: () => StatsData;
   getEntryById: (id: number) => EntryData | null;
-  addEntry: (payload: AddEntryPayload) => EntryData;
+  addEntry: (request: AddEntryRequest) => IdempotentAddEntryResult;
   /** Inserts all legs under one document-lock acquisition; returns entries in array order. */
-  addEntries: (payloads: AddEntryPayload[]) => EntryData[];
+  addEntries: (request: AddEntriesPayload) => IdempotentAddEntriesResult;
   updateEntry: (id: number, patch: UpdateEntryPatch) => void;
   deleteEntry: (id: number) => void;
 }
@@ -307,6 +321,27 @@ function validateAddPayload(
   };
 }
 
+function validateMutationId(
+  body: Record<string, unknown>
+): { mutationId: string } | { error: ApiResponse } {
+  const mutationId = body.mutationId;
+  if (typeof mutationId !== "string" || !mutationId.trim() || mutationId.length > 128) {
+    return { error: err("validation", '"mutationId" must be a non-empty string of at most 128 characters') };
+  }
+  return { mutationId };
+}
+
+function validateAddRequest(
+  body: Record<string, unknown>,
+  categories: CategoryMap
+): { request: AddEntryRequest } | { error: ApiResponse } {
+  const mutation = validateMutationId(body);
+  if ("error" in mutation) return mutation;
+  const add = validateAddPayload(body, categories);
+  if ("error" in add) return add;
+  return { request: { ...add.payload, mutationId: mutation.mutationId } };
+}
+
 /**
  * Validate-then-write: every leg is checked against the identical single-leg
  * rules (`validateAddPayload`) before any write happens. The first invalid
@@ -315,7 +350,9 @@ function validateAddPayload(
 function validateAddBatchPayload(
   body: Record<string, unknown>,
   categories: CategoryMap
-): { payloads: AddEntryPayload[] } | { error: ApiResponse } {
+): { request: AddEntriesPayload } | { error: ApiResponse } {
+  const mutation = validateMutationId(body);
+  if ("error" in mutation) return mutation;
   const entries = body.entries;
   if (!Array.isArray(entries) || entries.length === 0) {
     return { error: err("validation", '"entries" must be a non-empty array') };
@@ -331,7 +368,7 @@ function validateAddBatchPayload(
     payloads.push(result.payload);
   }
 
-  return { payloads };
+  return { request: { entries: payloads, mutationId: mutation.mutationId } };
 }
 
 function validateUpdatePayload(
@@ -460,18 +497,24 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
     // ── Write actions ─────────────────────────────────────────
     if (action === "addEntry") {
       const categories = deps.getCategories();
-      const result = validateAddPayload(body, categories);
+      const result = validateAddRequest(body, categories);
       if ("error" in result) return result.error;
-      const entry = deps.addEntry(result.payload);
-      return { ok: true, entry };
+      const addResult = deps.addEntry(result.request);
+      if (addResult.status === "mismatch") {
+        return err("validation", "Mutation ID was already used with different entry content");
+      }
+      return { ok: true, entry: addResult.entry };
     }
 
     if (action === "addEntries") {
       const categories = deps.getCategories();
       const result = validateAddBatchPayload(body, categories);
       if ("error" in result) return result.error;
-      const entries = deps.addEntries(result.payloads);
-      return { ok: true, entries };
+      const addResult = deps.addEntries(result.request);
+      if (addResult.status === "mismatch") {
+        return err("validation", "Mutation ID was already used with different entry content");
+      }
+      return { ok: true, entries: addResult.entries };
     }
 
     if (action === "updateEntry") {
