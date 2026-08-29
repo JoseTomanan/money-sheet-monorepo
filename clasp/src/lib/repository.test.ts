@@ -146,9 +146,9 @@ describe("patchEntry", () => {
       [new Date("2026-01-06"), "FOOD", "FOOD", "Groceries", "O", 100, 1],
     ];
     const writeEntryFields = vi.fn();
-    const repo = { readRows: () => rows, writeEntryFields };
+    const repo = { readRows: () => rows, writeEntryFields, deleteRow: vi.fn(), insertRowBefore: vi.fn() };
 
-    patchEntry(repo, 1, { amount: 150, description: "Groceries (updated)" });
+    patchEntry(repo, 1, { amount: 150, description: "Groceries (updated)" }, String);
 
     expect(writeEntryFields).toHaveBeenCalledWith(3, {
       amount: 150,
@@ -157,8 +157,8 @@ describe("patchEntry", () => {
   });
 
   it("throws when the Entry ID does not exist", () => {
-    const repo = { readRows: () => [], writeEntryFields: vi.fn() };
-    expect(() => patchEntry(repo, 99, { amount: 1 })).toThrow("Entry 99 not found");
+    const repo = { readRows: () => [], writeEntryFields: vi.fn(), deleteRow: vi.fn(), insertRowBefore: vi.fn() };
+    expect(() => patchEntry(repo, 99, { amount: 1 }, String)).toThrow("Entry 99 not found");
   });
 });
 
@@ -197,6 +197,117 @@ class FakeIoRepository {
     return this.rows;
   }
 }
+
+/** Mutable sheet stand-in for asserting row order after a reposition. */
+class MutableIoRepository {
+  constructor(readonly rows: unknown[][]) {}
+
+  readRows() {
+    return this.rows;
+  }
+
+  insertRowBefore(sheetRow: number) {
+    this.rows.splice(sheetRow - 2, 0, Array(8).fill(""));
+  }
+
+  deleteRow(sheetRow: number) {
+    this.rows.splice(sheetRow - 2, 1);
+  }
+
+  writeEntryFields(sheetRow: number, fields: Record<string, unknown>) {
+    const row = this.rows[sheetRow - 2];
+    if (fields.date !== undefined) row[0] = fields.date;
+    if (fields.tag !== undefined) row[1] = fields.tag;
+    if (fields.description !== undefined) row[3] = fields.description;
+    if (fields.direction !== undefined) row[4] = fields.direction;
+    if (fields.amount !== undefined) row[5] = fields.amount;
+    if (fields.id !== undefined) row[6] = fields.id;
+    if (fields.mutationId !== undefined) row[7] = fields.mutationId;
+  }
+
+  resolveMainCategory() {
+    return "FOOD";
+  }
+}
+
+describe("patchEntry date repositioning", () => {
+  const entry = (date: string, id: number, description = `entry-${id}`) =>
+    [date, "Dining", "FOOD", description, "O", id * 10, id, `mutation-${id}`];
+  const ids = (repo: MutableIoRepository) => repo.rows
+    .filter((row) => row[6] !== "")
+    .map((row) => row[6]);
+
+  it("moves an Entry earlier after existing Entries on the destination date", () => {
+    const repo = new MutableIoRepository([
+      entry("2026-01-10", 1),
+      entry("2026-01-15", 2),
+      entry("2026-01-20", 3, "moved"),
+    ]);
+
+    patchEntry(repo, 3, { date: "2026-01-10", amount: 99 }, String);
+
+    expect(ids(repo)).toEqual([1, 3, 2]);
+    expect(repo.rows[1]).toEqual(["2026-01-10", "Dining", "FOOD", "moved", "O", 99, 3, "mutation-3"]);
+  });
+
+  it("moves an Entry later after existing Entries on the destination date", () => {
+    const repo = new MutableIoRepository([
+      entry("2026-01-10", 1),
+      entry("2026-01-15", 2),
+      entry("2026-01-20", 3),
+    ]);
+
+    patchEntry(repo, 1, { date: "2026-01-20" }, String);
+
+    expect(ids(repo)).toEqual([2, 3, 1]);
+  });
+
+  it("keeps non-date and unchanged-date patches in place", () => {
+    const repo = new MutableIoRepository([entry("2026-01-10", 1), entry("2026-01-15", 2)]);
+    const deleteRow = vi.spyOn(repo, "deleteRow");
+    const insertRowBefore = vi.spyOn(repo, "insertRowBefore");
+
+    patchEntry(repo, 1, { description: "renamed" }, String);
+    patchEntry(repo, 2, { date: "2026-01-15", amount: 42 }, String);
+
+    expect(ids(repo)).toEqual([1, 2]);
+    expect(repo.rows[0][3]).toBe("renamed");
+    expect(repo.rows[1][5]).toBe(42);
+    expect(deleteRow).not.toHaveBeenCalled();
+    expect(insertRowBefore).not.toHaveBeenCalled();
+  });
+
+  it("keeps Week Separator rows intact while moving an Entry", () => {
+    const separator = ["2026-01-11", "", "", "WEEK OF JAN 11", "", "", "", ""];
+    const repo = new MutableIoRepository([
+      entry("2026-01-10", 1),
+      separator,
+      entry("2026-01-12", 2),
+      entry("2026-01-20", 3),
+    ]);
+
+    patchEntry(repo, 3, { date: "2026-01-12" }, String);
+
+    expect(repo.rows[1]).toBe(separator);
+    expect(repo.rows[1]).toEqual(["2026-01-11", "", "", "WEEK OF JAN 11", "", "", "", ""]);
+    expect(ids(repo)).toEqual([1, 2, 3]);
+  });
+
+  it("leaves a subsequent insert correctly date ordered after a move", () => {
+    const repo = new MutableIoRepository([entry("2026-01-10", 1), entry("2026-01-20", 2)]);
+
+    patchEntry(repo, 1, { date: "2026-01-15" }, String);
+    insertEntry(repo, {
+      date: "2026-01-15",
+      tag: "Dining",
+      description: "new same-date entry",
+      direction: "O",
+      amount: 30,
+    });
+
+    expect(ids(repo)).toEqual([1, 3, 2]);
+  });
+});
 
 describe("insertEntry", () => {
   it("writes a mutation ID beside a newly-created Entry", () => {
