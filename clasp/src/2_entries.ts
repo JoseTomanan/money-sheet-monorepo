@@ -21,17 +21,56 @@ interface AddEntryPayload {
   amount: number;
 }
 
-function addEntry(payload: AddEntryPayload): Entry {
-  return runExclusive(LockService.getDocumentLock(), 10_000, () =>
-    insertEntry(liveIoRepository(), payload)
-  );
+interface AddEntryRequest extends AddEntryPayload {
+  mutationId: string;
+}
+
+interface AddEntriesPayload {
+  entries: AddEntryPayload[];
+  mutationId: string;
+}
+
+type IdempotentAddEntryResult =
+  | { status: "created" | "duplicate"; entry: Entry }
+  | { status: "mismatch" };
+
+type IdempotentAddEntriesResult =
+  | { status: "created" | "duplicate"; entries: Entry[] }
+  | { status: "mismatch" };
+
+function addEntry(request: AddEntryRequest): IdempotentAddEntryResult {
+  return runExclusive(LockService.getDocumentLock(), 10_000, () => {
+    const repo = liveIoRepository();
+    const rows = repo.readRows();
+    const existing = findEntriesByMutationId(rows, request.mutationId, formatEntryDate);
+    if (existing.length > 0) {
+      return payloadsMatch(existing, [request])
+        ? { status: "duplicate", entry: existing[0] }
+        : { status: "mismatch" };
+    }
+    return {
+      status: "created",
+      entry: insertEntry(repo, request, request.mutationId, rows),
+    };
+  });
 }
 
 /** Inserts all legs under one document-lock acquisition (issue #111). */
-function addEntries(payloads: AddEntryPayload[]): Entry[] {
-  return runExclusive(LockService.getDocumentLock(), 10_000, () =>
-    insertEntries(liveIoRepository(), payloads)
-  );
+function addEntries(request: AddEntriesPayload): IdempotentAddEntriesResult {
+  return runExclusive(LockService.getDocumentLock(), 10_000, () => {
+    const repo = liveIoRepository();
+    const rows = repo.readRows();
+    const existing = findEntriesByMutationId(rows, request.mutationId, formatEntryDate);
+    if (existing.length > 0) {
+      return payloadsMatch(existing, request.entries)
+        ? { status: "duplicate", entries: existing }
+        : { status: "mismatch" };
+    }
+    return {
+      status: "created",
+      entries: insertEntries(repo, request.entries, request.mutationId, rows),
+    };
+  });
 }
 
 interface UpdateEntryPatch {

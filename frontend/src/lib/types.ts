@@ -79,8 +79,14 @@ export interface AddEntryPayload {
   amount: number;
 }
 
+/** One immutable browser-initiated add operation. */
+export interface AddEntryRequest extends AddEntryPayload {
+  mutationId: string;
+}
+
 export interface AddEntriesPayload {
   entries: AddEntryPayload[];
+  mutationId: string;
 }
 
 export interface UpdateEntryPatch {
@@ -112,8 +118,8 @@ export interface GatewayAdapter {
   getCategories(): Promise<CategoryMap>;
   getConfig(): Promise<Config>;
   getStats(): Promise<StatsData>;
-  addEntry(payload: AddEntryPayload): Promise<Entry>;
-  addEntries(payloads: AddEntryPayload[]): Promise<Entry[]>;
+  addEntry(payload: AddEntryPayload, mutationId?: string): Promise<Entry>;
+  addEntries(payloads: AddEntryPayload[], mutationId?: string): Promise<Entry[]>;
   updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
   deleteEntry(id: number): Promise<void>;
   validateConnection(gasUrl: string, apiSecret: string): Promise<void>;

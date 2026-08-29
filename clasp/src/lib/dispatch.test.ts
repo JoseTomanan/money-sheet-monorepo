@@ -26,16 +26,14 @@ function makeDeps(overrides: Partial<DispatchDeps> = {}): DispatchDeps {
   return {
     secret: "correct-secret",
     getCategories: () => CATEGORY_MAP,
-    addEntry: (payload) => ({
-      id: 99,
-      mainCategory: "FOOD",
-      ...payload,
+    addEntry: ({ mutationId: _mutationId, ...payload }) => ({
+      status: "created",
+      entry: { id: 99, mainCategory: "FOOD", ...payload },
     }),
-    addEntries: (payloads) => payloads.map((payload, i) => ({
-      id: 100 + i,
-      mainCategory: "FOOD",
-      ...payload,
-    })),
+    addEntries: ({ entries }) => ({
+      status: "created",
+      entries: entries.map((payload, i) => ({ id: 100 + i, mainCategory: "FOOD", ...payload })),
+    }),
     updateEntry: (_id, _patch) => {},
     deleteEntry: (id) => {
       if (id !== 1) throw new Error(`Entry ${id} not found`);
@@ -88,6 +86,7 @@ describe("addEntry — tag/direction validation", () => {
           description: "test",
           direction: "O",
           amount: 50,
+          mutationId: "single-bare-category",
         },
       },
       deps
@@ -130,6 +129,7 @@ describe("addEntry — tag/direction validation", () => {
           description: "Lunch",
           direction: "O",
           amount: 150,
+          mutationId: "single-outgoing",
         },
       },
       deps
@@ -149,6 +149,7 @@ describe("addEntry — tag/direction validation", () => {
           description: "Salary",
           direction: "I",
           amount: 5000,
+          mutationId: "single-incoming",
         },
       },
       deps
@@ -197,6 +198,7 @@ describe("addEntry — amount validation", () => {
           description: "redistribution",
           direction: "I",
           amount: -200,
+          mutationId: "single-negative",
         },
       },
       deps
@@ -529,6 +531,7 @@ describe("success response shapes", () => {
           description: "Lunch",
           direction: "O",
           amount: 150,
+          mutationId: "single-success-shape",
         },
       },
       deps
@@ -628,16 +631,17 @@ describe("addEntries — batch", () => {
   });
 
   it("accepts a batch with an Outgoing leg tagged with a bare Category (Subcategory optional, #123)", () => {
-    const addEntries = vi.fn((payloads) =>
-      payloads.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p }))
-    );
+    const addEntries = vi.fn(({ entries }) => ({
+      status: "created" as const,
+      entries: entries.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p })),
+    }));
     const deps = makeDeps({ addEntries });
     const categoryLeg = { ...validLeg, tag: "FOOD", description: "^^", amount: 25 };
     const res = dispatch(
       {
         action: "addEntries",
         secret: "correct-secret",
-        body: { entries: [validLeg, categoryLeg] },
+        body: { entries: [validLeg, categoryLeg], mutationId: "batch-bare-category" },
       },
       deps
     );
@@ -646,16 +650,17 @@ describe("addEntries — batch", () => {
   });
 
   it("valid batch inserts all legs under one call and returns entries in order", () => {
-    const addEntries = vi.fn((payloads) =>
-      payloads.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p }))
-    );
+    const addEntries = vi.fn(({ entries }) => ({
+      status: "created" as const,
+      entries: entries.map((p: typeof validLeg, i: number) => ({ id: 10 + i, mainCategory: "FOOD", ...p })),
+    }));
     const deps = makeDeps({ addEntries });
     const secondLeg = { ...validLeg, tag: "Rent", description: "^^", amount: 75 };
     const res = dispatch(
       {
         action: "addEntries",
         secret: "correct-secret",
-        body: { entries: [validLeg, secondLeg] },
+        body: { entries: [validLeg, secondLeg], mutationId: "batch-success" },
       },
       deps
     );
@@ -665,6 +670,59 @@ describe("addEntries — batch", () => {
       { id: 10, mainCategory: "FOOD", ...validLeg },
       { id: 11, mainCategory: "FOOD", ...secondLeg },
     ]);
+  });
+});
+
+describe("add mutations — idempotency", () => {
+  const payload = {
+    date: "2026-01-15",
+    tag: "Dining",
+    description: "Lunch",
+    direction: "O" as const,
+    amount: 150,
+  };
+
+  it("returns the original single entry for a repeated identical mutation ID", () => {
+    const original = { id: 41, mainCategory: "FOOD", ...payload };
+    const addEntry = vi.fn(() => ({ status: "duplicate" as const, entry: original }));
+    const deps = makeDeps({ addEntry });
+
+    const first = dispatch({ action: "addEntry", secret: "correct-secret", body: { ...payload, mutationId: "repeat-single" } }, deps);
+    const retry = dispatch({ action: "addEntry", secret: "correct-secret", body: { ...payload, mutationId: "repeat-single" } }, deps);
+
+    expect(first).toEqual({ ok: true, entry: original });
+    expect(retry).toEqual({ ok: true, entry: original });
+    expect(addEntry).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the original ordered batch for a repeated identical mutation ID", () => {
+    const entries = [
+      { id: 41, mainCategory: "FOOD", ...payload },
+      { id: 42, mainCategory: "HOUSING", ...payload, tag: "Rent", description: "^^" },
+    ];
+    const addEntries = vi.fn(() => ({ status: "duplicate" as const, entries }));
+    const deps = makeDeps({ addEntries });
+    const body = { entries: [payload, { ...payload, tag: "Rent", description: "^^" }], mutationId: "repeat-batch" };
+
+    expect(dispatch({ action: "addEntries", secret: "correct-secret", body }, deps)).toEqual({ ok: true, entries });
+    expect(dispatch({ action: "addEntries", secret: "correct-secret", body }, deps)).toEqual({ ok: true, entries });
+    expect(addEntries).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a reused mutation ID whose content differs without returning a write result", () => {
+    const addEntry = vi.fn(() => ({ status: "mismatch" as const }));
+    const res = dispatch(
+      { action: "addEntry", secret: "correct-secret", body: { ...payload, amount: 151, mutationId: "already-used" } },
+      makeDeps({ addEntry }),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("validation");
+  });
+
+  it("requires a mutation ID for every add operation", () => {
+    const res = dispatch({ action: "addEntry", secret: "correct-secret", body: payload }, makeDeps());
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe("validation");
   });
 });
 

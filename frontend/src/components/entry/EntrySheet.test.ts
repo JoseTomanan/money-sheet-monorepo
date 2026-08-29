@@ -13,7 +13,7 @@ function baseProps(overrides = {}) {
     open: true,
     categories: CATEGORIES,
     onclose: vi.fn(),
-    onsave: vi.fn(),
+    onsave: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -119,6 +119,24 @@ describe("EntrySheet — formula evaluation on blur", () => {
     // Focusing again should still show the resolved number, not the original formula
     await fireEvent.focus(input);
     expect(input.value).toBe("15.00");
+  });
+});
+
+describe("EntrySheet — in-flight save latch", () => {
+  it("shows Saving… and cannot submit a second in-flight save", async () => {
+    let resolveSave!: (saved: boolean) => void;
+    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onclose = vi.fn();
+    const { getByRole } = render(EntrySheet, baseProps({ onsave, onclose, entry: makeEntry() }));
+    const save = getByRole("button", { name: "Save" });
+
+    await fireEvent.click(save);
+    expect(getByRole("button", { name: "Saving…" })).toBeDisabled();
+    await fireEvent.click(getByRole("button", { name: "Saving…" }));
+    expect(onsave).toHaveBeenCalledTimes(1);
+
+    resolveSave(true);
+    await waitFor(() => expect(onclose).toHaveBeenCalledOnce());
   });
 });
 

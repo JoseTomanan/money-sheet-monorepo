@@ -2,14 +2,17 @@ import { enqueue, readQueue, writeQueue } from './queue';
 import type { QueueItem } from './queue';
 import { isQueueable } from './api';
 import type { Entry, AddEntryPayload, UpdateEntryPatch } from './types';
+import { createMutationId } from './mutationId';
 
 export type AddOutcome =
   | { status: 'confirmed'; entry: Entry }
-  | { status: 'queued'; error?: unknown };
+  | { status: 'queued'; error?: unknown }
+  | { status: 'failed'; error: unknown };
 
 export type AddBatchOutcome =
   | { status: 'confirmed'; entries: Entry[] }
-  | { status: 'queued'; error?: unknown };
+  | { status: 'queued'; error?: unknown }
+  | { status: 'failed'; error: unknown };
 
 export type MutateOutcome =
   | { status: 'confirmed' }
@@ -35,8 +38,11 @@ export function localEntryIdsFromQueue(queue: QueueItem[]): Set<number> {
 }
 
 /** True when `id` is a leg of a batch currently sitting in the queue (frozen until synced). */
-export function isBatchLegId(id: number): boolean {
-  return readQueue().some((item) => item.op === 'addBatch' && item.tempIds.includes(id));
+export function isQueuedAddId(id: number): boolean {
+  return readQueue().some((item) =>
+    (item.op === 'add' && item.tempId === id)
+    || (item.op === 'addBatch' && item.tempIds.includes(id)),
+  );
 }
 
 export function getLocalEntryIds(): Set<number> {
@@ -46,14 +52,20 @@ export function getLocalEntryIds(): Set<number> {
 export async function submitAdd(
   tempId: number,
   payload: AddEntryPayload,
-  tryAdd: () => Promise<Entry>,
+  mutationIdOrTryAdd: string | (() => Promise<Entry>),
+  maybeTryAdd?: () => Promise<Entry>,
 ): Promise<AddOutcome> {
+  const mutationId = typeof mutationIdOrTryAdd === 'string' ? mutationIdOrTryAdd : createMutationId();
+  const tryAdd = typeof mutationIdOrTryAdd === 'function' ? mutationIdOrTryAdd : maybeTryAdd!;
   try {
     const entry = await tryAdd();
     return { status: 'confirmed', entry };
   } catch (err) {
-    enqueue({ op: 'add', tempId, payload });
-    return { status: 'queued', error: err };
+    if (isQueueable(err)) {
+      enqueue({ op: 'add', tempId, payload, mutationId });
+      return { status: 'queued', error: err };
+    }
+    return { status: 'failed', error: err };
   }
 }
 
@@ -65,14 +77,20 @@ export async function submitAdd(
 export async function submitAddBatch(
   tempIds: number[],
   payloads: AddEntryPayload[],
-  tryAddBatch: () => Promise<Entry[]>,
+  mutationIdOrTryAddBatch: string | (() => Promise<Entry[]>),
+  maybeTryAddBatch?: () => Promise<Entry[]>,
 ): Promise<AddBatchOutcome> {
+  const mutationId = typeof mutationIdOrTryAddBatch === 'string' ? mutationIdOrTryAddBatch : createMutationId();
+  const tryAddBatch = typeof mutationIdOrTryAddBatch === 'function' ? mutationIdOrTryAddBatch : maybeTryAddBatch!;
   try {
     const entries = await tryAddBatch();
     return { status: 'confirmed', entries };
   } catch (err) {
-    enqueue({ op: 'addBatch', tempIds, payloads });
-    return { status: 'queued', error: err };
+    if (isQueueable(err)) {
+      enqueue({ op: 'addBatch', tempIds, payloads, mutationId });
+      return { status: 'queued', error: err };
+    }
+    return { status: 'failed', error: err };
   }
 }
 
@@ -118,8 +136,8 @@ export async function submitDelete(
 }
 
 export async function drain(callbacks: {
-  add: (payload: AddEntryPayload) => Promise<Entry>;
-  addEntries: (payloads: AddEntryPayload[]) => Promise<Entry[]>;
+  add: (payload: AddEntryPayload, mutationId: string) => Promise<Entry>;
+  addEntries: (payloads: AddEntryPayload[], mutationId: string) => Promise<Entry[]>;
   edit: (id: number, patch: UpdateEntryPatch) => Promise<void>;
   delete: (id: number) => Promise<void>;
 }): Promise<DrainItemResult[]> {
@@ -127,14 +145,22 @@ export async function drain(callbacks: {
   let q = readQueue();
 
   while (q.length > 0) {
-    const item = q[0];
+    let item = q[0];
+    // Queues created before #149 have no key. Give one a durable identity
+    // before the first replay attempt, so a timeout during that replay cannot
+    // cause a later attempt to create the Entry twice.
+    if ((item.op === 'add' || item.op === 'addBatch') && !item.mutationId) {
+      item = { ...item, mutationId: createMutationId() };
+      q = [item, ...q.slice(1)];
+      writeQueue(q);
+    }
     try {
       let entry: Entry | undefined;
       let entries: Entry[] | undefined;
       if (item.op === 'add') {
-        entry = await callbacks.add(item.payload);
+        entry = await callbacks.add(item.payload, item.mutationId);
       } else if (item.op === 'addBatch') {
-        entries = await callbacks.addEntries(item.payloads);
+        entries = await callbacks.addEntries(item.payloads, item.mutationId);
       } else if (item.op === 'edit') {
         await callbacks.edit(item.id, item.patch);
       } else {

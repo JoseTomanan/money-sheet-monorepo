@@ -20,14 +20,16 @@ export const IO_COL = {
   DIR: 6,
   AMOUNT: 7,
   ID: 8,
+  MUTATION_ID: 9,
 } as const;
 
-// A data row as returned by readRows(): cols B–H →
-// [date, tag, mainCategory, description, direction, amount, id]
+// A data row as returned by readRows(): cols B–I →
+// [date, tag, mainCategory, description, direction, amount, id, mutationId]
 export type IoRow = unknown[];
 
 // col H position within the 0-based B–H slice returned by readRows()
 export const ID_INDEX = 6;
+export const MUTATION_ID_INDEX = 7;
 
 /**
  * THE separator predicate: a row with a blank Entry ID (col H) is a week
@@ -44,6 +46,7 @@ export interface EntryFields {
   direction: Direction;
   amount: number;
   id: number;
+  mutationId?: string;
 }
 
 // Maps EntryFields keys to their 1-based sheet column, in column order.
@@ -56,6 +59,7 @@ const FIELD_COLUMNS: [keyof EntryFields, number][] = [
   ["direction", IO_COL.DIR],
   ["amount", IO_COL.AMOUNT],
   ["id", IO_COL.ID],
+  ["mutationId", IO_COL.MUTATION_ID],
 ];
 
 /**
@@ -129,6 +133,45 @@ export function listEntries(
   return entries;
 }
 
+/**
+ * Returns the original response order for an add operation: batch Entry IDs
+ * are assigned in request-array order, even when their rows are date-sorted.
+ */
+export function findEntriesByMutationId(
+  rows: IoRow[],
+  mutationId: string,
+  formatDate: (raw: unknown) => string,
+): EntryData[] {
+  const matchingRows = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row[MUTATION_ID_INDEX] === mutationId && !isSeparatorRow(row[ID_INDEX]));
+
+  return matchingRows
+    .map(({ row, index }) => ({
+      id: Number(row[ID_INDEX]),
+      date: formatDate(row[0]),
+      tag: String(row[1]),
+      mainCategory: String(row[2]),
+      description: String(row[3]),
+      direction: String(row[4]) as Direction,
+      amount: Number(row[5]) || 0,
+      row: 2 + index,
+    }))
+    .sort((a, b) => a.id - b.id);
+}
+
+/** The stored representation must exactly match the immutable add request. */
+export function payloadsMatch(entries: EntryData[], payloads: AddEntryPayload[]): boolean {
+  return entries.length === payloads.length && entries.every((entry, i) => {
+    const payload = payloads[i];
+    return entry.date === payload.date
+      && entry.tag === payload.tag
+      && entry.description === payload.description
+      && entry.direction === payload.direction
+      && entry.amount === payload.amount;
+  });
+}
+
 /** Patches the Entry matching `id` with the given fields. Throws if not found. */
 export function patchEntry(
   repo: Pick<IoRepository, "readRows" | "writeEntryFields">,
@@ -146,8 +189,12 @@ export function patchEntry(
  * resolved from the sheet's formula-driven column D. Performs exactly one
  * `readRows()` call regardless of sheet size.
  */
-export function insertEntry(repo: IoRepository, payload: AddEntryPayload): EntryData {
-  const rows = repo.readRows();
+export function insertEntry(
+  repo: IoRepository,
+  payload: AddEntryPayload,
+  mutationId?: string,
+  rows: IoRow[] = repo.readRows(),
+): EntryData {
 
   const existingIds = rows.map((r) => r[ID_INDEX]).filter((id) => !isSeparatorRow(id)).map(Number);
   let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
@@ -171,14 +218,17 @@ export function insertEntry(repo: IoRepository, payload: AddEntryPayload): Entry
     targetRow = lastRow + 1;
   }
 
-  repo.writeEntryFields(targetRow, {
+  const fields: EntryFields = {
     date: payload.date,
     tag: payload.tag,
     description: payload.description,
     direction: payload.direction,
     amount: payload.amount,
     id: nextId,
-  });
+    mutationId: mutationId ?? "",
+  };
+  if (!mutationId) delete fields.mutationId;
+  repo.writeEntryFields(targetRow, fields);
 
   const mainCategory = repo.resolveMainCategory(targetRow);
 
@@ -202,8 +252,12 @@ export function insertEntry(repo: IoRepository, payload: AddEntryPayload): Entry
  * previous legs in this batch were inserted, so legs sharing a date land on
  * adjacent rows in array order and interleave correctly with existing rows.
  */
-export function insertEntries(repo: IoRepository, payloads: AddEntryPayload[]): EntryData[] {
-  const rows = repo.readRows();
+export function insertEntries(
+  repo: IoRepository,
+  payloads: AddEntryPayload[],
+  mutationId?: string,
+  rows: IoRow[] = repo.readRows(),
+): EntryData[] {
 
   const existingIds = rows.map((r) => r[ID_INDEX]).filter((id) => !isSeparatorRow(id)).map(Number);
   let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
@@ -236,14 +290,17 @@ export function insertEntries(repo: IoRepository, payloads: AddEntryPayload[]): 
     lastRow++;
 
     const id = nextId++;
-    repo.writeEntryFields(targetRow, {
+    const fields: EntryFields = {
       date: payload.date,
       tag: payload.tag,
       description: payload.description,
       direction: payload.direction,
       amount: payload.amount,
       id,
-    });
+      mutationId: mutationId ?? "",
+    };
+    if (!mutationId) delete fields.mutationId;
+    repo.writeEntryFields(targetRow, fields);
 
     targetRows.push(targetRow);
     entries.push({

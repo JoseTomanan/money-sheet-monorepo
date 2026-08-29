@@ -4,9 +4,12 @@
 // `tsc --noEmit` here instead of silently drifting (issue #109).
 declare const IO_COL: typeof import("./lib/repository").IO_COL;
 declare const ID_INDEX: typeof import("./lib/repository").ID_INDEX;
+declare const MUTATION_ID_INDEX: typeof import("./lib/repository").MUTATION_ID_INDEX;
 declare const isSeparatorRow: typeof import("./lib/repository").isSeparatorRow;
 declare const planFieldWrites: typeof import("./lib/repository").planFieldWrites;
 declare const listEntries: typeof import("./lib/repository").listEntries;
+declare const findEntriesByMutationId: typeof import("./lib/repository").findEntriesByMutationId;
+declare const payloadsMatch: typeof import("./lib/repository").payloadsMatch;
 declare const insertEntry: typeof import("./lib/repository").insertEntry;
 declare const insertEntries: typeof import("./lib/repository").insertEntries;
 declare const patchEntry: typeof import("./lib/repository").patchEntry;

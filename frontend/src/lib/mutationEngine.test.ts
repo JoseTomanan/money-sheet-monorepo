@@ -180,6 +180,26 @@ describe('engine.add — queued', () => {
     await engine.add(BASE_PAYLOAD);
     expect(seam.toasts.filter((t) => t.msg !== null)).toHaveLength(0);
   });
+
+  it('reuses the same mutation ID when a post-commit timeout is retried', async () => {
+    const calls: string[] = [];
+    let attempt = 0;
+    const api = makeApi({
+      addEntry: vi.fn(async (_payload, mutationId) => {
+        calls.push(mutationId);
+        if (attempt++ === 0) throw new ConnectionError('timed out after commit');
+        return CONFIRMED_ENTRY;
+      }),
+    });
+    const seam = makeFakeSeam();
+    const engine = createMutationEngine(seam, api);
+    await engine.add(BASE_PAYLOAD);
+    await engine.drainQueue();
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toBe(calls[1]);
+    expect(seam.entries.map((entry) => entry.id)).toEqual([CONFIRMED_ENTRY.id]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -269,20 +289,18 @@ describe('engine.remove — confirmed', () => {
   });
 });
 
-describe('engine.remove — local entry (queue coalesce)', () => {
+describe('engine.remove — queued add freeze', () => {
   beforeEach(() => { _resetTempIdCounter(); clearQueue(); });
 
-  it('removes a Local Entry optimistically without a network call', async () => {
-    // Enqueue an add so the entry is "local" (negative temp id in queue)
+  it('keeps a Local Entry immutable without a network call', async () => {
+    // A timed-out add may already exist on GAS, so its retry is immutable.
     writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
     const localEntry: Entry = { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'lunch', direction: 'O', amount: 50 };
     const seam = makeFakeSeam([localEntry]);
     const api = makeApi({ deleteEntry: vi.fn(async () => {}) });
     const engine = createMutationEngine(seam, api);
     await engine.remove(-1, seam.entries);
-    // The entry should be gone immediately
-    expect(seam.entries.find((e) => e.id === -1)).toBeUndefined();
-    // Network delete should NOT have been called (local entry → coalesced in queue)
+    expect(seam.entries.find((e) => e.id === -1)).toBeDefined();
     expect(api.deleteEntry).not.toHaveBeenCalled();
   });
 });
@@ -322,7 +340,7 @@ describe('engine.addLegs — atomic batch', () => {
     await createMutationEngine(seam, api).addLegs(legs);
 
     expect(addEntries).toHaveBeenCalledTimes(1);
-    expect(addEntries).toHaveBeenCalledWith(legs);
+    expect(addEntries).toHaveBeenCalledWith(legs, expect.any(String));
     expect(addEntry).not.toHaveBeenCalled();
   });
 
@@ -361,7 +379,7 @@ describe('engine.addLegs — atomic batch', () => {
   });
 
   it('a batch that fails leaves all legs as Local Entries (no partial success)', async () => {
-    const api = makeApi({ addEntries: vi.fn(async () => { throw new Error('offline'); }) });
+    const api = makeApi({ addEntries: vi.fn(async () => { throw new ConnectionError('offline'); }) });
     const seam = makeFakeSeam();
     const legs: AddEntryPayload[] = [
       { ...BASE_PAYLOAD, description: 'main' },
