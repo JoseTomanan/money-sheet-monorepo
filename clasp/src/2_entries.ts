@@ -83,7 +83,7 @@ interface UpdateEntryPatch {
 
 function updateEntry(id: number, patch: UpdateEntryPatch): void {
   runExclusive(LockService.getDocumentLock(), 10_000, () =>
-    patchEntry(liveIoRepository(), id, patch)
+    patchEntry(liveIoRepository(), id, patch, formatEntryDate)
   );
 }
 

@@ -172,16 +172,60 @@ export function payloadsMatch(entries: EntryData[], payloads: AddEntryPayload[])
   });
 }
 
-/** Patches the Entry matching `id` with the given fields. Throws if not found. */
+/**
+ * Patches the Entry matching `id` with the given fields. A real calendar-date
+ * change moves that same Entry into chronological order, after the destination
+ * date's existing Entries. The caller holds the document lock for this entire
+ * read-modify-write operation.
+ */
 export function patchEntry(
-  repo: Pick<IoRepository, "readRows" | "writeEntryFields">,
+  repo: Pick<IoRepository, "readRows" | "writeEntryFields" | "deleteRow" | "insertRowBefore">,
   id: number,
-  patch: UpdateEntryPatch
+  patch: UpdateEntryPatch,
+  formatDate: (raw: unknown) => string,
 ): void {
   const rows = repo.readRows();
   const targetRow = findRowByEntryId(rows.map((r) => r[ID_INDEX]), id);
   if (targetRow === null) throw new Error(`Entry ${id} not found`);
-  repo.writeEntryFields(targetRow, patch);
+
+  const targetIndex = targetRow - 2;
+  const target = rows[targetIndex];
+  if (patch.date === undefined || patch.date === formatDate(target[0])) {
+    repo.writeEntryFields(targetRow, patch);
+    return;
+  }
+
+  // Remove the source row from the snapshot before finding its destination:
+  // otherwise moving an Entry later could incorrectly count itself as a
+  // same-date row. Separator rows remain in the snapshot and are never
+  // selected or written because their blank ID cannot match `id`.
+  const rowsWithoutTarget = rows.filter((_, index) => index !== targetIndex);
+  const dates = rowsWithoutTarget.map((row) => {
+    const value = row[0];
+    return value instanceof Date ? value : value ? new Date(String(value)) : null;
+  });
+  const destinationIndex = findInsertionIndex(dates, new Date(patch.date));
+  const destinationRow = 2 + destinationIndex;
+  const lastRowAfterDelete = rowsWithoutTarget.length + 1;
+
+  // Preserve every stored value except formula-driven Main Category (col D),
+  // which must never be written by GAS. Entry ID and Mutation ID move intact.
+  const fields: EntryFields = {
+    date: patch.date,
+    tag: patch.tag ?? String(target[1]),
+    description: patch.description ?? String(target[3]),
+    direction: patch.direction ?? (String(target[4]) as Direction),
+    amount: patch.amount ?? Number(target[5]),
+    id: Number(target[ID_INDEX]),
+    mutationId: target[MUTATION_ID_INDEX] == null ? "" : String(target[MUTATION_ID_INDEX]),
+  };
+
+  repo.deleteRow(targetRow);
+  const writeRow = destinationRow <= lastRowAfterDelete
+    ? destinationRow
+    : lastRowAfterDelete + 1;
+  if (destinationRow <= lastRowAfterDelete) repo.insertRowBefore(destinationRow);
+  repo.writeEntryFields(writeRow, fields);
 }
 
 /**
