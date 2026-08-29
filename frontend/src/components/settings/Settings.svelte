@@ -1,6 +1,6 @@
 <script lang="ts">
   import { connection, setConnection, generateSetupUrl } from '../../lib/connection.svelte';
-  import { validateConnection, userMessage } from '../../lib/api';
+  import { gateway, userMessage } from '../../lib/api';
   import { darkMode, type ThemePreference } from '../../lib/darkMode.svelte';
 
   const themeOptions: { value: ThemePreference; label: string }[] = [
@@ -36,7 +36,7 @@
     errorMsg = '';
     saving = true;
     try {
-      await validateConnection(gasUrl.trim(), apiSecret.trim());
+      await gateway().validateConnection(gasUrl.trim(), apiSecret.trim());
       // Only commit after validation succeeds — committing first would unmount
       // SettingsGate before the error can be shown (connection.current becomes non-null).
       setConnection({ gasUrl: gasUrl.trim(), apiSecret: apiSecret.trim() });

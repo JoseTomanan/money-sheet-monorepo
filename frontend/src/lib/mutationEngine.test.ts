@@ -68,6 +68,10 @@ function makeApi(overrides: Partial<MutationApi> = {}): MutationApi {
   };
 }
 
+function createEngine(seam: EntryStoreSeam, api: MutationApi) {
+  return createMutationEngine(seam, () => api);
+}
+
 // ---------------------------------------------------------------------------
 // Slice 1 — temp-id generator
 // ---------------------------------------------------------------------------
@@ -97,6 +101,20 @@ describe('nextTempId', () => {
 describe('engine.add — confirmed', () => {
   beforeEach(() => { _resetTempIdCounter(); clearQueue(); });
 
+  it('resolves the mutation adapter when an operation begins', async () => {
+    const seam = makeFakeSeam();
+    const initial = makeApi();
+    const active = makeApi();
+    let current = initial;
+    const engine = createMutationEngine(seam, () => current);
+
+    current = active;
+    await engine.add(BASE_PAYLOAD);
+
+    expect(initial.addEntry).not.toHaveBeenCalled();
+    expect(active.addEntry).toHaveBeenCalledOnce();
+  });
+
   it('inserts an optimistic entry with a negative temp id before the network call', async () => {
     const seam = makeFakeSeam();
     let capturedBeforeResolve = false;
@@ -106,14 +124,14 @@ describe('engine.add — confirmed', () => {
         return CONFIRMED_ENTRY;
       }),
     });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(capturedBeforeResolve).toBe(true);
   });
 
   it('replaces the temp entry with the confirmed real entry', async () => {
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.add(BASE_PAYLOAD);
     expect(seam.entries).toHaveLength(1);
     expect(seam.entries[0].id).toBe(CONFIRMED_ENTRY.id);
@@ -121,14 +139,14 @@ describe('engine.add — confirmed', () => {
 
   it('triggers a refresh after confirmation', async () => {
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.add(BASE_PAYLOAD);
     expect(seam.refreshCount).toBeGreaterThan(0);
   });
 
   it('leaves masterLoading false after completion', async () => {
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.add(BASE_PAYLOAD);
     expect(seam.masterLoading).toBe(false);
   });
@@ -143,7 +161,7 @@ describe('engine.add — queued', () => {
   it('keeps the temp entry as a Local Entry (no swap, no removal)', async () => {
     const api = makeApi({ addEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(seam.entries).toHaveLength(1);
     expect(seam.entries[0].id).toBeLessThan(0);
@@ -152,7 +170,7 @@ describe('engine.add — queued', () => {
   it('does NOT refresh after queuing', async () => {
     const api = makeApi({ addEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(seam.refreshCount).toBe(0);
   });
@@ -160,7 +178,7 @@ describe('engine.add — queued', () => {
   it('syncs local ids after queuing', async () => {
     const api = makeApi({ addEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(seam.syncCount).toBeGreaterThan(0);
   });
@@ -168,7 +186,7 @@ describe('engine.add — queued', () => {
   it('shows destructive toast on UnauthorizedError', async () => {
     const api = makeApi({ addEntry: vi.fn(async () => { throw new UnauthorizedError('nope'); }) });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(seam.toasts.some((t) => t.variant === 'destructive')).toBe(true);
   });
@@ -176,7 +194,7 @@ describe('engine.add — queued', () => {
   it('shows NO toast for a plain connection error', async () => {
     const api = makeApi({ addEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     expect(seam.toasts.filter((t) => t.msg !== null)).toHaveLength(0);
   });
@@ -192,7 +210,7 @@ describe('engine.add — queued', () => {
       }),
     });
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.add(BASE_PAYLOAD);
     await engine.drainQueue();
 
@@ -218,14 +236,14 @@ describe('engine.edit — confirmed', () => {
         patchedBeforeResolve = seam.entries[0].description === 'new';
       }),
     });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.edit(10, { description: 'new' });
     expect(patchedBeforeResolve).toBe(true);
   });
 
   it('refreshes after a confirmed edit', async () => {
     const seam = makeFakeSeam([EXISTING]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.edit(10, { description: 'new' });
     expect(seam.refreshCount).toBeGreaterThan(0);
   });
@@ -237,7 +255,7 @@ describe('engine.edit — failed (server error)', () => {
   it('rolls back the optimistic patch to the previous value', async () => {
     const seam = makeFakeSeam([EXISTING]);
     const api = makeApi({ updateEntry: vi.fn(async () => { throw new Error('server error'); }) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.edit(10, { description: 'new' });
     expect(seam.entries[0].description).toBe('old');
   });
@@ -245,7 +263,7 @@ describe('engine.edit — failed (server error)', () => {
   it('shows a toast on failure', async () => {
     const seam = makeFakeSeam([EXISTING]);
     const api = makeApi({ updateEntry: vi.fn(async () => { throw new Error('oops'); }) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.edit(10, { description: 'new' });
     expect(seam.toasts.some((t) => t.msg !== null)).toBe(true);
   });
@@ -257,7 +275,7 @@ describe('engine.edit — queued (connection error)', () => {
   it('keeps the optimistic patch visible and does not refresh', async () => {
     const seam = makeFakeSeam([EXISTING]);
     const api = makeApi({ updateEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.edit(10, { description: 'new' });
     expect(seam.entries[0].description).toBe('new');
     expect(seam.refreshCount).toBe(0);
@@ -274,7 +292,7 @@ describe('engine.remove — confirmed', () => {
 
   it('removes the entry and refreshes', async () => {
     const seam = makeFakeSeam([REMOTE_ENTRY]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.remove(99, seam.entries);
     expect(seam.entries.find((e) => e.id === 99)).toBeUndefined();
     expect(seam.refreshCount).toBeGreaterThan(0);
@@ -282,7 +300,7 @@ describe('engine.remove — confirmed', () => {
 
   it('is a no-op when the entry is not present', async () => {
     const seam = makeFakeSeam([REMOTE_ENTRY]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.remove(999, seam.entries);
     expect(seam.entries).toHaveLength(1);
     expect(seam.refreshCount).toBe(0);
@@ -298,7 +316,7 @@ describe('engine.remove — queued add freeze', () => {
     const localEntry: Entry = { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'lunch', direction: 'O', amount: 50 };
     const seam = makeFakeSeam([localEntry]);
     const api = makeApi({ deleteEntry: vi.fn(async () => {}) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.remove(-1, seam.entries);
     expect(seam.entries.find((e) => e.id === -1)).toBeDefined();
     expect(api.deleteEntry).not.toHaveBeenCalled();
@@ -311,7 +329,7 @@ describe('engine.remove — queued (connection error)', () => {
   it('does not refresh on connection error for a remote entry', async () => {
     const seam = makeFakeSeam([REMOTE_ENTRY]);
     const api = makeApi({ deleteEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.remove(99, seam.entries);
     expect(seam.refreshCount).toBe(0);
   });
@@ -337,7 +355,7 @@ describe('engine.addLegs — atomic batch', () => {
     ];
 
     const seam = makeFakeSeam();
-    await createMutationEngine(seam, api).addLegs(legs);
+    await createEngine(seam, api).addLegs(legs);
 
     expect(addEntries).toHaveBeenCalledTimes(1);
     expect(addEntries).toHaveBeenCalledWith(legs, expect.any(String));
@@ -357,7 +375,7 @@ describe('engine.addLegs — atomic batch', () => {
       { ...BASE_PAYLOAD, description: 'main' },
       { ...BASE_PAYLOAD, description: '^^' },
     ];
-    await createMutationEngine(seam, api).addLegs(legs);
+    await createEngine(seam, api).addLegs(legs);
     expect(countAtStart).toBe(2);
   });
 
@@ -372,7 +390,7 @@ describe('engine.addLegs — atomic batch', () => {
       { ...BASE_PAYLOAD, description: 'main' },
       { ...BASE_PAYLOAD, description: '^^' },
     ];
-    await createMutationEngine(seam, api).addLegs(legs);
+    await createEngine(seam, api).addLegs(legs);
 
     expect(seam.entries.map((e) => e.id)).toEqual([100, 101]);
     expect(seam.entries.every((e) => e.id > 0)).toBe(true);
@@ -385,7 +403,7 @@ describe('engine.addLegs — atomic batch', () => {
       { ...BASE_PAYLOAD, description: 'main' },
       { ...BASE_PAYLOAD, description: '^^' },
     ];
-    await createMutationEngine(seam, api).addLegs(legs);
+    await createEngine(seam, api).addLegs(legs);
 
     expect(seam.entries).toHaveLength(2);
     expect(seam.entries.every((e) => e.id < 0)).toBe(true);
@@ -403,7 +421,7 @@ describe('engine.drainQueue', () => {
     writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
     const seam = makeFakeSeam([localEntry]);
     const api = makeApi({ addEntry: vi.fn(async () => CONFIRMED_ENTRY) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.drainQueue();
     expect(seam.entries.find((e) => e.id === -1)).toBeUndefined();
     expect(seam.entries.find((e) => e.id === CONFIRMED_ENTRY.id)).toBeDefined();
@@ -412,7 +430,7 @@ describe('engine.drainQueue', () => {
   it('removes a drained delete entry from the list', async () => {
     writeQueue([{ op: 'delete', id: 99 }]);
     const seam = makeFakeSeam([REMOTE_ENTRY]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.drainQueue();
     expect(seam.entries.find((e) => e.id === 99)).toBeUndefined();
   });
@@ -420,7 +438,7 @@ describe('engine.drainQueue', () => {
   it('refreshes when all items are drained', async () => {
     writeQueue([{ op: 'delete', id: 99 }]);
     const seam = makeFakeSeam([REMOTE_ENTRY]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     await engine.drainQueue();
     expect(seam.refreshCount).toBe(1);
   });
@@ -429,7 +447,7 @@ describe('engine.drainQueue', () => {
     writeQueue([{ op: 'delete', id: 99 }]);
     const seam = makeFakeSeam([REMOTE_ENTRY]);
     const api = makeApi({ deleteEntry: vi.fn(async () => { throw new ConnectionError('offline'); }) });
-    const engine = createMutationEngine(seam, api);
+    const engine = createEngine(seam, api);
     await engine.drainQueue();
     expect(seam.refreshCount).toBe(0);
   });
@@ -444,7 +462,7 @@ describe('engine.drainQueue', () => {
     const addEntries = vi.fn(async (payloads: AddEntryPayload[]) =>
       payloads.map((p, i) => ({ ...CONFIRMED_ENTRY, id: 200 + i, ...p }))
     );
-    const engine = createMutationEngine(seam, makeApi({ addEntries }));
+    const engine = createEngine(seam, makeApi({ addEntries }));
     await engine.drainQueue();
     expect(addEntries).toHaveBeenCalledTimes(1);
     expect(seam.entries.find((e) => e.id === -1)).toBeUndefined();
@@ -462,7 +480,7 @@ describe('engine.injectQueue', () => {
   it('appends a Local Entry for a queued add item not already present', () => {
     writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     engine.injectQueue();
     expect(seam.entries).toHaveLength(1);
     expect(seam.entries[0]).toMatchObject({ id: -1, mainCategory: 'FOOD', tag: 'Groceries' });
@@ -472,7 +490,7 @@ describe('engine.injectQueue', () => {
     writeQueue([{ op: 'add', tempId: -1, payload: BASE_PAYLOAD }]);
     const localEntry: Entry = { id: -1, date: '2026-01-01', tag: 'Groceries', mainCategory: 'FOOD', description: 'lunch', direction: 'O', amount: 50 };
     const seam = makeFakeSeam([localEntry]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     engine.injectQueue();
     expect(seam.entries).toHaveLength(1);
   });
@@ -480,7 +498,7 @@ describe('engine.injectQueue', () => {
   it('appends a Local Entry for every leg of a queued addBatch item not already present', () => {
     writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, { ...BASE_PAYLOAD, description: '^^' }] }]);
     const seam = makeFakeSeam();
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     engine.injectQueue();
     expect(seam.entries.map((e) => e.id)).toEqual([-1, -2]);
   });
@@ -488,7 +506,7 @@ describe('engine.injectQueue', () => {
   it('re-resolves mainCategory for a queued edit that changes tag', () => {
     writeQueue([{ op: 'edit', id: 10, patch: { tag: 'Rent' } }]);
     const seam = makeFakeSeam([EXISTING]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     engine.injectQueue();
     const patched = seam.entries.find((e) => e.id === 10);
     expect(patched?.tag).toBe('Rent');
@@ -498,7 +516,7 @@ describe('engine.injectQueue', () => {
   it('leaves a queued delete item as a no-op — entry stays visible until drained', () => {
     writeQueue([{ op: 'delete', id: 10 }]);
     const seam = makeFakeSeam([EXISTING]);
-    const engine = createMutationEngine(seam, makeApi());
+    const engine = createEngine(seam, makeApi());
     engine.injectQueue();
     expect(seam.entries.find((e) => e.id === 10)).toBeDefined();
   });
@@ -516,7 +534,7 @@ describe('engine — batch-leg freeze guard', () => {
     writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
     const seam = makeFakeSeam([batchLeg]);
     const updateEntry = vi.fn();
-    const engine = createMutationEngine(seam, makeApi({ updateEntry }));
+    const engine = createEngine(seam, makeApi({ updateEntry }));
     await engine.edit(-1, { amount: 999 });
     expect(updateEntry).not.toHaveBeenCalled();
     expect(seam.entries.find((e) => e.id === -1)).toEqual(batchLeg); // unchanged
@@ -527,7 +545,7 @@ describe('engine — batch-leg freeze guard', () => {
     writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
     const seam = makeFakeSeam([batchLeg]);
     const deleteEntry = vi.fn();
-    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    const engine = createEngine(seam, makeApi({ deleteEntry }));
     await engine.remove(-1, seam.entries);
     expect(deleteEntry).not.toHaveBeenCalled();
     expect(seam.entries.find((e) => e.id === -1)).toBeDefined();
@@ -538,7 +556,7 @@ describe('engine — batch-leg freeze guard', () => {
     writeQueue([{ op: 'addBatch', tempIds: [-1, -2], payloads: [BASE_PAYLOAD, BASE_PAYLOAD] }]);
     const seam = makeFakeSeam([batchLeg, REMOTE_ENTRY]);
     const deleteEntry = vi.fn(async () => {});
-    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    const engine = createEngine(seam, makeApi({ deleteEntry }));
     await engine.removeMany([-1, REMOTE_ENTRY.id], seam.entries);
     expect(deleteEntry).toHaveBeenCalledWith(REMOTE_ENTRY.id);
     expect(deleteEntry).not.toHaveBeenCalledWith(-1);
@@ -549,7 +567,7 @@ describe('engine — batch-leg freeze guard', () => {
   it('edit/remove on an id not in any queued batch proceed as normal', async () => {
     const seam = makeFakeSeam([REMOTE_ENTRY]);
     const deleteEntry = vi.fn(async () => {});
-    const engine = createMutationEngine(seam, makeApi({ deleteEntry }));
+    const engine = createEngine(seam, makeApi({ deleteEntry }));
     await engine.remove(REMOTE_ENTRY.id, seam.entries);
     expect(deleteEntry).toHaveBeenCalledWith(REMOTE_ENTRY.id);
   });

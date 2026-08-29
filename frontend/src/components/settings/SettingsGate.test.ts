@@ -14,9 +14,8 @@ vi.mock("../../lib/connection.svelte", () => ({
 }));
 
 vi.mock("../../lib/api", () => ({
-  validateConnection: mockValidateConnection,
-  UnauthorizedError: class UnauthorizedError extends Error {},
-  ConnectionError: class ConnectionError extends Error {},
+  gateway: () => ({ validateConnection: mockValidateConnection }),
+  userMessage: (error: Error) => error.message,
 }));
 
 describe("SettingsGate", () => {
