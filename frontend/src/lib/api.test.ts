@@ -39,19 +39,19 @@ describe("api — ConnectionMissingError when connection is null", () => {
 
   it("getEntries throws ConnectionMissingError", async () => {
     const { api } = await freshMods();
-    await expect(api.getEntries()).rejects.toBeInstanceOf(api.ConnectionMissingError);
+    await expect(api.gateway().getEntries()).rejects.toBeInstanceOf(api.ConnectionMissingError);
   });
 
   it("addEntry throws ConnectionMissingError", async () => {
     const { api } = await freshMods();
     const payload: AddEntryPayload = { date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 };
-    await expect(api.addEntry(payload)).rejects.toBeInstanceOf(api.ConnectionMissingError);
+    await expect(api.gateway().addEntry(payload)).rejects.toBeInstanceOf(api.ConnectionMissingError);
   });
 
   it("ConnectionMissingError is instanceof ConnectionError", async () => {
     const { api } = await freshMods();
     try {
-      await api.getEntries();
+      await api.gateway().getEntries();
     } catch (e) {
       expect(e).toBeInstanceOf(api.ConnectionError);
     }
@@ -69,7 +69,7 @@ describe("api — error classification with connection set", () => {
   it("network failure (fetch rejects) throws ConnectionError", async () => {
     const { api } = await freshModsWithConn();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
-    await expect(api.getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
+    await expect(api.gateway().getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
   });
 
   it("non-JSON response throws ConnectionError", async () => {
@@ -77,7 +77,7 @@ describe("api — error classification with connection set", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve("<!DOCTYPE html><body>Not Found</body>"),
     }));
-    await expect(api.getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
+    await expect(api.gateway().getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
   });
 
   it("json.error === 'unauthorized' throws ConnectionError", async () => {
@@ -85,7 +85,7 @@ describe("api — error classification with connection set", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ error: "unauthorized" })),
     }));
-    await expect(api.getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
+    await expect(api.gateway().getEntries()).rejects.toBeInstanceOf(api.ConnectionError);
   });
 
   it("generic json.error throws plain Error (not ConnectionError)", async () => {
@@ -93,7 +93,7 @@ describe("api — error classification with connection set", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ error: "Entry 5 not found" })),
     }));
-    const err = await api.getEntries().catch((e) => e);
+    const err = await api.gateway().getEntries().catch((e) => e);
     expect(err).toBeInstanceOf(Error);
     expect(err).not.toBeInstanceOf(api.ConnectionError);
     expect(err.message).toBe("Entry 5 not found");
@@ -113,7 +113,7 @@ describe("api — uses Connection values at call time", () => {
       text: () => Promise.resolve(JSON.stringify({ entries: [] })),
     });
     vi.stubGlobal("fetch", fetchMock);
-    await api.getEntries();
+    await api.gateway().getEntries();
     expect((fetchMock.mock.calls[0][0] as string).startsWith(FAKE_GAS_URL)).toBe(true);
   });
 
@@ -124,7 +124,7 @@ describe("api — uses Connection values at call time", () => {
       text: () => Promise.resolve(JSON.stringify({ ok: true, entry })),
     });
     vi.stubGlobal("fetch", fetchMock);
-    await api.addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
+    await api.gateway().addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.secret).toBe(FAKE_SECRET);
   });
@@ -136,7 +136,7 @@ describe("api — uses Connection values at call time", () => {
       text: () => Promise.resolve(JSON.stringify({ ok: true, entry })),
     });
     vi.stubGlobal("fetch", fetchMock);
-    await api.addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
+    await api.gateway().addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
     expect(fetchMock.mock.calls[0][0]).toBe(FAKE_GAS_URL);
   });
 });
@@ -151,7 +151,7 @@ describe("api — first-time visitor (no connection, no dismissal flag) uses Moc
 
   it("getEntries resolves with mock fixture data (no network call)", async () => {
     const { api } = await freshModsFirstVisitor();
-    const entries = await api.getEntries();
+    const entries = await api.gateway().getEntries();
     expect(entries.length).toBeGreaterThan(0);
     expect(entries[0]).toHaveProperty("id");
     expect(entries[0]).toHaveProperty("direction");
@@ -171,7 +171,7 @@ describe("api — adapter selection re-evaluates without a module reload", () =>
     const { setConnection, api } = await freshModsFirstVisitor();
 
     // First-time visitor: mock fixtures, no network call.
-    const entries = await api.getEntries();
+    const entries = await api.gateway().getEntries();
     expect(entries.length).toBeGreaterThan(0);
 
     // Save a Connection at runtime — no reload, no module reset.
@@ -181,7 +181,7 @@ describe("api — adapter selection re-evaluates without a module reload", () =>
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await api.getEntries();
+    await api.gateway().getEntries();
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
@@ -211,7 +211,7 @@ describe("api — setAdapter replaces the active adapter", () => {
       validateConnection: vi.fn().mockResolvedValue(undefined),
     };
     api.setAdapter(fake);
-    const result = await api.getEntries();
+    const result = await api.gateway().getEntries();
     expect(fake.getEntries).toHaveBeenCalledOnce();
     expect(result).toEqual([fakeEntry]);
   });
@@ -231,7 +231,7 @@ describe("api — setAdapter replaces the active adapter", () => {
       validateConnection: vi.fn().mockResolvedValue(undefined),
     };
     api.setAdapter(fake);
-    await api.validateConnection("https://x.y", "s3cr3t");
+    await api.gateway().validateConnection("https://x.y", "s3cr3t");
     expect(fake.validateConnection).toHaveBeenCalledWith("https://x.y", "s3cr3t");
   });
 
@@ -250,8 +250,8 @@ describe("api — setAdapter replaces the active adapter", () => {
       validateConnection: vi.fn().mockResolvedValue(undefined),
     };
     api.setAdapter(fake);
-    await api.addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
-    await api.deleteEntry(1);
+    await api.gateway().addEntry({ date: "2026-01-01", tag: "Food", description: "t", direction: "O", amount: 10 });
+    await api.gateway().deleteEntry(1);
     expect(fake.addEntry).toHaveBeenCalledOnce();
     expect(fake.deleteEntry).toHaveBeenCalledWith(1);
   });

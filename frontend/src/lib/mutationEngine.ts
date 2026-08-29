@@ -2,7 +2,7 @@ import { submitAdd, submitAddBatch, submitEdit, submitDelete, drain, getLocalEnt
 import { buildEntry, getMainCategory } from './domain';
 import { isAuthError } from './api';
 import { readQueue } from './queue';
-import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch } from './types';
+import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch, GatewayAdapter } from './types';
 import { createMutationId } from './mutationId';
 
 // ---------------------------------------------------------------------------
@@ -26,12 +26,7 @@ export interface EntryStoreSeam {
 }
 
 // API callbacks injected by the store — the adapter seam owns request timeout.
-export interface MutationApi {
-  addEntry(payload: AddEntryPayload, mutationId: string): Promise<Entry>;
-  addEntries(payloads: AddEntryPayload[], mutationId: string): Promise<Entry[]>;
-  updateEntry(id: number, patch: UpdateEntryPatch): Promise<void>;
-  deleteEntry(id: number): Promise<void>;
-}
+export type MutationApi = Pick<GatewayAdapter, 'addEntry' | 'addEntries' | 'updateEntry' | 'deleteEntry'>;
 
 // ---------------------------------------------------------------------------
 // Monotonic temp-id generator — strictly decreasing negatives, never collide.
@@ -47,7 +42,7 @@ const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it fir
 // ---------------------------------------------------------------------------
 // Engine factory
 // ---------------------------------------------------------------------------
-export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) {
+export function createMutationEngine(seam: EntryStoreSeam, getMutationApi: () => MutationApi) {
 
   async function add(payload: AddEntryPayload): Promise<boolean> {
     const tempId = nextTempId();
@@ -56,7 +51,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     seam.setPending(tempId, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitAdd(tempId, payload, mutationId, () => mutApi.addEntry(payload, mutationId));
+      const outcome = await submitAdd(tempId, payload, mutationId, () => getMutationApi().addEntry(payload, mutationId));
       seam.setPending(tempId, false);
       if (outcome.status === 'confirmed') {
         seam.swapEntry(tempId, outcome.entry);
@@ -92,7 +87,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     for (const id of tempIds) seam.setPending(id, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitAddBatch(tempIds, legs, mutationId, () => mutApi.addEntries(legs, mutationId));
+      const outcome = await submitAddBatch(tempIds, legs, mutationId, () => getMutationApi().addEntries(legs, mutationId));
       for (const id of tempIds) seam.setPending(id, false);
 
       if (outcome.status === 'confirmed') {
@@ -136,7 +131,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     seam.setPending(id, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitEdit(id, patch, () => mutApi.updateEntry(id, patch));
+      const outcome = await submitEdit(id, patch, () => getMutationApi().updateEntry(id, patch));
       if (outcome.status === 'confirmed') {
         await seam.refreshAll();
       } else if (outcome.status === 'queued') {
@@ -164,7 +159,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     seam.setDeletePending(id, true);
     seam.setMasterLoading(true);
     try {
-      const outcome = await submitDelete(id, () => mutApi.deleteEntry(id));
+      const outcome = await submitDelete(id, () => getMutationApi().deleteEntry(id));
       if (outcome.status === 'confirmed') {
         seam.removeEntry(id);
         await seam.refreshAll();
@@ -211,7 +206,7 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
     seam.setMasterLoading(true);
     try {
       const outcomes = await Promise.allSettled(
-        remote.map((id) => submitDelete(id, () => mutApi.deleteEntry(id)))
+        remote.map((id) => submitDelete(id, () => getMutationApi().deleteEntry(id)))
       );
       const removed: number[] = [];
       let failCount = 0;
@@ -240,10 +235,10 @@ export function createMutationEngine(seam: EntryStoreSeam, mutApi: MutationApi) 
 
   async function drainQueue(): Promise<void> {
     const results = await drain({
-      add: mutApi.addEntry,
-      addEntries: mutApi.addEntries,
-      edit: mutApi.updateEntry,
-      delete: mutApi.deleteEntry,
+      add: (payload, mutationId) => getMutationApi().addEntry(payload, mutationId),
+      addEntries: (payloads, mutationId) => getMutationApi().addEntries(payloads, mutationId),
+      edit: (id, patch) => getMutationApi().updateEntry(id, patch),
+      delete: (id) => getMutationApi().deleteEntry(id),
     });
 
     for (const result of results) {

@@ -71,10 +71,10 @@ Deliberately just two named arrays inside one object, not a monolithic row —
 so #132's rolling-window (30d/3mo/12mo) extension to Deeper Statistics can add
 sibling fields without breaking this parity contract. `StatsData` is a
 canonical type in `dispatch.ts` (not `unknown`, unlike `MasterRow` and
-`ConfigMap`'s wire arms) specifically so it participates in full structural
-parity checking across all three guard files (`_contract_parity.ts`,
-`frontend/src/lib/wire-contract.parity.ts`, `tests/src/wire-contract.parity.ts`),
-same as `Entry`/`CategoryMap`.
+`ConfigMap`'s wire arms) specifically so it participates in the single
+GAS-global parity guard (`clasp/src/_contract_parity.ts`), same as
+`Entry`/`CategoryMap`. The frontend and integration-test packages re-export
+these types directly from `dispatch.ts`, so no additional copies need guarding.
 
 ## Consequences
 

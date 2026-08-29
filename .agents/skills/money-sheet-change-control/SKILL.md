@@ -1,6 +1,6 @@
 ---
 name: money-sheet-change-control
-description: How changes are classified, gated, and reviewed in money-sheet-monorepo — the non-negotiable rules with their rationale and incident history. Use when starting any change (feature, fix, refactor, docs), when deciding whether to open a GitHub issue first, when a parity test or _contract_parity.ts / wire-contract.parity.ts guard fails and you are tempted to relax it, when tempted to edit clasp/dist/ or skip scripts/strip-exports.js, when writing a commit message (conventional commits, no Co-Authored-By), when wondering what CI (ci.yml) must pass before merge, what triggers gas-deploy.yml / pages-deploy.yml, how triage labels (needs-triage, ready-for-agent…) flow, or whether a change needs an ADR ("Contradicts ADR-000X"). Trigger phrases: "can I just delete this failing parity test", "type error in _contract_parity.ts", "clasp push failed with export keyword", "which branch deploys", "does this need an issue/ADR".
+description: How changes are classified, gated, and reviewed in money-sheet-monorepo — the non-negotiable rules with their rationale and incident history. Use when starting any change (feature, fix, refactor, docs), when deciding whether to open a GitHub issue first, when a parity test or _contract_parity.ts guard fails and you are tempted to relax it, when tempted to edit clasp/dist/ or skip scripts/strip-exports.js, when writing a commit message (conventional commits, no Co-Authored-By), when wondering what CI (ci.yml) must pass before merge, what triggers gas-deploy.yml / pages-deploy.yml, how triage labels (needs-triage, ready-for-agent…) flow, or whether a change needs an ADR ("Contradicts ADR-000X"). Trigger phrases: "can I just delete this failing parity test", "type error in _contract_parity.ts", "clasp push failed with export keyword", "which branch deploys", "does this need an issue/ADR".
 ---
 
 # Change control for money-sheet-monorepo
@@ -16,9 +16,9 @@ Every non-trivial change starts as a GitHub issue, triaged and labeled **before 
 - **Exempt**: trivial doc typo fixes, comment corrections.
 
 ### 2. Parity checks are sacred
-Never weaken, delete, or `@ts-ignore` a parity test or type-level parity guard to make a change compile. A parity failure means the two packages have drifted — fix the change so it goes through **both packages in tandem**, in the same PR.
-- **The guards** (4 files): `clasp/src/_contract_parity.ts`, `frontend/src/lib/wire-contract.parity.ts`, `tests/src/wire-contract.parity.ts` (type-level, fire under `tsc`/`svelte-check`), and `frontend/src/lib/parity.test.ts` (runtime: `weekStartOf ≡ weekStartOfStr`, `weekLabel ≡ weekLabelFromStr`, `isValidTag ≡ checkTagDirection`).
-- **Why**: the wire contract (Entry, AddEntryPayload, UpdateEntryPatch, CategoryMap, ConfigMap) existed as 5 hand-copies across packages until issue #109 pinned them with `__Equal/__Expect` type guards — drift is now a `tsc --noEmit` error by design. The runtime parity tests exist because week-start and tag-validation logic once diverged silently between clasp and frontend (part of the #93→#108 timezone saga and the #123 bare-Category saga). Weakening a guard restores exactly the silent drift these were built to kill.
+Never weaken, delete, or `@ts-ignore` a parity test or type-level parity guard to make a change compile. A parity failure means the two packages have drifted — fix the change so it goes through **both packages in tandem**, in the same PR. Retire a guard only when an issue-approved consolidation removes the duplicate it guarded; update this record in that same PR.
+- **The guards** (2 files): `clasp/src/_contract_parity.ts` (type-level, fires under `tsc`) and `frontend/src/lib/parity.test.ts` (runtime: `weekStartOf ≡ weekStartOfStr`, `weekLabel ≡ weekLabelFromStr`, `isValidTag ≡ checkTagDirection`).
+- **Why**: issue #109 pinned the hand-copied wire contract (Entry, AddEntryPayload, UpdateEntryPatch, CategoryMap, ConfigMap) with `__Equal/__Expect` guards. Issue #143 then consolidated the frontend and integration-test copies into type-only re-exports from `clasp/src/lib/dispatch.ts`, leaving the one GAS ambient-global copy guarded by `_contract_parity.ts`. The runtime parity tests exist because week-start and tag-validation logic once diverged silently between clasp and frontend (part of the #93→#108 timezone saga and the #123 bare-Category saga). Weakening a remaining guard restores exactly the silent drift these were built to catch.
 - Note: `_contract_parity.ts` is deliberately `.ts` not `.d.ts` — `skipLibCheck: true` would silently skip a `.d.ts` guard. Do not "clean it up" into a declaration file.
 
 ### 3. Never edit `clasp/dist/` or bypass `scripts/strip-exports.js`
@@ -63,7 +63,7 @@ Deploys — push to **`main`**, path-filtered (root AGENTS.md says `master`; tha
 | Docs-only (`*.md`, ADRs) | Optional | CI still runs; conventional `docs:` commit | None |
 | Frontend-only | Yes | `frontend/`: `npm run check` + `npm run test:run`; e2e (`npm run test:e2e`) if UI flow touched | Pages deploy on merge |
 | clasp-only | Yes | `clasp/`: `npx tsc --noEmit` + `npm run test:run`; consider shakedown (below) | **Live GAS API redeploys on merge** |
-| Cross-package contract change (wire types, week logic, tag validation) | Yes, always | ALL of: clasp tsc+tests, frontend check+tests, `tests/` `npm run typecheck`, runtime parity (`frontend/src/lib/parity.test.ts` runs inside frontend `test:run`) — change both packages in one PR, guards untouched | Both deploys fire |
+| Cross-package contract change (wire types, week logic, tag validation) | Yes, always | ALL of: clasp tsc+tests, frontend check+tests, `tests/` `npm run typecheck`, runtime parity (`frontend/src/lib/parity.test.ts` runs inside frontend `test:run`) — change both packages in one PR and preserve the surviving guards | Both deploys fire |
 | Spreadsheet-template change (sheet layout, columns, MASTER formulas, Categories) | Yes + likely ADR | No CI can catch this — manual verification against a live/copy sheet; update `CONTEXT.md` + root AGENTS.md layout table | Immediate on the sheet itself |
 
 **Shakedown caution**: `frontend/` `npm run shakedown` runs live CRUD against the **real** spreadsheet (creds from gitignored local files — never quote values). Run only deliberately, as a final gate on clasp mutation changes. Details, sweep behavior, and the full test-suite inventory: see `money-sheet-validation-and-qa`.
@@ -81,7 +81,7 @@ Deploys — push to **`main`**, path-filtered (root AGENTS.md says `master`; tha
 Verified against the repo 2026-07-10. Re-verify before trusting:
 
 - CI/deploy triggers & jobs: `cat .github/workflows/ci.yml .github/workflows/gas-deploy.yml .github/workflows/pages-deploy.yml`
-- Parity guard files still exist: `ls clasp/src/_contract_parity.ts frontend/src/lib/wire-contract.parity.ts frontend/src/lib/parity.test.ts tests/src/wire-contract.parity.ts`
+- Parity guard files still exist: `ls clasp/src/_contract_parity.ts frontend/src/lib/parity.test.ts`
 - Build/push chain: `grep -n '"build"\|"push"' clasp/package.json`
 - strip-exports behavior: `head -25 clasp/scripts/strip-exports.js`
 - Triage labels: `gh label list` vs `docs/agents/triage-labels.md`

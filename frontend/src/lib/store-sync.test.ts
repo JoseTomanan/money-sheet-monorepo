@@ -1,6 +1,6 @@
 /**
  * Real-API integration test: store mutation methods leave `store.entries`
- * in sync with a fresh `api.getEntries()` call. Catches drift bugs where
+ * in sync with a fresh `api.gateway().getEntries()` call. Catches drift bugs where
  * the store's optimistic state diverges from what GAS actually persisted.
  *
  * Closes #26.
@@ -65,7 +65,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
   afterEach(async () => {
     for (const id of createdIds.splice(0)) {
       try {
-        await api.deleteEntry(id);
+        await api.gateway().deleteEntry(id);
       } catch {
         // best-effort
       }
@@ -74,12 +74,12 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
   afterAll(async () => {
     // Safety net: sweep any row whose description carries our run marker.
-    const entries = await api.getEntries();
+    const entries = await api.gateway().getEntries();
     const prefix = `__TEST__${RUN}__`;
     const orphans = entries.filter((e) => e.description.startsWith(prefix));
     for (const e of orphans) {
       try {
-        await api.deleteEntry(e.id);
+        await api.gateway().deleteEntry(e.id);
       } catch {
         // best-effort
       }
@@ -105,7 +105,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     await store.addEntry(payload);
 
-    const fresh = await api.getEntries();
+    const fresh = await api.gateway().getEntries();
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -132,7 +132,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     await store.addEntry(payloads);
 
-    const fresh = await api.getEntries();
+    const fresh = await api.gateway().getEntries();
     const newIds = diffNewIds(before, fresh);
     createdIds.push(...newIds);
 
@@ -148,7 +148,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
   it("store.deleteEntry: store.entries equals fresh GAS read after settle", { timeout: 30_000 }, async () => {
     const [{ subcategory }] = pickSubcategories(1);
     // Seed an entry directly via api, then refresh the store so it sees it.
-    const seeded = await api.addEntry({
+    const seeded = await api.gateway().addEntry({
       date: new Date().toISOString().slice(0, 10),
       tag: subcategory,
       description: marker("delete-target"),
@@ -160,14 +160,14 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
 
     await store.deleteEntry(seeded.id);
 
-    const fresh = await api.getEntries();
+    const fresh = await api.gateway().getEntries();
     expect(fresh.some((e) => e.id === seeded.id)).toBe(false);
     expect(store.entries).toEqual(fresh);
   });
 
   it("store.updateEntry: store.entries equals fresh GAS read after settle", { timeout: 30_000 }, async () => {
     const [{ subcategory }] = pickSubcategories(1);
-    const seeded = await api.addEntry({
+    const seeded = await api.gateway().addEntry({
       date: new Date().toISOString().slice(0, 10),
       tag: subcategory,
       description: marker("update-target"),
@@ -180,7 +180,7 @@ describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
     const newDescription = marker("update-after");
     await store.updateEntry(seeded.id, { amount: 999, description: newDescription });
 
-    const fresh = await api.getEntries();
+    const fresh = await api.gateway().getEntries();
     const updated = fresh.find((e) => e.id === seeded.id);
     expect(updated).toBeDefined();
     expect(updated!.amount).toBe(999);

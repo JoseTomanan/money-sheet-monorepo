@@ -1,5 +1,5 @@
 /**
- * Tests for api.getConfig() — the silent-fallback read action.
+ * Tests for api.gateway().getConfig() — the silent-fallback read action.
  * Unlike other api functions, getConfig swallows errors and returns
  * { currency: "₱" } as a default so the store's Promise.all never rejects.
  */
@@ -22,13 +22,13 @@ afterEach(() => {
   vi.resetModules();
 });
 
-describe("api.getConfig — success path", () => {
+describe("gateway().getConfig — success path", () => {
   it("returns the config object from the GAS response", async () => {
     const { api } = await freshModsWithConn();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ config: { currency: "€" } })),
     }));
-    const config = await api.getConfig();
+    const config = await api.gateway().getConfig();
     expect(config).toEqual({ currency: "€" });
   });
 
@@ -38,16 +38,16 @@ describe("api.getConfig — success path", () => {
       text: () => Promise.resolve(JSON.stringify({ config: { currency: "₱" } })),
     });
     vi.stubGlobal("fetch", fetchMock);
-    await api.getConfig();
+    await api.gateway().getConfig();
     expect((fetchMock.mock.calls[0][0] as string)).toContain("action=getConfig");
   });
 });
 
-describe("api.getConfig — silent fallback to { currency: '₱' }", () => {
+describe("gateway().getConfig — silent fallback to { currency: '₱' }", () => {
   it("returns default when fetch fails (network error)", async () => {
     const { api } = await freshModsWithConn();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
-    const config = await api.getConfig();
+    const config = await api.gateway().getConfig();
     expect(config).toEqual({ currency: "₱" });
   });
 
@@ -56,7 +56,7 @@ describe("api.getConfig — silent fallback to { currency: '₱' }", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ error: "unknown action" })),
     }));
-    const config = await api.getConfig();
+    const config = await api.gateway().getConfig();
     expect(config).toEqual({ currency: "₱" });
   });
 
@@ -65,7 +65,7 @@ describe("api.getConfig — silent fallback to { currency: '₱' }", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ config: {} })),
     }));
-    const config = await api.getConfig();
+    const config = await api.gateway().getConfig();
     expect(config).toEqual({ currency: "₱" });
   });
 
@@ -76,7 +76,7 @@ describe("api.getConfig — silent fallback to { currency: '₱' }", () => {
       const apiMod = await import("./api");
       return { api: apiMod };
     })();
-    const config = await api.getConfig();
+    const config = await api.gateway().getConfig();
     expect(config).toEqual({ currency: "₱" });
   });
 });

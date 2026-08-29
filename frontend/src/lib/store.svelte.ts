@@ -1,10 +1,9 @@
-import * as api from './api';
-import { isQueueable } from './api';
+import { gateway, isQueueable } from './api';
 import { loadSnapshot, saveSnapshot } from './cacheSync';
 import { toast } from './toast.svelte';
 import { getLocalEntryIds } from './offlineMutation';
 import { createMutationEngine } from './mutationEngine';
-import type { EntryStoreSeam, MutationApi } from './mutationEngine';
+import type { EntryStoreSeam } from './mutationEngine';
 import type {
   Entry,
   MasterRow,
@@ -48,11 +47,11 @@ async function refreshAll(silent = false): Promise<void> {
   }
   try {
     const [e, m, c, cfg, st] = await Promise.allSettled([
-      api.getEntries(),
-      api.getMaster(),
-      api.getCategories(),
-      api.getConfig(),
-      api.getStats(),
+      gateway().getEntries(),
+      gateway().getMaster(),
+      gateway().getCategories(),
+      gateway().getConfig(),
+      gateway().getStats(),
     ]);
     if (e.status === 'fulfilled') entries = e.value;
     if (m.status === 'fulfilled') master = m.value;
@@ -99,14 +98,7 @@ const storeSeam: EntryStoreSeam = {
   refreshAll: () => refreshAll(true),
 };
 
-const mutApi: MutationApi = {
-  addEntry: (payload) => api.addEntry(payload),
-  addEntries: (payloads) => api.addEntries(payloads),
-  updateEntry: (id, patch) => api.updateEntry(id, patch),
-  deleteEntry: (id) => api.deleteEntry(id),
-};
-
-const engine = createMutationEngine(storeSeam, mutApi);
+const engine = createMutationEngine(storeSeam, gateway);
 
 // ---------------------------------------------------------------------------
 // Public mutation surface — delegates to the engine

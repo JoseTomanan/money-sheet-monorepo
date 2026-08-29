@@ -1,65 +1,36 @@
-export type Direction = "I" | "O";
+import type {
+  Direction,
+  EntryData as Entry,
+  AddEntryPayload,
+  AddEntryRequest,
+  AddEntriesPayload,
+  UpdateEntryPatch,
+  CategoryMap,
+  ConfigMap,
+  CategoryMonthChange,
+  SpendingPaceDay,
+  StatsWindow,
+  WindowTotal,
+  WindowCategorySpend,
+  StatsData,
+} from "../../clasp/src/lib/dispatch";
 
-export interface Entry {
-  id: number;
-  date: string;
-  tag: string;
-  mainCategory: string;
-  description: string;
-  direction: Direction;
-  amount: number;
-  /** 1-based INCOMING/OUTGOING sheet row. Absent for entries not yet written to the sheet. */
-  row?: number;
-}
-
-export interface AddEntryPayload {
-  date: string;
-  tag: string;
-  description: string;
-  direction: Direction;
-  amount: number;
-}
-
-export type CategoryMap = Record<string, string[]>;
-
-export type ConfigMap = Record<string, string>;
-
-// STATS wire shapes (docs/adr/0011) — mirrors clasp/src/lib/dispatch.ts's
-// canonical StatsData; see wire-contract.parity.ts for the drift guard.
-export interface CategoryMonthChange {
-  category: string;
-  incoming: number;
-  outgoing: number;
-  netChange: number;
-}
-
-export interface SpendingPaceDay {
-  day: number;
-  cumulativeThisMonth: number;
-  cumulativeUsual: number;
-}
-
-export type StatsWindow = "30d" | "3mo" | "12mo";
-
-export interface WindowTotal {
-  window: StatsWindow;
-  incoming: number;
-  outgoing: number;
-  net: number;
-}
-
-export interface WindowCategorySpend {
-  window: StatsWindow;
-  category: string;
-  outgoing: number;
-}
-
-export interface StatsData {
-  categoryMonthChange: CategoryMonthChange[];
-  spendingPace: SpendingPaceDay[];
-  windowTotals: WindowTotal[];
-  windowCategorySpend: WindowCategorySpend[];
-}
+export type {
+  Direction,
+  EntryData as Entry,
+  AddEntryPayload,
+  AddEntryRequest,
+  AddEntriesPayload,
+  UpdateEntryPatch,
+  CategoryMap,
+  ConfigMap,
+  CategoryMonthChange,
+  SpendingPaceDay,
+  StatsWindow,
+  WindowTotal,
+  WindowCategorySpend,
+  StatsData,
+} from "../../clasp/src/lib/dispatch";
 
 function requireEnv(name: string): string {
   const v = process.env[name];

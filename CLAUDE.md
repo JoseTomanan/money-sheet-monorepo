@@ -12,7 +12,10 @@ money-sheet-monorepo/
 └── docs/adr/       # Architecture decision records
 ```
 
-Each package has its own `package.json`. There is no root workspace. They share no code.
+Each package has its own `package.json`. There is no root workspace and no shared
+runtime code. The frontend and integration-test packages intentionally import the
+pure, type-only wire contract from `clasp/src/lib/dispatch.ts`; those imports erase
+from their built output and keep the contract canonical.
 
 ## Domain
 

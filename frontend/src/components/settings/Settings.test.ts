@@ -13,11 +13,11 @@ vi.mock("../../lib/connection.svelte", () => ({
 }));
 
 // Settings delegates error → copy mapping to the adapter's real userMessage —
-// only validateConnection itself is mocked here.
+// only the selected adapter is mocked here.
 vi.mock("../../lib/api", async () => {
   const real = await vi.importActual<typeof import("../../lib/adapter-real")>("../../lib/adapter-real");
   return {
-    validateConnection: mockValidateConnection,
+    gateway: () => ({ validateConnection: mockValidateConnection }),
     userMessage: real.userMessage,
   };
 });
