@@ -16,6 +16,16 @@ describe("parseMasterRows", () => {
     expect(parseMasterRows(["ON HAND", "", "  "], [10, 20, 30])).toEqual({ onHand: 10, budgets: {} });
   });
 
+  it("accepts the template's I/O detail columns without treating them as budgets", () => {
+    expect(parseMasterRows(
+      ["", "ON HAND", "HOUSING", "I", "O", "FOOD", "I", "O", "TRANSIT", "I", "O"],
+      ["", 2_642, 0, 1_000, 1_000, 1_098, 1_500, 402, 587, 900, 313],
+    )).toEqual({
+      onHand: 2_642,
+      budgets: { HOUSING: 0, FOOD: 1_098, TRANSIT: 587 },
+    });
+  });
+
   it("rejects an unknown non-empty budget header instead of returning partial budgets", () => {
     expect(() => parseMasterRows(["ON HAND", "FOOD", "TRAVEL"], [10, 20, 30]))
       .toThrow("Unknown MASTER budget header: TRAVEL");
