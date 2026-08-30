@@ -117,6 +117,14 @@ describe("importFromUrl", () => {
     expect(window.location.search).toBe("");
   });
 
+  it("preserves a hash route while consuming setup credentials", async () => {
+    window.history.pushState({}, "", "?gasUrl=https://import.gas&apiSecret=imported-secret#/summary");
+    const { importFromUrl } = await freshConnection();
+    importFromUrl();
+    expect(window.location.search).toBe("");
+    expect(window.location.hash).toBe("#/summary");
+  });
+
   it("is a no-op when gasUrl param is absent", async () => {
     window.history.pushState({}, "", "?apiSecret=only-secret");
     const { connection, importFromUrl } = await freshConnection();

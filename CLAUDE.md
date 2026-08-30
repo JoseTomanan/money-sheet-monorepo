@@ -84,6 +84,11 @@ npm run build                # outputs to dist/
 
 **Dev server port**: always use `--port 1111`. If port 1111 is already listening, it is this project's server — do not launch another. Never start a server on a different port.
 
+**Routing**: Views use canonical hash routes (`#/home`, `#/entries/YYYY-MM-DD`,
+`#/summary`, and `#/summary/statistics`) through the frontend route boundary.
+Keep the route model authoritative for view state and the Entries Sunday week
+selection; do not introduce SvelteKit or browser-path routing.
+
 **Key behaviors:**
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
 - All data fetching is client-side via `fetch()` to the GAS web app URL

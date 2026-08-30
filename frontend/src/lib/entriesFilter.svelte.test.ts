@@ -12,14 +12,10 @@ function entry(id: number, date: string, overrides: Partial<Entry> = {}): Entry 
   return { id, date, tag: "T", mainCategory: "FOOD", description: "", direction: "O", amount: 1, ...overrides };
 }
 
-// createEntriesFilter uses $effect internally (the week auto-reset), so every
-// instantiation must live inside a reactive root — mirrors how it runs during
-// real component initialisation. flushSync() forces pending effects to run
-// before assertions read derived state.
-function renderFilter(getEntries: () => Entry[]) {
+function renderFilter(getEntries: () => Entry[], selectedWeek = currentWeekKey()) {
   let filter!: ReturnType<typeof createEntriesFilter>;
   const cleanup = $effect.root(() => {
-    filter = createEntriesFilter(getEntries);
+    filter = createEntriesFilter(getEntries, () => selectedWeek);
   });
   flushSync();
   return { filter, cleanup };
@@ -56,7 +52,7 @@ describe("createEntriesFilter — reads entries from the injected getter, not th
   });
   afterEach(() => vi.useRealTimers());
 
-  it("defaults to the current week, showing only entries within it", () => {
+  it("uses the route-selected week, showing only entries within it", () => {
     const entries = [
       entry(1, "2026-05-04"), // week of 2026-05-03
       entry(2, "2026-05-24"), // current week
@@ -111,40 +107,30 @@ describe("createEntriesFilter — reads entries from the injected getter, not th
   });
 });
 
-describe("createEntriesFilter — week auto-reset $effect", () => {
+describe("createEntriesFilter — route-owned week", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-24")); // Sunday → current week key "2026-05-24"
   });
   afterEach(() => vi.useRealTimers());
 
-  it("selecting a week, then switching direction so that week has no entries, snaps back to the current week", () => {
+  it("keeps an empty historical route week selected when filters exclude its entries", () => {
     const entries = [
       { ...entry(1, "2026-05-04"), direction: "O" as const }, // week of 2026-05-03, Outgoing only
       { ...entry(2, "2026-05-24"), direction: "I" as const }, // current week, Incoming
     ];
-    const { filter, cleanup } = renderFilter(() => entries);
-
-    filter.selectWeek("2026-05-03");
-    flushSync();
-    expect(filter.selectedWeek).toBe("2026-05-03");
-
-    // Switching to Incoming leaves week 2026-05-03 with no selectable entries —
-    // the auto-reset effect should snap selectedWeek back to the current week.
+    const { filter, cleanup } = renderFilter(() => entries, "2026-05-03");
     filter.setDirection("I");
     flushSync();
-    expect(filter.selectedWeek).toBe(currentWeekKey());
+    expect(filter.filtered).toEqual([]);
+    expect(filter.selectableWeeks().map((week) => week.key)).toContain("2026-05-03");
 
     cleanup();
   });
 
-  it("does not reset the selected week while it remains selectable", () => {
-    const entries = [entry(1, "2026-05-04")]; // week of 2026-05-03
-    const { filter, cleanup } = renderFilter(() => entries);
-
-    filter.selectWeek("2026-05-03");
-    flushSync();
-    expect(filter.selectedWeek).toBe("2026-05-03");
+  it("includes a valid empty historical route week in the picker", () => {
+    const { filter, cleanup } = renderFilter(() => [], "2025-01-05");
+    expect(filter.selectableWeeks().map((week) => week.key)).toContain("2025-01-05");
 
     cleanup();
   });

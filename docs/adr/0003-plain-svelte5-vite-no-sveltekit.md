@@ -13,6 +13,8 @@ Use plain Svelte 5 with Vite. No SvelteKit. Deployed as a static site to GitHub 
 ## Consequences
 
 - No SSR; all data fetching is client-side via `fetch()` to the GAS web app URL.
-- No file-based routing; view switching handled with a simple component switcher if multi-view is needed.
+- No file-based routing. The frontend uses a small hash-routing boundary for its
+  shareable client-side views, keeping `#/…` URLs compatible with static GitHub
+  Pages hosting and avoiding server rewrites.
 - Build output is a static `dist/` folder, trivially deployable to GitHub Pages via GitHub Actions.
 - If true server-side rendering or API routes become necessary (e.g., to proxy the GAS secret), migrating to SvelteKit is the upgrade path.

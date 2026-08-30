@@ -3,6 +3,8 @@
   import { store } from './lib/store.svelte';
   import { toast } from './lib/toast.svelte';
   import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
+  import { createRouter, routeTab, type Route } from './lib/router.svelte';
+  import { currentWeekKey } from './lib/entriesFilter.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
   import TabBar, { type TabId } from './components/ui/TabBar.svelte';
@@ -17,18 +19,10 @@
   import SummaryView from './routes/SummaryView.svelte';
   import DeeperStatsView from './routes/DeeperStatsView.svelte';
 
-  let tab = $state<TabId>('home');
   let scrollArea = $state<HTMLElement | null>(null);
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
-  let deeperOpen = $state(false);
-
-  // Deeper stats is reached only from Summary, not a tab (#132) — leaving
-  // Summary for another tab and coming back should show Summary again.
-  function setTab(t: TabId) {
-    tab = t;
-    deeperOpen = false;
-  }
+  const router = createRouter();
 
   function handleScroll() {
     if (scrollArea) scrollTop = scrollArea.scrollTop;
@@ -36,6 +30,30 @@
 
   function scrollToTop() {
     if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function closeRouteOverlays() {
+    sheetOpen = false;
+    settingsOpen = false;
+    entriesSelectMode = false;
+  }
+
+  function navigate(next: Route) {
+    if (!router.navigate(next)) return;
+    closeRouteOverlays();
+    if (scrollArea) scrollArea.scrollTop = 0;
+  }
+
+  function navigateTab(tab: TabId) {
+    if (tab === 'entries') {
+      if (router.current.kind !== 'entries') navigate({ kind: 'entries', week: currentWeekKey() });
+      return;
+    }
+    navigate({ kind: tab });
+  }
+
+  function syncRoute() {
+    if (router.sync()) closeRouteOverlays();
   }
 
   // Entry sheet state
@@ -70,6 +88,8 @@
     if (mockMode.current || connection.current) store.init();
   });
 </script>
+
+<svelte:window onhashchange={syncRoute} onpopstate={syncRoute} />
 
 {#if connection.current == null && !mockMode.current}
   <SettingsGate onsaved={() => store.refreshAll()} />
@@ -112,14 +132,26 @@
             {/if}
           </div>
         </div>
-      {:else if tab === 'home'}
-        <HomeScreen onnavigate={setTab} />
-      {:else if tab === 'entries'}
-        <EntriesView onopenedit={openEdit} onadd={openAdd} scrollEl={scrollArea} {scrollTop} bind:selectMode={entriesSelectMode} />
-      {:else if tab === 'summary' && deeperOpen}
-        <DeeperStatsView onback={() => (deeperOpen = false)} />
       {:else}
-        <SummaryView ondeeper={() => (deeperOpen = true)} />
+        {#key router.key}
+          {#if router.current.kind === 'home'}
+            <HomeScreen onnavigate={navigateTab} />
+          {:else if router.current.kind === 'entries'}
+            <EntriesView
+              onopenedit={openEdit}
+              onadd={openAdd}
+              selectedWeek={router.current.week}
+              onweekchange={(week) => navigate({ kind: 'entries', week })}
+              scrollEl={scrollArea}
+              {scrollTop}
+              bind:selectMode={entriesSelectMode}
+            />
+          {:else if router.current.kind === 'statistics'}
+            <DeeperStatsView onback={() => navigate({ kind: 'summary' })} />
+          {:else}
+            <SummaryView ondeeper={() => navigate({ kind: 'statistics' })} />
+          {/if}
+        {/key}
       {/if}
     </div>
 
@@ -135,7 +167,7 @@
           </svg>
         </button>
       {/if}
-      {#if !(tab === 'entries' && entriesSelectMode)}
+      {#if !(router.current.kind === 'entries' && entriesSelectMode)}
         <Fab onclick={openAdd} />
       {/if}
     {/if}
@@ -152,7 +184,7 @@
       />
     {/if}
 
-    <TabBar active={tab} onchange={setTab} />
+    <TabBar active={routeTab(router.current)} onchange={navigateTab} />
 
     <EntrySheet
       open={sheetOpen}

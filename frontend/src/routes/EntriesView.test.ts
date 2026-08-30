@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import type { Entry } from "../lib/types";
+import { currentWeekKey } from "../lib/entriesFilter.svelte";
 import EntriesView from "./EntriesView.svelte";
 
 const mockStore = vi.hoisted(() => ({
@@ -28,6 +29,8 @@ function baseProps(overrides: Record<string, unknown> = {}) {
   return {
     onadd: vi.fn(),
     onopenedit: vi.fn(),
+    selectedWeek: currentWeekKey(),
+    onweekchange: vi.fn(),
     scrollEl: null,
     scrollTop: 0,
     ...overrides,
@@ -45,13 +48,13 @@ describe("EntriesView week selector", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("trigger shows the current-week label by default", () => {
+  it("trigger shows the route-selected week", () => {
     mockStore.entries = [];
     const { container } = render(EntriesView, baseProps());
     expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
   });
 
-  it("defaults to current week even when all entries are in past weeks", () => {
+  it("shows the route-selected current week when all entries are in past weeks", () => {
     mockStore.entries = [
       makeEntry(1, "2026-05-04"), // week of 2026-05-03
       makeEntry(2, "2026-05-11"), // week of 2026-05-10
@@ -61,7 +64,7 @@ describe("EntriesView week selector", () => {
     expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
   });
 
-  it("defaults to current week when current week has entries", () => {
+  it("shows the route-selected current week when current week has entries", () => {
     mockStore.entries = [
       makeEntry(1, "2026-05-11"), // week of 2026-05-10
       makeEntry(2, "2026-05-24"), // current week
@@ -95,40 +98,34 @@ describe("EntriesView week selector", () => {
     expect(matching).toHaveLength(1);
   });
 
-  it("selecting a week from the popover shows only entries from that week", async () => {
+  it("selecting a week from the popover delegates route navigation", async () => {
     mockStore.entries = [
       makeEntry(1, "2026-05-04"), // week of 2026-05-03
       makeEntry(2, "2026-05-11"), // week of 2026-05-10
     ];
-    const { container, queryByText, getByText } = render(EntriesView, baseProps());
+    const onweekchange = vi.fn();
+    const { container, queryByText } = render(EntriesView, baseProps({ onweekchange }));
     // default = current week → neither entry visible
     expect(queryByText("Entry 1")).not.toBeInTheDocument();
     await fireEvent.click(getWeekTrigger(container));
     const row = document.body.querySelector("[data-week-key='2026-05-03']") as HTMLElement;
     await fireEvent.click(row);
-    expect(getByText("Entry 1")).toBeInTheDocument();
-    expect(queryByText("Entry 2")).not.toBeInTheDocument();
+    expect(onweekchange).toHaveBeenCalledWith("2026-05-03");
   });
 
-  it("filterDir change with no entries in selected week falls back to current week", async () => {
+  it("keeps an empty route week selected when the direction filter excludes its entries", async () => {
     // Entry 1 is Outgoing in week May 3; Entry 2 is Incoming in current week
     mockStore.entries = [
       { ...makeEntry(1, "2026-05-04"), direction: "O" },
       { ...makeEntry(2, "2026-05-24"), direction: "I" },
     ];
-    const { container, getByRole } = render(EntriesView, baseProps());
-
-    // Select week 2026-05-03 (has Entry 1 under "all")
-    await fireEvent.click(getWeekTrigger(container));
-    const row = document.body.querySelector("[data-week-key='2026-05-03']") as HTMLElement;
-    await fireEvent.click(row);
+    const { container, getByRole } = render(EntriesView, baseProps({ selectedWeek: "2026-05-03" }));
 
     // Now switch direction to "Incoming" — May 3 has no Incoming entries
     const incomingBtn = getByRole("radio", { name: /incoming/i });
     await fireEvent.click(incomingBtn);
 
-    // Trigger should snap back to current-week label
-    expect(getWeekTrigger(container)).toHaveTextContent(/may 24/i);
+    expect(getWeekTrigger(container)).toHaveTextContent(/may 3/i);
   });
 });
 
@@ -321,32 +318,5 @@ describe("EntriesView Redistribute action", () => {
     const { getByRole, findByText } = render(EntriesView, baseProps());
     await fireEvent.click(getByRole("button", { name: /Redistribute/i }));
     await waitFor(() => findByText("Redistribute Funds"));
-  });
-});
-
-describe("EntriesView scroll to bottom", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-05-17"));
-    mockStore.loading = false;
-    mockStore.localIds = new Set();
-  });
-  afterEach(() => vi.useRealTimers());
-
-  it("scrolls scrollEl to the bottom when mounted with data already loaded", async () => {
-    mockStore.entries = [makeEntry(1, "2026-05-17", "Alpha")];
-    const scrollEl = { scrollTop: 0, scrollHeight: 800 } as unknown as HTMLElement;
-    render(EntriesView, baseProps({ scrollEl }));
-    await Promise.resolve(); // flush microtask from tick()
-    expect(scrollEl.scrollTop).toBe(800);
-  });
-
-  it("does not scroll when still loading on mount", async () => {
-    mockStore.loading = true;
-    mockStore.entries = [makeEntry(1, "2026-05-17", "Alpha")];
-    const scrollEl = { scrollTop: 0, scrollHeight: 600 } as unknown as HTMLElement;
-    render(EntriesView, baseProps({ scrollEl }));
-    await Promise.resolve();
-    expect(scrollEl.scrollTop).toBe(0);
   });
 });

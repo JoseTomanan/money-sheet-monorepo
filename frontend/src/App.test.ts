@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import App from "./App.svelte";
 
@@ -25,6 +25,10 @@ const mockStore = vi.hoisted(() => ({
     windowCategorySpend: [] as Array<{ window: "30d" | "3mo" | "12mo"; category: string; outgoing: number }>,
   },
   pendingIds: new Set<number>(),
+  deletePendingIds: new Set<number>(),
+  localIds: new Set<number>(),
+  draining: false,
+  drainQueue: vi.fn(),
   toastMsg: null as string | null,
   toastIsConnection: false,
   toastAction: null,
@@ -44,6 +48,7 @@ vi.mock("./lib/store.svelte", () => ({ store: mockStore }));
 
 describe("App settings sheet", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/#/home");
     mockStore.loading = false;
     mockStore.error = null;
     mockStore.toastMsg = null;
@@ -53,6 +58,8 @@ describe("App settings sheet", () => {
     };
     mockMockMode.current = false;
   });
+
+  afterEach(() => window.history.replaceState(null, "", "/#/home"));
 
   it("settings sheet is hidden on initial render", () => {
     const { queryByRole } = render(App);
@@ -90,6 +97,7 @@ describe("App settings sheet", () => {
 
 describe("App — Mock Mode branch", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/#/home");
     mockStore.loading = false;
     mockStore.error = null;
     mockStore.toastMsg = null;
@@ -127,6 +135,7 @@ describe("App — Mock Mode branch", () => {
 
 describe("App — SettingsGate shown when mockMode is false and no connection", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/#/home");
     mockStore.loading = false;
     mockStore.error = null;
     mockStore.toastMsg = null;
@@ -149,6 +158,7 @@ describe("App — SettingsGate shown when mockMode is false and no connection", 
 
 describe("App — Deeper statistics navigation", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/#/home");
     mockStore.loading = false;
     mockStore.error = null;
     mockStore.toastMsg = null;
@@ -176,12 +186,53 @@ describe("App — Deeper statistics navigation", () => {
     expect(getByText("Funds health")).toBeInTheDocument();
   });
 
-  it("leaving Summary for another tab and returning shows Summary, not the Deeper page", async () => {
+  it("the Summary tab routes out of deeper statistics", async () => {
     const { getByRole, queryByText } = render(App);
     await fireEvent.click(getByRole("button", { name: "Summary" }));
     await fireEvent.click(getByRole("button", { name: "Deeper statistics" }));
     await fireEvent.click(getByRole("button", { name: "Home" }));
     await fireEvent.click(getByRole("button", { name: "Summary" }));
     expect(queryByText("Flow")).toBeNull();
+  });
+});
+
+describe("App — hash routes", () => {
+  beforeEach(() => {
+    mockStore.loading = false;
+    mockStore.error = null;
+    mockConnection.current = { gasUrl: "https://fake.example", apiSecret: "secret" };
+    mockMockMode.current = false;
+  });
+
+  afterEach(() => window.history.replaceState(null, "", "/#/home"));
+
+  it("renders the view in a direct Summary route", () => {
+    window.history.replaceState(null, "", "/#/summary");
+    const { getByText } = render(App);
+    expect(getByText("Funds health")).toBeInTheDocument();
+  });
+
+  it("renders a direct valid empty Entries week route", () => {
+    window.history.replaceState(null, "", "/#/entries/2025-01-05");
+    const { getByText } = render(App);
+    expect(getByText(/Jan 5 – 11, 2025/)).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/entries/2025-01-05");
+  });
+
+  it("synchronizes a browser route traversal without adding history", async () => {
+    window.history.replaceState(null, "", "/#/home");
+    const { getByText } = render(App);
+    window.history.pushState(null, "", "/#/summary/statistics");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await Promise.resolve();
+    expect(getByText("Deeper stats")).toBeInTheDocument();
+  });
+
+  it("closes Settings when deliberate navigation changes route", async () => {
+    window.history.replaceState(null, "", "/#/home");
+    const { getByRole, queryByRole } = render(App);
+    await fireEvent.click(getByRole("button", { name: /open settings/i }));
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    expect(queryByRole("dialog")).toBeNull();
   });
 });
