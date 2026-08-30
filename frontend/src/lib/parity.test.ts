@@ -112,6 +112,8 @@ describe('tag-polymorphism parity: frontend isValidTag ≡ clasp checkTagDirecti
 // ---------------------------------------------------------------------------
 describe('Category-order parity: frontend CATEGORY_ORDER ≡ clasp CATEGORY_ORDER', () => {
   it('has the same fixed Category values in the same order', () => {
-    expect(CATEGORY_ORDER).toEqual(CLASP_CATEGORY_ORDER);
+    const canonicalOrder = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'];
+    expect(CATEGORY_ORDER).toEqual(canonicalOrder);
+    expect(CLASP_CATEGORY_ORDER).toEqual(canonicalOrder);
   });
 });
