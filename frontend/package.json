@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run --maxWorkers=1",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "shakedown": "playwright test --config=shakedown/playwright.config.ts"
