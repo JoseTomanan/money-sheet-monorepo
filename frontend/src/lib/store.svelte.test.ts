@@ -331,7 +331,7 @@ describe("store", () => {
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
-      expect(toast.msg).toBe("Couldn't refresh entries: Network error; balances: Network error; categories: Network error");
+      expect(toast.msg).toBe("Couldn't refresh entries: Network error; balances: Network error; categories: Network error; settings: Network error; statistics: Network error");
       expect(toast.action?.label).toBe("Retry");
     });
 
@@ -379,7 +379,7 @@ describe("store", () => {
       expect(toast.action?.label).toBe("Retry");
     });
 
-    it("reports every failed core read in one toast", async () => {
+    it("reports every failed read when core reads fail", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockImplementation((url: string) => {
@@ -394,6 +394,23 @@ describe("store", () => {
       await store.refreshAll(true);
 
       expect(toast.msg).toBe("Couldn't refresh entries: getEntries failed; balances: getMaster failed");
+    });
+
+    it("reports optional failures alongside a failed MASTER read", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const action = new URLSearchParams(url.split("?")[1]).get("action");
+          if (action === "getMaster" || action === "getStats") {
+            return Promise.reject(new Error(`${action} failed`));
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+        }),
+      );
+
+      await store.refreshAll(true);
+
+      expect(toast.msg).toBe("Couldn't refresh balances: getMaster failed; statistics: getStats failed");
     });
   });
 

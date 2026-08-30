@@ -99,8 +99,11 @@ async function refreshAll(silent = false): Promise<void> {
     if (isRejected(e)) coreFailures.push({ label: 'entries', rejection: e });
     if (isRejected(m)) coreFailures.push({ label: 'balances', rejection: m });
     if (isRejected(c)) coreFailures.push({ label: 'categories', rejection: c });
+    const optionalFailures: RefreshFailure[] = [];
+    if (isRejected(cfg)) optionalFailures.push({ label: 'settings', rejection: cfg });
+    if (isRejected(st)) optionalFailures.push({ label: 'statistics', rejection: st });
     if (coreFailures.length > 0) {
-      handleCoreRefreshFailures(coreFailures, silent);
+      handleCoreRefreshFailures([...coreFailures, ...optionalFailures], silent);
       return;
     }
     // The rejection checks above make this unreachable, while narrowing the
@@ -113,9 +116,6 @@ async function refreshAll(silent = false): Promise<void> {
     if (cfg.status === 'fulfilled') config = cfg.value;
     if (st.status === 'fulfilled') stats = st.value;
 
-    const optionalFailures: RefreshFailure[] = [];
-    if (isRejected(cfg)) optionalFailures.push({ label: 'settings', rejection: cfg });
-    if (isRejected(st)) optionalFailures.push({ label: 'statistics', rejection: st });
     if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
 
     injectQueue();
