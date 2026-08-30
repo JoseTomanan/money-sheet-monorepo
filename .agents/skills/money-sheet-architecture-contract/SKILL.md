@@ -34,7 +34,7 @@ Full ADR digests, evidence, and weak-point detail: [REFERENCE.md](REFERENCE.md).
 | 1 | **Tag polymorphism**: Incoming tag must be a Category; Outgoing tag must be a Subcategory OR its bare parent Category (Subcategory optional, issue #123) | `clasp/src/lib/dispatch.ts:165` `checkTagDirection`; `frontend/src/lib/domain.ts:14` `isValidTag`; parity: `frontend/src/lib/parity.test.ts:95` |
 | 2 | **GAS never writes MASTER or col D** (MAIN CATEGORY). Col D is ARRAYFORMULA-driven from row 2 in the sheet itself | `clasp/src/1_sheets.ts:47` (writeEntryFields skips col D); `clasp/src/lib/repository.ts:50` |
 | 3 | **Entry ID (col H) is stable, never reused**: assigned max-existing+1 on insert, never touched by updateEntry. **Blank col H = week-separator row**, not an Entry | `clasp/src/lib/repository.ts` insert paths; separators: `clasp/src/5_visibility.ts:48` |
-| 4 | **Negative amount is valid ONLY on Incoming** (Fund Redistribution drain leg, ADR-0005). Outgoing amount < 0 is rejected | `clasp/src/lib/dispatch.ts:214-215` |
+| 4 | **Every finite amount is valid on either direction** for manual Entries (ADR-0012). Fund Redistribution separately requires a strictly positive transfer amount. | `clasp/src/lib/dispatch.ts` finite-number validation; `frontend/src/lib/amountField.ts` |
 | 5 | **`addEntries` is atomic**: validate-then-write, no partial writes, no rollback path (deemed unreachable, ADR-0008). IDs assigned in array order as a contiguous block — leg 0 (main leg) gets the lowest ID | `clasp/src/lib/dispatch.ts:386-391`; `clasp/src/lib/repository.ts:190-196` |
 | 6 | **Every INCOMING/OUTGOING mutation holds the ONE document lock** via `runExclusive` — including the visibility/separator trigger (ADR-0009) | `clasp/src/lib/locking.ts:20`; `clasp/src/5_visibility.ts:130` |
 | 7 | **Canonical week start = pure YYYY-MM-DD string arithmetic** (Sunday, no host-TZ dependence). Implemented twice, parity-tested | `clasp/src/lib/weeks.ts:12` `weekStartOfStr`; `frontend/src/lib/groupEntries.ts:10` `weekStartOf`; parity: `parity.test.ts:54` |
@@ -104,7 +104,7 @@ Verified against the repo at commit `7d46f0c` on 2026-07-10. Re-verify one-liner
 grep -n "checkTagDirection" clasp/src/lib/dispatch.ts        # inv 1 (clasp)
 grep -n "isValidTag" frontend/src/lib/domain.ts              # inv 1 (frontend)
 grep -rn "ARRAYFORMULA" clasp/src                            # inv 2
-grep -n 'direction === "O" && amount < 0' clasp/src/lib/dispatch.ts  # inv 4
+grep -n 'must be a finite number' clasp/src/lib/dispatch.ts  # inv 4
 grep -n "contiguous block" clasp/src/lib/repository.ts       # inv 5
 grep -n "runExclusive" clasp/src/lib/locking.ts clasp/src/5_visibility.ts  # inv 6
 grep -n "weekStartOfStr\|weekStartOf" clasp/src/lib/weeks.ts frontend/src/lib/groupEntries.ts  # inv 7

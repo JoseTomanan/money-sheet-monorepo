@@ -303,10 +303,6 @@ function validateAddPayload(
   if (!isFinite(amount)) {
     return { error: err("validation", `"amount" must be a finite number, got: ${JSON.stringify(amountRaw)}`) };
   }
-  if (direction === "O" && amount < 0) {
-    return { error: err("validation", "Outgoing entries cannot have a negative amount") };
-  }
-
   const tagErr = checkTagDirection(tag.trim(), direction, categories);
   if (tagErr) return { error: err("validation", tagErr) };
 
@@ -413,12 +409,6 @@ function validateUpdatePayload(
   // Determine effective tag and direction after the patch is applied
   const effectiveDirection = patch.direction ?? existingEntry.direction;
   const effectiveTag = patch.tag ?? existingEntry.tag;
-  const effectiveAmount = patch.amount ?? existingEntry.amount;
-
-  if (effectiveDirection === "O" && effectiveAmount < 0) {
-    return { error: err("validation", "Outgoing entries cannot have a negative amount") };
-  }
-
   const tagErr = checkTagDirection(effectiveTag, effectiveDirection, categories);
   if (tagErr) return { error: err("validation", tagErr) };
 

@@ -163,9 +163,9 @@ describe("addEntry — tag/direction validation", () => {
 // ──────────────────────────────────────────────────────────────
 
 describe("addEntry — amount validation", () => {
-  it("rejects negative amount on Outgoing entry", () => {
+  it("accepts negative and zero amounts on Outgoing entries (ADR-0012)", () => {
     const deps = makeDeps();
-    const res = dispatch(
+    const negative = dispatch(
       {
         action: "addEntry",
         secret: "correct-secret",
@@ -175,12 +175,28 @@ describe("addEntry — amount validation", () => {
           description: "test",
           direction: "O",
           amount: -50,
+          mutationId: "test-negative-outgoing",
         },
       },
       deps
     );
-    expect(res.ok).toBe(false);
-    expect(res.code).toBe("validation");
+    const zero = dispatch(
+      {
+        action: "addEntry",
+        secret: "correct-secret",
+        body: {
+          date: "2026-01-01",
+          tag: "Groceries",
+          description: "zero adjustment",
+          direction: "O",
+          amount: 0,
+          mutationId: "test-negative-outgoing-zero",
+        },
+      },
+      deps
+    );
+    expect(negative.ok).toBe(true);
+    expect(zero.ok).toBe(true);
   });
 
   // ──────────────────────────────────────────────────────────────
@@ -397,11 +413,11 @@ describe("updateEntry — tag/direction validation", () => {
     expect(res.code).toBe("validation");
   });
 
-  it("rejects negative amount patch on Outgoing entry", () => {
+  it("accepts negative and zero amount patches on Outgoing entries (ADR-0012)", () => {
     const deps = makeDeps({
       getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
     });
-    const res = dispatch(
+    const negative = dispatch(
       {
         action: "updateEntry",
         secret: "correct-secret",
@@ -412,8 +428,19 @@ describe("updateEntry — tag/direction validation", () => {
       },
       deps
     );
-    expect(res.ok).toBe(false);
-    expect(res.code).toBe("validation");
+    const zero = dispatch(
+      {
+        action: "updateEntry",
+        secret: "correct-secret",
+        body: {
+          id: 1,
+          amount: 0,
+        },
+      },
+      deps
+    );
+    expect(negative.ok).toBe(true);
+    expect(zero.ok).toBe(true);
   });
 
   it("accepts valid patch", () => {

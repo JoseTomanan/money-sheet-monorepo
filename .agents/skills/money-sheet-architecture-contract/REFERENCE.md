@@ -46,13 +46,13 @@ replayable with zero inter-item dependencies. **Amendment (issue #111):** a fail
 `mutationEngine.ts:173-177`) until the batch syncs. No fifth merge rule exists
 because a batch leg never reaches `enqueue()` for edit/delete.
 
-**ADR-0005 — Fund Redistribution = negative-amount Incoming pair.** Moving budget
+**ADR-0005 / ADR-0012 — Fund Redistribution and amount policy.** Moving budget
 between Categories is two Incoming Entries: drain leg with negative amount (tag =
-source Category), fill leg positive (tag = target Category). Rejected alternative:
-an Outgoing+Incoming pair — would require a structural `Redistribution` Subcategory
-under every Category, polluting the namespace. Consequences: negative amount is
-valid ONLY on Incoming (enforced `dispatch.ts:214-215`); UI must not blindly prefix
-`+` on `direction === 'I'`; MASTER SUMIF absorbs negatives with no formula change.
+source Category), fill leg positive (tag = target Category). An Outgoing+Incoming
+pair would require a structural `Redistribution` Subcategory under every Category,
+polluting the namespace. Manual Entries accept every finite amount on either
+direction; only the Fund Redistribution input policy requires a strictly positive
+transfer amount. MASTER SUMIF absorbs negatives with no formula change.
 
 **ADR-0006 — Tailwind CSS usage rules.** All shared CSS lives in `app.css`
 (`@font-face`, `:root` tokens, resets, ALL `@keyframes`, ALL `@utility` blocks);
@@ -120,7 +120,7 @@ propagation is stashed and re-runnable via the "Retry last category sync" menu i
 | 1 | `checkTagDirection` (`dispatch.ts:165-183`): `I` requires tag ∈ Categories; `O` requires tag ∈ Subcategories ∪ Categories. `isValidTag` (`domain.ts:14-24`) mirrors it. Parity: `parity.test.ts:95` asserts `isValidTag ≡ (checkTagDirection === null)` over generated tag/direction pairs. |
 | 2 | `1_sheets.ts:47` comment + code: `writeEntryFields` never writes `IO_COL.MAIN_CAT`; `repository.ts:50`: col D is never a plan key; `planFieldWrites` skips it (ADR-0009 hardening). MASTER is read-only to GAS (`3_master.ts` only reads). |
 | 3 | `repository.ts:196` `insertEntries` / single-insert path: `nextId = max(existingIds)+1`; separator rows filtered by `isSeparatorRow` (blank col H). Separators created by `insertSeparatorIfMissing` (`5_visibility.ts:48`). `updateEntry` never touches col H. |
-| 4 | `dispatch.ts:214`: `if (direction === "O" && amount < 0)` → validation error. Negative Incoming passes (ADR-0005 drain leg). |
+| 4 | `dispatch.ts` accepts every finite amount for add and update payloads. `entryAmount` allows all signs for manual Entries; `redistributionAmount` alone requires a strictly positive transfer (ADR-0012). |
 | 5 | `dispatch.ts:386-392`: `validateAddBatchPayload` fully validates before `deps.addEntries`; `repository.ts:190-196` docblock: contiguous block, array order, leg 0 lowest, date-ordered interleaving. |
 | 6 | `locking.ts:20` `runExclusive`; call sites: `2_entries.ts` (all four CRUD) and `5_visibility.ts:130`. |
 | 7 | `weeks.ts:12` `weekStartOfStr` and `groupEntries.ts:10` `weekStartOf` — both pure YYYY-MM-DD string arithmetic, Sunday start, no Date-object host-TZ dependence. Parity: `parity.test.ts:54` (week-start) and `:65` (week-label). Tests run under both `TZ=UTC` and `TZ=Asia/Manila`. |
