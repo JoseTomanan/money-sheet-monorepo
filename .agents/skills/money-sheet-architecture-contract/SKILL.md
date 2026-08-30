@@ -20,8 +20,10 @@ description: >-
 # Architecture Contract — money-sheet-monorepo
 
 Personal finances tracker: GAS (Google Apps Script) TypeScript backend over a Google
-Sheet, Svelte 5 frontend. Two independent packages (`clasp/`, `frontend/`) sharing
-zero code — shared algorithms are **implemented twice and parity-tested**.
+Sheet, Svelte 5 frontend. Two independent packages (`clasp/`, `frontend/`) duplicate
+shared algorithms and parity-test them. The narrow exception is Mock Mode: it may
+runtime-import only pure, GAS-free dispatcher/repository modules from `clasp/` so its
+mutations use the canonical contract; it must not import GAS globals or network code.
 
 Read `CONTEXT.md` for term definitions. This skill is the contract: if any other
 skill, doc, or your own plan disagrees with an invariant below, this skill wins.

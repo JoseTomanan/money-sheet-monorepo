@@ -132,6 +132,8 @@ propagation is stashed and re-runnable via the "Retry last category sync" menu i
 Cross-package wire-contract guards: `clasp/src/_contract_parity.ts` (type-level) and
 `frontend/src/lib/wire-contract.parity.ts` (imports clasp source across packages —
 `parity.test.ts:14-19` imports `../../../clasp/src/lib/weeks` and `.../dispatch`).
+Mock Mode is the sole runtime-reuse exception: it imports only the pure dispatcher
+and IO-repository chain, never a GAS-global or network-bound module.
 
 ## Known-weak points — detail
 
