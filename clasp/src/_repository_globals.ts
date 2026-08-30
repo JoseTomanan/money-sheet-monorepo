@@ -16,3 +16,4 @@ declare const patchEntry: typeof import("./lib/repository").patchEntry;
 declare const removeEntry: typeof import("./lib/repository").removeEntry;
 declare type IoRepository = import("./lib/repository").IoRepository;
 declare type IoRow = import("./lib/repository").IoRow;
+declare type VisibilityRepository = import("./lib/repository").VisibilityRepository;

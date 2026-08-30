@@ -115,8 +115,8 @@ Both functions produce identical output for the same input. Tests covering Dec 3
   - Same month: `"Mon D – D, YYYY"` (e.g. `"May 11 – 17, 2025"`)
   - Cross-month: `"Mon D – Mon D, YYYY"` (e.g. `"Apr 27 – May 3, 2025"`)
   - Year is always the year of the Saturday (end of week)
-- **Spreadsheet separator rows**, via `formatWeekLabel` (`clasp/src/lib/weeks.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
+- **Spreadsheet separator rows**, via `spreadsheetWeekLabelFromStr` (`clasp/src/lib/weeks.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
 
-**Known divergence (issue #141)**: the canonical definition above is implemented and parity-tested in the frontend, but clasp's only production consumer of week logic — the separator/visibility trigger in `clasp/src/5_visibility.ts` — does not use it. That file computes week starts with `weekStartSunday(date, "Asia/Manila")`, a parallel `Date`-and-timezone-based implementation, and labels with `formatWeekLabel`. `weekStartOfStr` and `weekLabelFromStr` have no production call sites in clasp at all — they exist for the parity tests. #141 tracks converging the separator writer onto the canonical string-based pair.
+The clasp separator/visibility trigger uses `weekStartOfStr` through the pure planner in `clasp/src/lib/visibility.ts`; it has no parallel timezone-dependent week-start calculation. Its spreadsheet-only label comes from `spreadsheetWeekLabelFromStr`, which preserves the uppercase/no-year separator format.
 
-**Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem — both are the single-responsibility implementations of this calculation. Until #141 lands, also update `weekStartSunday` (`clasp/src/lib/weeks.ts`) — the separator writer uses it independently of the canonical pair, so changing only the two functions named above would silently leave the spreadsheet on Sunday-start weeks.
+**Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem. The separator writer consumes the clasp helper, so it follows that change automatically.

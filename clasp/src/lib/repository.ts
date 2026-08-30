@@ -104,6 +104,19 @@ export interface IoRepository {
 }
 
 /**
+ * The deliberately separate port used by weekly separator maintenance.
+ * Entry writers do not need to implement visibility-only sheet operations.
+ */
+export interface VisibilityRepository {
+  /** The single snapshot used by each visibility-maintenance phase. */
+  readRows(): IoRow[];
+  /** Inserts a fully-formed separator before the given 1-based sheet row. */
+  insertSeparatorRow(sheetRow: number, weekStart: string, label: string): void;
+  /** Shows or hides one consecutive 1-based sheet-row range. */
+  setRowVisibility(sheetRow: number, numRows: number, visible: boolean): void;
+}
+
+/**
  * Reads all Entries (skipping separator rows), formatting each row's date via
  * `formatDate`. Each entry is stamped with its true 1-based sheet row — data
  * rows start at row 2, and separator rows still consume a row number even

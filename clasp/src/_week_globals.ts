@@ -4,7 +4,6 @@
 // change there fails `tsc --noEmit` here instead of silently drifting (issue #109).
 declare const weekStartOfStr: typeof import("./lib/weeks").weekStartOfStr;
 declare const weekLabelFromStr: typeof import("./lib/weeks").weekLabelFromStr;
-declare const weekStartSunday: typeof import("./lib/weeks").weekStartSunday;
-declare const formatWeekLabel: typeof import("./lib/weeks").formatWeekLabel;
-declare const weekTier: typeof import("./lib/weeks").weekTier;
+declare const spreadsheetWeekLabelFromStr: typeof import("./lib/weeks").spreadsheetWeekLabelFromStr;
+declare const weekTierFromStr: typeof import("./lib/weeks").weekTierFromStr;
 declare const findInsertionIndex: typeof import("./lib/weeks").findInsertionIndex;
