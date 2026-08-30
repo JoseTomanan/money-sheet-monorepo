@@ -15,24 +15,18 @@
   interface Props {
     onopenedit: (entry: Entry) => void;
     onadd: () => void;
+    selectedWeek: string;
+    onweekchange: (week: string) => void;
     scrollEl: HTMLElement | null;
     scrollTop: number;
     selectMode?: boolean;
   }
 
-  let { onopenedit, onadd, scrollEl, scrollTop, selectMode = $bindable(false) }: Props = $props();
+  let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false) }: Props = $props();
 
   let redistOpen = $state(false);
 
-  let hasScrolledToBottom = $state(false);
-  $effect(() => {
-    if (!store.loading && !hasScrolledToBottom) {
-      hasScrolledToBottom = true;
-      if (scrollEl) scrollEl.scrollTop = scrollEl.scrollHeight;
-    }
-  });
-
-  const filter = createEntriesFilter(() => store.entries);
+  const filter = createEntriesFilter(() => store.entries, () => selectedWeek);
 
   const categoryNames = $derived(Object.keys(store.categories).sort());
 
@@ -122,8 +116,8 @@
     <WeekPicker
       weeks={filter.selectableWeeks()}
       currentWeekKey={currentWeekKey()}
-      value={filter.selectedWeek}
-      onSelect={(k) => filter.selectWeek(k)}
+      value={selectedWeek}
+      onSelect={onweekchange}
     />
     <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex flex-wrap items-baseline gap-[10px]">
       Entries
