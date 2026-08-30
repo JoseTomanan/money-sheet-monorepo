@@ -54,6 +54,67 @@ describe("MockAdapter — addEntry", () => {
     expect(entry.date).toBe("2026-01-01");
     expect(entry.amount).toBe(50);
   });
+
+  it("rejects canonical validation failures", async () => {
+    const adapter = new MockAdapter();
+    await expect(adapter.addEntry({
+      date: "2026-99-99",
+      tag: "Groceries",
+      description: "bad date",
+      direction: "O",
+      amount: 50,
+    }, "mock-invalid-date")).rejects.toThrow('"date" must be a valid ISO date string');
+    await expect(adapter.addEntry({
+      date: "2026-01-01",
+      tag: "Groceries",
+      description: "bad tag-direction pair",
+      direction: "I",
+      amount: 50,
+    }, "mock-invalid-tag")).rejects.toThrow('Incoming entries require a Category tag');
+  });
+
+  it("replays identical Mutation IDs without duplicating rows and rejects mismatches", async () => {
+    const adapter = new MockAdapter();
+    const payload = { date: "2026-01-01", tag: "Groceries", description: "idempotent mock", direction: "O" as const, amount: 50 };
+    const first = await adapter.addEntry(payload, "mock-idempotent-single");
+    const replay = await adapter.addEntry(payload, "mock-idempotent-single");
+    expect(replay).toEqual(first);
+    await expect(adapter.addEntry({ ...payload, amount: 51 }, "mock-idempotent-single"))
+      .rejects.toThrow("Mutation ID was already used with different entry content");
+  });
+
+  it("keeps batch Mutation IDs idempotent in original request order", async () => {
+    const adapter = new MockAdapter();
+    const payloads = [
+      { date: "2026-01-02", tag: "Groceries", description: "batch main", direction: "O" as const, amount: 20 },
+      { date: "2026-01-02", tag: "Dining", description: "^^", direction: "O" as const, amount: 30 },
+    ];
+    const first = await adapter.addEntries(payloads, "mock-idempotent-batch");
+    const replay = await adapter.addEntries(payloads, "mock-idempotent-batch");
+    expect(replay).toEqual(first);
+    await expect(adapter.addEntries([{ ...payloads[0], amount: 21 }, payloads[1]], "mock-idempotent-batch"))
+      .rejects.toThrow("Mutation ID was already used with different entry content");
+  });
+
+  it("uses date-ordered rows for adds and date-changing updates", async () => {
+    const adapter = new MockAdapter();
+    const before = await adapter.getEntries();
+    const firstExistingId = before[0].id;
+    const added = await adapter.addEntry({
+      date: "2000-01-01",
+      tag: "Groceries",
+      description: "backdated mock entry",
+      direction: "O",
+      amount: 50,
+    }, "mock-backdated");
+    expect(added.row).toBe(2);
+    expect((await adapter.getEntries()).find((entry) => entry.id === firstExistingId)?.row).toBe(3);
+
+    await adapter.updateEntry(added.id, { date: "2999-12-31" });
+    const moved = (await adapter.getEntries()).find((entry) => entry.id === added.id)!;
+    expect(moved.id).toBe(added.id);
+    expect(moved.row).toBe(Math.max(...(await adapter.getEntries()).map((entry) => entry.row ?? 0)));
+  });
 });
 
 // ── Cycle 8: validateConnection is a no-op ────────────────────────────────
@@ -75,6 +136,12 @@ describe("MockAdapter — updateEntry", () => {
     const entries = await adapter.getEntries();
     await expect(adapter.updateEntry(entries[0].id, { description: "updated" })).resolves.toBeUndefined();
   });
+
+  it("rejects an unknown Entry ID with canonical not-found behavior", async () => {
+    const adapter = new MockAdapter();
+    await expect(adapter.updateEntry(999_999, { description: "missing" }))
+      .rejects.toThrow("Entry with id 999999 not found");
+  });
 });
 
 describe("MockAdapter — deleteEntry", () => {
@@ -82,6 +149,11 @@ describe("MockAdapter — deleteEntry", () => {
     const adapter = new MockAdapter();
     const entries = await adapter.getEntries();
     await expect(adapter.deleteEntry(entries[0].id)).resolves.toBeUndefined();
+  });
+
+  it("rejects an unknown Entry ID with canonical not-found behavior", async () => {
+    const adapter = new MockAdapter();
+    await expect(adapter.deleteEntry(999_999)).rejects.toThrow("Entry with id 999999 not found");
   });
 });
 

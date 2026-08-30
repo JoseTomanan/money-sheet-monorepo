@@ -17,5 +17,12 @@
       "$lib/*": ["./src/lib/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "../clasp/src/lib/dispatch.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "../clasp/src/lib/dispatch.ts",
+    "../clasp/src/lib/entries.ts",
+    "../clasp/src/lib/repository.ts",
+    "../clasp/src/lib/weeks.ts"
+  ]
 }

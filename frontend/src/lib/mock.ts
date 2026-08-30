@@ -12,8 +12,28 @@ import type {
   UpdateEntryPatch,
 } from "./types";
 import { CATEGORY_MAP } from "./theme";
-import { buildEntry, getMainCategory } from "./domain";
+import { getMainCategory } from "./domain";
 import { today } from "./format";
+import { createMutationId } from "./mutationId";
+import {
+  dispatch,
+  type AddEntriesPayload,
+  type AddEntryRequest,
+  type ApiResponse,
+  type DispatchDeps,
+} from "../../../clasp/src/lib/dispatch";
+import {
+  findEntriesByMutationId,
+  insertEntries,
+  insertEntry,
+  listEntries,
+  patchEntry,
+  payloadsMatch,
+  removeEntry,
+  type EntryFields,
+  type IoRepository,
+  type IoRow,
+} from "../../../clasp/src/lib/repository";
 
 function daysAgo(n: number): string {
   const [y, m, d] = today().split('-').map(Number);
@@ -78,11 +98,103 @@ const seedEntries: Entry[] = [
   { id: 49, date: daysAgo(0),  tag: "Commute Fare",     mainCategory: "TRANSIT",   description: "THIS IS MOCK DATA — safe travels",   direction: "O", amount: 55 },
 ];
 
-// Stamp plausible sheet rows (already in date+id order) so mock mode exercises the real row-based ordering path.
-let entries: Entry[] = seedEntries.map((e, i) => ({ ...e, row: i + 2 }));
+const MOCK_SECRET = "mock-mode-dispatch-secret";
+
+/** In-memory IO-sheet adapter for the canonical repository operations. */
+class MockIoRepository implements IoRepository {
+  constructor(private readonly rows: IoRow[]) {}
+
+  readRows(): IoRow[] {
+    return this.rows;
+  }
+
+  writeEntryFields(sheetRow: number, fields: Partial<EntryFields>): void {
+    const index = sheetRow - 2;
+    const row = this.rows[index] ?? (this.rows[index] = Array(8).fill(""));
+    if (fields.date !== undefined) row[0] = fields.date;
+    if (fields.tag !== undefined) row[1] = fields.tag;
+    if (fields.description !== undefined) row[3] = fields.description;
+    if (fields.direction !== undefined) row[4] = fields.direction;
+    if (fields.amount !== undefined) row[5] = fields.amount;
+    if (fields.id !== undefined) row[6] = fields.id;
+    if (fields.mutationId !== undefined) row[7] = fields.mutationId;
+  }
+
+  deleteRow(sheetRow: number): void {
+    this.rows.splice(sheetRow - 2, 1);
+  }
+
+  insertRowBefore(sheetRow: number): void {
+    this.rows.splice(sheetRow - 2, 0, Array(8).fill(""));
+  }
+
+  resolveMainCategory(sheetRow: number): string {
+    const row = this.rows[sheetRow - 2];
+    const mainCategory = getMainCategory(String(row[1]), CATEGORY_MAP);
+    row[2] = mainCategory;
+    return mainCategory;
+  }
+}
+
+function seedRow(entry: Entry): IoRow {
+  return [
+    entry.date,
+    entry.tag,
+    entry.mainCategory,
+    entry.description,
+    entry.direction,
+    entry.amount,
+    entry.id,
+    "",
+  ];
+}
+
+const repository = new MockIoRepository(seedEntries.map(seedRow));
+
+function readEntries(): Entry[] {
+  return listEntries(repository, String);
+}
+
+const mockDeps: DispatchDeps = {
+  secret: MOCK_SECRET,
+  getCategories: () => CATEGORY_MAP,
+  getEntryById: (id) => readEntries().find((entry) => entry.id === id) ?? null,
+  addEntry: (request: AddEntryRequest) => {
+    const rows = repository.readRows();
+    const existing = findEntriesByMutationId(rows, request.mutationId, String);
+    if (existing.length > 0) {
+      return payloadsMatch(existing, [request])
+        ? { status: "duplicate", entry: existing[0] }
+        : { status: "mismatch" };
+    }
+    return { status: "created", entry: insertEntry(repository, request, request.mutationId, rows) };
+  },
+  addEntries: (request: AddEntriesPayload) => {
+    const rows = repository.readRows();
+    const existing = findEntriesByMutationId(rows, request.mutationId, String);
+    if (existing.length > 0) {
+      return payloadsMatch(existing, request.entries)
+        ? { status: "duplicate", entries: existing }
+        : { status: "mismatch" };
+    }
+    return { status: "created", entries: insertEntries(repository, request.entries, request.mutationId, rows) };
+  },
+  updateEntry: (id, patch) => patchEntry(repository, id, patch, String),
+  deleteEntry: (id) => removeEntry(repository, id),
+};
+
+function mutate(action: string, body: Record<string, unknown>): ApiResponse {
+  return dispatch({ action, secret: MOCK_SECRET, body }, mockDeps);
+}
+
+function unwrapMutation<T>(response: ApiResponse, field: "entry" | "entries"): T {
+  if (response.ok === false) throw new Error(response.message);
+  if (!(field in response)) throw new Error(`Mock dispatch response missing ${field}`);
+  return response[field] as T;
+}
 
 export function mockGetEntries(): Promise<Entry[]> {
-  return Promise.resolve([...entries]);
+  return Promise.resolve(readEntries());
 }
 
 export function mockGetCategories(): Promise<import("./types").CategoryMap> {
@@ -90,6 +202,7 @@ export function mockGetCategories(): Promise<import("./types").CategoryMap> {
 }
 
 export function mockGetMaster(): Promise<MasterRow> {
+  const entries = readEntries();
   const totalIn = entries.filter(e => e.direction === "I").reduce((s, e) => s + e.amount, 0);
   const totalOut = entries.filter(e => e.direction === "O").reduce((s, e) => s + e.amount, 0);
   const budgets: Record<string, number> = {};
@@ -101,34 +214,29 @@ export function mockGetMaster(): Promise<MasterRow> {
   return Promise.resolve({ onHand: totalIn - totalOut, budgets });
 }
 
-export function mockAddEntry(payload: AddEntryPayload): Promise<Entry> {
-  const nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  const entry = { ...buildEntry(nextId, payload, CATEGORY_MAP), row: entries.length + 2 };
-  entries = [...entries, entry];
-  return Promise.resolve(entry);
+export function mockAddEntry(payload: AddEntryPayload, mutationId = createMutationId()): Promise<Entry> {
+  return Promise.resolve(unwrapMutation<Entry>(
+    mutate("addEntry", { ...payload, mutationId }),
+    "entry",
+  ));
 }
 
-/** Assigns a contiguous id block in array order, mirroring the real addEntries contract. */
-export function mockAddEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
-  let nextId = entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
-  let nextRow = entries.length + 2;
-  const newEntries = payloads.map((payload) => ({ ...buildEntry(nextId++, payload, CATEGORY_MAP), row: nextRow++ }));
-  entries = [...entries, ...newEntries];
-  return Promise.resolve(newEntries);
+export function mockAddEntries(payloads: AddEntryPayload[], mutationId = createMutationId()): Promise<Entry[]> {
+  return Promise.resolve(unwrapMutation<Entry[]>(
+    mutate("addEntries", { entries: payloads, mutationId }),
+    "entries",
+  ));
 }
 
 export function mockUpdateEntry(id: number, patch: UpdateEntryPatch): Promise<void> {
-  entries = entries.map(e => {
-    if (e.id !== id) return e;
-    const updated = { ...e, ...patch };
-    if (patch.tag) updated.mainCategory = getMainCategory(patch.tag, CATEGORY_MAP);
-    return updated;
-  });
+  const response = mutate("updateEntry", { id, ...patch });
+  if (response.ok === false) return Promise.reject(new Error(response.message));
   return Promise.resolve();
 }
 
 export function mockDeleteEntry(id: number): Promise<void> {
-  entries = entries.filter(e => e.id !== id);
+  const response = mutate("deleteEntry", { id });
+  if (response.ok === false) return Promise.reject(new Error(response.message));
   return Promise.resolve();
 }
 
@@ -186,6 +294,7 @@ function windowStart(window: StatsWindow): string {
 }
 
 export function mockGetStats(): Promise<StatsData> {
+  const entries = readEntries();
   const currentMonth = monthKey(today());
   const todayDay = dayOfMonth(today());
 

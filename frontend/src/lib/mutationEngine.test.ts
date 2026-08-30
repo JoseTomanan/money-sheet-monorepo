@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { nextTempId, _resetTempIdCounter, createMutationEngine } from './mutationEngine';
 import type { EntryStoreSeam, MutationApi } from './mutationEngine';
 import type { Entry, CategoryMap, AddEntryPayload, UpdateEntryPatch } from './types';
-import { writeQueue, clearQueue } from './queue';
+import { writeQueue, clearQueue, readQueue } from './queue';
 import { UnauthorizedError, ConnectionError } from './api';
+import { MockAdapter } from './adapter-mock';
 
 // ---------------------------------------------------------------------------
 // In-memory fake seam — exercises the engine without Svelte runes
@@ -266,6 +267,20 @@ describe('engine.edit — failed (server error)', () => {
     const engine = createEngine(seam, api);
     await engine.edit(10, { description: 'new' });
     expect(seam.toasts.some((t) => t.msg !== null)).toBe(true);
+  });
+
+  it('rolls back a canonical MockAdapter validation rejection without queueing it', async () => {
+    const adapter = new MockAdapter();
+    const entry = (await adapter.getEntries()).find((candidate) => candidate.direction === 'O')!;
+    const seam = makeFakeSeam([entry]);
+    const engine = createEngine(seam, adapter);
+
+    const saved = await engine.edit(entry.id, { direction: 'I' });
+
+    expect(saved).toBe(false);
+    expect(seam.entries[0]).toEqual(entry);
+    expect(readQueue()).toEqual([]);
+    expect(seam.toasts.some((toast) => toast.msg !== null)).toBe(true);
   });
 });
 
