@@ -1219,6 +1219,37 @@ describe("store mutation workflow regressions", () => {
     expect(replacementAdd).toHaveBeenCalledOnce();
   });
 
+  it("queues an unauthorized add and keeps its destructive recovery toast", async () => {
+    const { setAdapter, UnauthorizedError } = await import("./api");
+    const { toast } = await import("./toast.svelte");
+    setAdapter(makeGatewayAdapter({
+      addEntry: async () => { throw new UnauthorizedError("secret rejected"); },
+    }));
+    await store.refreshAll();
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "auth", direction: "O", amount: 50 });
+
+    expect(store.localIds).toEqual(new Set([-1]));
+    expect(toast.variant).toBe("destructive");
+    expect(toast.msg).toBe("secret rejected");
+  });
+
+  it("rolls back a canonical MockAdapter validation rejection without queueing it", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const mockStore = (await import("./store.svelte")).store;
+    const { toast } = await import("./toast.svelte");
+    await mockStore.refreshAll();
+    const outgoing = mockStore.entries.find((entry) => entry.direction === "O")!;
+
+    const saved = await mockStore.updateEntry(outgoing.id, { direction: "I" });
+
+    expect(saved).toBe(false);
+    expect(mockStore.entries.find((entry) => entry.id === outgoing.id)).toEqual(outgoing);
+    expect(mockStore.localIds.size).toBe(0);
+    expect(toast.msg).not.toBeNull();
+  });
+
   it("assigns strictly decreasing negative temporary IDs across queued single adds", async () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
 
