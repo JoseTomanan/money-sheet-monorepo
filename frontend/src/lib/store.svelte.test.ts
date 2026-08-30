@@ -3,7 +3,7 @@ import { writeCache } from "./cache";
 import { writeQueue } from "./queue";
 import type { CachePayload } from "./cache";
 import type { QueueItem } from "./queue";
-import type { Entry, AddEntryPayload } from "./types";
+import type { Entry, AddEntryPayload, GatewayAdapter } from "./types";
 
 const freshEntries: Entry[] = [
   {
@@ -1189,6 +1189,36 @@ describe("store mutation workflow regressions", () => {
     vi.unstubAllGlobals();
   });
 
+  function makeGatewayAdapter(overrides: Partial<GatewayAdapter> = {}): GatewayAdapter {
+    return {
+      getEntries: async () => freshEntries,
+      getMaster: async () => freshMaster,
+      getCategories: async () => freshCategories,
+      getConfig: async () => ({ currency: "₱" }),
+      getStats: async () => ({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] }),
+      addEntry: async (payload) => ({ id: 77, ...payload, mainCategory: "FOOD" }),
+      addEntries: async (payloads) => payloads.map((payload, index) => ({ id: 77 + index, ...payload, mainCategory: "FOOD" })),
+      updateEntry: async () => undefined,
+      deleteEntry: async () => undefined,
+      validateConnection: async () => undefined,
+      ...overrides,
+    };
+  }
+
+  it("selects the gateway per mutation call rather than at store initialization", async () => {
+    const { setAdapter } = await import("./api");
+    const initial = makeGatewayAdapter();
+    const replacementAdd = vi.fn(async (payload: AddEntryPayload) => ({ id: 77, ...payload, mainCategory: "FOOD" }));
+    const replacement = makeGatewayAdapter({ addEntry: replacementAdd });
+    setAdapter(initial);
+    await store.refreshAll();
+    setAdapter(replacement);
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "new", direction: "O", amount: 50 });
+
+    expect(replacementAdd).toHaveBeenCalledOnce();
+  });
+
   it("assigns strictly decreasing negative temporary IDs across queued single adds", async () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
 
@@ -1197,6 +1227,21 @@ describe("store mutation workflow regressions", () => {
 
     expect(store.entries.map((entry) => entry.id)).toEqual([-1, -2]);
     expect(store.localIds).toEqual(new Set([-1, -2]));
+  });
+
+  it("reserves IDs below rehydrated Local Entries before creating another queued add", async () => {
+    const payload: AddEntryPayload = { date: "2026-01-01", tag: "Groceries", description: "restored", direction: "O", amount: 10 };
+    writeQueue([{ op: "add", tempId: -4, payload, mutationId: "restored-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store = (await import("./store.svelte")).store;
+    await store.init();
+
+    await store.addEntry({ ...payload, description: "new" });
+
+    expect(store.entries.filter((entry) => entry.id < 0).map((entry) => entry.id)).toEqual([-4, -5]);
+    expect(store.localIds).toEqual(new Set([-4, -5]));
   });
 
   it("replays a queued atomic batch as one addEntries request and swaps every leg in order", async () => {

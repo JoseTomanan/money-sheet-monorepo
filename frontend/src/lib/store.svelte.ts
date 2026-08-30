@@ -91,6 +91,13 @@ function syncLocalIds(): void {
   localIds = getLocalEntryIds();
 }
 
+function reserveRehydratedTemporaryIds(): void {
+  const restoredIds = entries.filter((entry) => entry.id < 0).map((entry) => entry.id);
+  if (restoredIds.length > 0) {
+    nextTemporaryId = Math.min(nextTemporaryId, Math.min(...restoredIds) - 1);
+  }
+}
+
 async function add(payload: AddEntryPayload): Promise<boolean> {
   const tempId = nextTemporaryId--;
   const mutationId = createMutationId();
@@ -345,6 +352,7 @@ function injectQueue(): void {
       }
     }
   }
+  reserveRehydratedTemporaryIds();
 }
 
 export const store = {
