@@ -23,9 +23,12 @@
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
   const router = createRouter();
+  const routeScrollPositions = new Map<string, number>();
 
   function handleScroll() {
-    if (scrollArea) scrollTop = scrollArea.scrollTop;
+    if (!scrollArea) return;
+    scrollTop = scrollArea.scrollTop;
+    routeScrollPositions.set(router.key, scrollTop);
   }
 
   function scrollToTop() {
@@ -41,7 +44,11 @@
   function navigate(next: Route) {
     if (!router.navigate(next)) return;
     closeRouteOverlays();
-    if (scrollArea) scrollArea.scrollTop = 0;
+    if (scrollArea) {
+      scrollArea.scrollTop = 0;
+      scrollTop = 0;
+    }
+    routeScrollPositions.set(router.key, 0);
   }
 
   function navigateTab(tab: TabId) {
@@ -53,7 +60,13 @@
   }
 
   function syncRoute() {
-    if (router.sync()) closeRouteOverlays();
+    if (scrollArea) routeScrollPositions.set(router.key, scrollArea.scrollTop);
+    if (!router.sync()) return;
+    closeRouteOverlays();
+    if (scrollArea) {
+      scrollArea.scrollTop = routeScrollPositions.get(router.key) ?? 0;
+      scrollTop = scrollArea.scrollTop;
+    }
   }
 
   // Entry sheet state

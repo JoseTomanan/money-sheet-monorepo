@@ -31,3 +31,22 @@ test('UI route navigation updates the hash and browser Back restores the prior v
   await page.getByRole('button', { name: 'Entries' }).click();
   await expect(page).toHaveURL(/#\/entries\/\d{4}-\d{2}-\d{2}$/);
 });
+
+test('browser Back restores the prior route scroll position', async ({ page }) => {
+  await page.goto('/#/home');
+  await waitForAppReady(page);
+  const scrollArea = page.locator('.scroll-area');
+  await scrollArea.evaluate((element) => {
+    element.style.height = '100px';
+    element.scrollTop = 120;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(120);
+
+  await page.getByRole('button', { name: 'Summary' }).click();
+  await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(0);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/home$/);
+  await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(120);
+});

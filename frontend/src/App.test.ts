@@ -235,4 +235,20 @@ describe("App — hash routes", () => {
     await fireEvent.click(getByRole("button", { name: "Summary" }));
     expect(queryByRole("dialog")).toBeNull();
   });
+
+  it("restores the previous route's scroll position on browser traversal", async () => {
+    window.history.replaceState(null, "", "/#/home");
+    const { container, getByRole } = render(App);
+    const scrollArea = container.querySelector(".scroll-area") as HTMLElement;
+    scrollArea.scrollTop = 123;
+    await fireEvent.scroll(scrollArea);
+
+    await fireEvent.click(getByRole("button", { name: "Summary" }));
+    expect(scrollArea.scrollTop).toBe(0);
+
+    window.history.replaceState(null, "", "/#/home");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await Promise.resolve();
+    expect(scrollArea.scrollTop).toBe(123);
+  });
 });
