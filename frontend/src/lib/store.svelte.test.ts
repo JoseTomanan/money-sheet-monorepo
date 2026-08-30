@@ -1168,3 +1168,117 @@ describe("store — getStats graceful degradation", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Mutation workflow regressions (#144) — exercise the rune-backed store, not
+// a fake state adapter.
+// ---------------------------------------------------------------------------
+
+describe("store mutation workflow regressions", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    store = (await import("./store.svelte")).store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("assigns strictly decreasing negative temporary IDs across queued single adds", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "first", direction: "O", amount: 10 });
+    await store.addEntry({ date: "2026-01-02", tag: "Dining", description: "second", direction: "O", amount: 20 });
+
+    expect(store.entries.map((entry) => entry.id)).toEqual([-1, -2]);
+    expect(store.localIds).toEqual(new Set([-1, -2]));
+  });
+
+  it("replays a queued atomic batch as one addEntries request and swaps every leg in order", async () => {
+    const legs: AddEntryPayload[] = [
+      { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
+    ];
+    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    const addEntries = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("action=getEntries")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [
+          { id: 200, ...legs[0], mainCategory: "FOOD" },
+          { id: 201, ...legs[1], mainCategory: "FOOD" },
+        ] })) });
+      }
+      if (url.includes("action=")) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      const body = JSON.parse(String(init?.body));
+      addEntries(body);
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entries: [
+        { id: 200, ...legs[0], mainCategory: "FOOD" },
+        { id: 201, ...legs[1], mainCategory: "FOOD" },
+      ] })) });
+    }));
+    store = (await import("./store.svelte")).store;
+    await store.init();
+
+    await store.drainQueue();
+
+    expect(addEntries).toHaveBeenCalledWith(expect.objectContaining({ action: "addEntries", mutationId: "batch-id", entries: legs }));
+    expect(store.entries.map((entry) => entry.id)).toEqual([200, 201]);
+    expect(store.localIds.size).toBe(0);
+  });
+
+  it("keeps queued batch legs frozen while allowing no mutation request", async () => {
+    const legs: AddEntryPayload[] = [
+      { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
+    ];
+    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+    store = (await import("./store.svelte")).store;
+    await store.init();
+    const callsBefore = fetchSpy.mock.calls.length;
+
+    await store.updateEntry(-1, { amount: 999 });
+    await store.deleteEntry(-1);
+
+    expect(fetchSpy.mock.calls).toHaveLength(callsBefore);
+    expect(store.entries.find((entry) => entry.id === -1)?.amount).toBe(40);
+  });
+
+  it("reuses a queued add's mutation ID on replay after a post-commit timeout", async () => {
+    const mutationIds: string[] = [];
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("action=getEntries")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: postCount > 1 ? [{
+          id: 77, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "retry", direction: "O", amount: 50,
+        }] : freshEntries })) });
+      }
+      if (url.includes("action=")) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      const body = JSON.parse(String(init?.body));
+      mutationIds.push(body.mutationId);
+      if (postCount++ === 0) return Promise.reject(new Error("timed out after commit"));
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: {
+        id: 77, date: body.date, tag: body.tag, mainCategory: "FOOD", description: body.description, direction: body.direction, amount: body.amount,
+      } })) });
+    }));
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "retry", direction: "O", amount: 50 });
+    await store.drainQueue();
+
+    expect(mutationIds).toHaveLength(2);
+    expect(mutationIds[0]).toBe(mutationIds[1]);
+    expect(store.entries.map((entry) => entry.id)).toContain(77);
+  });
+});
