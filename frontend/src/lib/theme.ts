@@ -11,7 +11,12 @@ export interface CategoryStyle {
   subcategories: string[];
 }
 
-export const CATEGORIES: Record<string, CategoryStyle> = {
+/** The fixed top-level budget Categories, in their spreadsheet/display order. */
+export const CATEGORY_ORDER = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'] as const;
+
+type Category = typeof CATEGORY_ORDER[number];
+
+export const CATEGORIES: Record<Category, CategoryStyle> = {
   HOUSING:   { color: '#2a5899', soft: 'rgba(58, 123, 200, 0.14)',  pastel: '#dce8f8', dot: '#2f78bc', darkColor: '#60a5fa', darkDot: 'rgba(147, 197, 253, 0.65)', label: 'Housing',
                subcategories: ['Rent', 'Utilities', 'Maintenance'] },
   FOOD:      { color: '#186e34', soft: 'rgba(26, 138, 63, 0.14)',   pastel: '#cdebd6', dot: '#258a46', darkColor: '#4ade80', darkDot: 'rgba(134, 239, 172, 0.65)', label: 'Food',
@@ -27,8 +32,6 @@ export const CATEGORIES: Record<string, CategoryStyle> = {
   MISC:      { color: '#4e3aab', soft: 'rgba(102, 80, 196, 0.14)',  pastel: '#e4dff8', dot: '#6040b0', darkColor: '#a78bfa', darkDot: 'rgba(196, 181, 253, 0.65)', label: 'Misc',
                subcategories: ['Career', 'Uniform', 'Tools'] },
 };
-
-export const CATEGORY_ORDER = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'] as const;
 
 const FALLBACK_STYLE: CategoryStyle = {
   color: 'var(--muted-foreground)',
