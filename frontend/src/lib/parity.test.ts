@@ -15,8 +15,11 @@ import { weekStartOf, weekLabel } from './groupEntries';
 // @ts-ignore — cross-package import; clasp lib is pure TS with no GAS globals
 import { weekStartOfStr, weekLabelFromStr } from '../../../clasp/src/lib/weeks';
 import { isValidTag } from './domain';
+import { CATEGORY_ORDER } from './theme';
 // @ts-ignore — cross-package import
 import { checkTagDirection } from '../../../clasp/src/lib/dispatch';
+// @ts-ignore — cross-package import
+import { CATEGORY_ORDER as CLASP_CATEGORY_ORDER } from '../../../clasp/src/lib/categories';
 import type { CategoryMap } from './types';
 
 // ---------------------------------------------------------------------------
@@ -102,4 +105,15 @@ describe('tag-polymorphism parity: frontend isValidTag ≡ clasp checkTagDirecti
       expect(claspResult === null).toBe(expectedValid);
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Parity: the fixed Category domain has identical values and order
+// ---------------------------------------------------------------------------
+describe('Category-order parity: frontend CATEGORY_ORDER ≡ clasp CATEGORY_ORDER', () => {
+  it('has the same fixed Category values in the same order', () => {
+    const canonicalOrder = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'];
+    expect(CATEGORY_ORDER).toEqual(canonicalOrder);
+    expect(CLASP_CATEGORY_ORDER).toEqual(canonicalOrder);
+  });
 });

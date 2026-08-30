@@ -11,7 +11,7 @@
  * ```
  * Row 1:  "STATS"  (title, informational only)
  * Row 2:  CATEGORY | INCOMING (MTD) | OUTGOING (MTD) | NET CHANGE (MTD)   <- header
- * Row 3..(2+N): one row per hardcoded Category (N = STATS_CATEGORIES.length)
+ * Row 3..(2+N): one row per fixed Category (N = STATS_CATEGORIES.length)
  *         A = category name (literal)
  *         B = SUMIFS: this-calendar-month incoming tagged to the Category
  *         C = SUMIFS: this-calendar-month outgoing resolving to the Category
@@ -57,14 +57,13 @@
  * in the issue #129 report and, for the #132 window blocks, in the #132 report.
  */
 
+import { CATEGORY_ORDER } from "./categories";
+
 export const STATS_SHEET_NAME = "STATS";
 
-// Same hardcoded category list MASTER uses (clasp/src/3_master.ts) — a known
-// weak point shared with MASTER: new Categories-sheet rows won't appear here
-// without a code change. Duplicated rather than imported to keep this a pure,
-// independently testable module (no cross-file coupling to the numbered GAS
-// file's literal).
-export const STATS_CATEGORIES = ["HOUSING", "FOOD", "TRANSIT", "HEALTH", "FINANCE", "LIFESTYLE", "MISC"];
+// Backwards-compatible name for STATS consumers; the ordered domain lives in
+// categories.ts and is also used by MASTER parsing.
+export const STATS_CATEGORIES = CATEGORY_ORDER;
 
 // How many trailing FULL calendar months feed the spending-pace "usual" baseline.
 export const TRAILING_MONTHS = 3;
