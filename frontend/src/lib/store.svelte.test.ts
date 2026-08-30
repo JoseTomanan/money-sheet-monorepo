@@ -331,7 +331,7 @@ describe("store", () => {
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
-      expect(toast.msg).toBe("Couldn't refresh entries: Network error");
+      expect(toast.msg).toBe("Couldn't refresh entries: Network error; balances: Network error; categories: Network error");
       expect(toast.action?.label).toBe("Retry");
     });
 
@@ -377,6 +377,23 @@ describe("store", () => {
       expect(store.categories).toEqual(previousCategories);
       expect(toast.msg).toBe("Couldn't refresh balances: net::ERR_NETWORK_CHANGED");
       expect(toast.action?.label).toBe("Retry");
+    });
+
+    it("reports every failed core read in one toast", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const action = new URLSearchParams(url.split("?")[1]).get("action");
+          if (action === "getEntries" || action === "getMaster") {
+            return Promise.reject(new Error(`${action} failed`));
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+        }),
+      );
+
+      await store.refreshAll(true);
+
+      expect(toast.msg).toBe("Couldn't refresh entries: getEntries failed; balances: getMaster failed");
     });
   });
 
@@ -1162,6 +1179,22 @@ describe("store — getStats graceful degradation", () => {
     expect(store.errorIsConnection).toBe(false);
     expect(toast.msg).toBe("Couldn't refresh statistics: Network error");
     expect(toast.action?.label).toBe("Retry");
+  });
+
+  it("reports every failed optional read in one toast", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && (url.includes("action=getConfig") || url.includes("action=getStats"))) {
+          return Promise.reject(new Error("Network error"));
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }),
+    );
+
+    await store.refreshAll(false);
+
+    expect(toast.msg).toBe("Couldn't refresh settings: Network error; statistics: Network error");
   });
 
   it("still loads the core reads when getStats fails", async () => {

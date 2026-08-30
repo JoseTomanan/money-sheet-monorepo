@@ -33,6 +33,11 @@ let nextTemporaryId = -1;
 
 const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
 
+interface RefreshFailure {
+  label: string;
+  rejection: PromiseRejectedResult;
+}
+
 function rejectionMessage(rejection: PromiseRejectedResult): string {
   return rejection.reason instanceof Error ? rejection.reason.message : String(rejection.reason);
 }
@@ -41,8 +46,8 @@ function isRejected<T>(result: PromiseSettledResult<T>): result is PromiseReject
   return result.status === 'rejected';
 }
 
-function notifyRefreshFailure(label: string, rejection: PromiseRejectedResult): void {
-  const message = `Couldn't refresh ${label}: ${rejectionMessage(rejection)}`;
+function notifyRefreshFailures(failures: RefreshFailure[]): void {
+  const message = `Couldn't refresh ${failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ')}`;
   toast.show(message, {
     label: 'Retry',
     run: () => {
@@ -52,16 +57,15 @@ function notifyRefreshFailure(label: string, rejection: PromiseRejectedResult): 
   });
 }
 
-function handleCoreRefreshFailure(
-  label: string,
-  rejection: PromiseRejectedResult,
+function handleCoreRefreshFailures(
+  failures: RefreshFailure[],
   silent: boolean,
 ): void {
   if (!silent) {
-    error = rejectionMessage(rejection);
-    errorIsConnection = isQueueable(rejection.reason);
+    error = rejectionMessage(failures[0].rejection);
+    errorIsConnection = isQueueable(failures[0].rejection.reason);
   }
-  notifyRefreshFailure(label, rejection);
+  notifyRefreshFailures(failures);
 }
 
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
@@ -91,18 +95,17 @@ async function refreshAll(silent = false): Promise<void> {
     // Entries, MASTER, and Categories form one financial snapshot. Never
     // combine a fresh subset with a previous MASTER value: that can make an
     // entry list and its displayed balances contradict each other.
-    if (isRejected(e)) {
-      handleCoreRefreshFailure('entries', e, silent);
+    const coreFailures: RefreshFailure[] = [];
+    if (isRejected(e)) coreFailures.push({ label: 'entries', rejection: e });
+    if (isRejected(m)) coreFailures.push({ label: 'balances', rejection: m });
+    if (isRejected(c)) coreFailures.push({ label: 'categories', rejection: c });
+    if (coreFailures.length > 0) {
+      handleCoreRefreshFailures(coreFailures, silent);
       return;
     }
-    if (isRejected(m)) {
-      handleCoreRefreshFailure('balances', m, silent);
-      return;
-    }
-    if (isRejected(c)) {
-      handleCoreRefreshFailure('categories', c, silent);
-      return;
-    }
+    // The rejection checks above make this unreachable, while narrowing the
+    // settled-result union for TypeScript before reading the values below.
+    if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
 
     entries = e.value;
     master = m.value;
@@ -110,8 +113,10 @@ async function refreshAll(silent = false): Promise<void> {
     if (cfg.status === 'fulfilled') config = cfg.value;
     if (st.status === 'fulfilled') stats = st.value;
 
-    if (isRejected(cfg)) notifyRefreshFailure('settings', cfg);
-    else if (isRejected(st)) notifyRefreshFailure('statistics', st);
+    const optionalFailures: RefreshFailure[] = [];
+    if (isRejected(cfg)) optionalFailures.push({ label: 'settings', rejection: cfg });
+    if (isRejected(st)) optionalFailures.push({ label: 'statistics', rejection: st });
+    if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
 
     injectQueue();
     localIds = getLocalEntryIds();
