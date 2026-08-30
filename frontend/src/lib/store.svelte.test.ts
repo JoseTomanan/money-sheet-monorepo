@@ -3,7 +3,7 @@ import { writeCache } from "./cache";
 import { writeQueue } from "./queue";
 import type { CachePayload } from "./cache";
 import type { QueueItem } from "./queue";
-import type { Entry, AddEntryPayload } from "./types";
+import type { Entry, AddEntryPayload, GatewayAdapter } from "./types";
 
 const freshEntries: Entry[] = [
   {
@@ -1166,5 +1166,195 @@ describe("store — getStats graceful degradation", () => {
       windowTotals: [],
       windowCategorySpend: [],
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mutation workflow regressions (#144) — exercise the rune-backed store, not
+// a fake state adapter.
+// ---------------------------------------------------------------------------
+
+describe("store mutation workflow regressions", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeFetchMock());
+    store = (await import("./store.svelte")).store;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeGatewayAdapter(overrides: Partial<GatewayAdapter> = {}): GatewayAdapter {
+    return {
+      getEntries: async () => freshEntries,
+      getMaster: async () => freshMaster,
+      getCategories: async () => freshCategories,
+      getConfig: async () => ({ currency: "₱" }),
+      getStats: async () => ({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] }),
+      addEntry: async (payload) => ({ id: 77, ...payload, mainCategory: "FOOD" }),
+      addEntries: async (payloads) => payloads.map((payload, index) => ({ id: 77 + index, ...payload, mainCategory: "FOOD" })),
+      updateEntry: async () => undefined,
+      deleteEntry: async () => undefined,
+      validateConnection: async () => undefined,
+      ...overrides,
+    };
+  }
+
+  it("selects the gateway per mutation call rather than at store initialization", async () => {
+    const { setAdapter } = await import("./api");
+    const initial = makeGatewayAdapter();
+    const replacementAdd = vi.fn(async (payload: AddEntryPayload) => ({ id: 77, ...payload, mainCategory: "FOOD" }));
+    const replacement = makeGatewayAdapter({ addEntry: replacementAdd });
+    setAdapter(initial);
+    await store.refreshAll();
+    setAdapter(replacement);
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "new", direction: "O", amount: 50 });
+
+    expect(replacementAdd).toHaveBeenCalledOnce();
+  });
+
+  it("queues an unauthorized add and keeps its destructive recovery toast", async () => {
+    const { setAdapter, UnauthorizedError } = await import("./api");
+    const { toast } = await import("./toast.svelte");
+    setAdapter(makeGatewayAdapter({
+      addEntry: async () => { throw new UnauthorizedError("secret rejected"); },
+    }));
+    await store.refreshAll();
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "auth", direction: "O", amount: 50 });
+
+    expect(store.localIds).toEqual(new Set([-1]));
+    expect(toast.variant).toBe("destructive");
+    expect(toast.msg).toBe("secret rejected");
+  });
+
+  it("rolls back a canonical MockAdapter validation rejection without queueing it", async () => {
+    localStorage.clear();
+    vi.resetModules();
+    const mockStore = (await import("./store.svelte")).store;
+    const { toast } = await import("./toast.svelte");
+    await mockStore.refreshAll();
+    const outgoing = mockStore.entries.find((entry) => entry.direction === "O")!;
+
+    const saved = await mockStore.updateEntry(outgoing.id, { direction: "I" });
+
+    expect(saved).toBe(false);
+    expect(mockStore.entries.find((entry) => entry.id === outgoing.id)).toEqual(outgoing);
+    expect(mockStore.localIds.size).toBe(0);
+    expect(toast.msg).not.toBeNull();
+  });
+
+  it("assigns strictly decreasing negative temporary IDs across queued single adds", async () => {
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "first", direction: "O", amount: 10 });
+    await store.addEntry({ date: "2026-01-02", tag: "Dining", description: "second", direction: "O", amount: 20 });
+
+    expect(store.entries.map((entry) => entry.id)).toEqual([-1, -2]);
+    expect(store.localIds).toEqual(new Set([-1, -2]));
+  });
+
+  it("reserves IDs below rehydrated Local Entries before creating another queued add", async () => {
+    const payload: AddEntryPayload = { date: "2026-01-01", tag: "Groceries", description: "restored", direction: "O", amount: 10 };
+    writeQueue([{ op: "add", tempId: -4, payload, mutationId: "restored-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    vi.stubGlobal("fetch", makeConnectionErrorFetch());
+    store = (await import("./store.svelte")).store;
+    await store.init();
+
+    await store.addEntry({ ...payload, description: "new" });
+
+    expect(store.entries.filter((entry) => entry.id < 0).map((entry) => entry.id)).toEqual([-4, -5]);
+    expect(store.localIds).toEqual(new Set([-4, -5]));
+  });
+
+  it("replays a queued atomic batch as one addEntries request and swaps every leg in order", async () => {
+    const legs: AddEntryPayload[] = [
+      { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
+    ];
+    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    const addEntries = vi.fn();
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("action=getEntries")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: [
+          { id: 200, ...legs[0], mainCategory: "FOOD" },
+          { id: 201, ...legs[1], mainCategory: "FOOD" },
+        ] })) });
+      }
+      if (url.includes("action=")) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      const body = JSON.parse(String(init?.body));
+      addEntries(body);
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entries: [
+        { id: 200, ...legs[0], mainCategory: "FOOD" },
+        { id: 201, ...legs[1], mainCategory: "FOOD" },
+      ] })) });
+    }));
+    store = (await import("./store.svelte")).store;
+    await store.init();
+
+    await store.drainQueue();
+
+    expect(addEntries).toHaveBeenCalledWith(expect.objectContaining({ action: "addEntries", mutationId: "batch-id", entries: legs }));
+    expect(store.entries.map((entry) => entry.id)).toEqual([200, 201]);
+    expect(store.localIds.size).toBe(0);
+  });
+
+  it("keeps queued batch legs frozen while allowing no mutation request", async () => {
+    const legs: AddEntryPayload[] = [
+      { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
+      { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
+    ];
+    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    writeCache({ entries: [], master: freshMaster, categories: freshCategories });
+    vi.resetModules();
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+    store = (await import("./store.svelte")).store;
+    await store.init();
+    const callsBefore = fetchSpy.mock.calls.length;
+
+    await store.updateEntry(-1, { amount: 999 });
+    await store.deleteEntry(-1);
+
+    expect(fetchSpy.mock.calls).toHaveLength(callsBefore);
+    expect(store.entries.find((entry) => entry.id === -1)?.amount).toBe(40);
+  });
+
+  it("reuses a queued add's mutation ID on replay after a post-commit timeout", async () => {
+    const mutationIds: string[] = [];
+    let postCount = 0;
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("action=getEntries")) {
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: postCount > 1 ? [{
+          id: 77, date: "2026-01-01", tag: "Groceries", mainCategory: "FOOD", description: "retry", direction: "O", amount: 50,
+        }] : freshEntries })) });
+      }
+      if (url.includes("action=")) return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      const body = JSON.parse(String(init?.body));
+      mutationIds.push(body.mutationId);
+      if (postCount++ === 0) return Promise.reject(new Error("timed out after commit"));
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: true, entry: {
+        id: 77, date: body.date, tag: body.tag, mainCategory: "FOOD", description: body.description, direction: body.direction, amount: body.amount,
+      } })) });
+    }));
+
+    await store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "retry", direction: "O", amount: 50 });
+    await store.drainQueue();
+
+    expect(mutationIds).toHaveLength(2);
+    expect(mutationIds[0]).toBe(mutationIds[1]);
+    expect(store.entries.map((entry) => entry.id)).toContain(77);
   });
 });
