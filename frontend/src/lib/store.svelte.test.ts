@@ -280,6 +280,7 @@ describe("pendingIds", () => {
 
 describe("store", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -288,6 +289,7 @@ describe("store", () => {
     vi.stubGlobal("fetch", makeFetchMock());
     const mod = await import("./store.svelte");
     store = mod.store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
@@ -324,11 +326,13 @@ describe("store", () => {
       expect(store.loading).toBe(false);
     });
 
-    it("silent mode does not set loading or error on failure", async () => {
+    it("silent mode reports a refresh failure with a retry toast", async () => {
       vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
+      expect(toast.msg).toBe("Couldn't refresh entries: Network error; balances: Network error; categories: Network error; settings: Network error; statistics: Network error");
+      expect(toast.action?.label).toBe("Retry");
     });
 
     it("dedupes entries with duplicate IDs, keeping first occurrence", async () => {
@@ -352,10 +356,12 @@ describe("store", () => {
       expect(store.entries[0].description).toBe("first");
     });
 
-    it("applies entries/categories from a partial refresh when only getMaster fails transiently", async () => {
-      // Mirrors the real-world GAS quirk where the 4 concurrent refreshAll
-      // requests share one web-app deployment and an occasional one drops
-      // (e.g. net::ERR_NETWORK_CHANGED) while the rest succeed.
+    it("keeps the previous financial snapshot and reports a failed MASTER refresh", async () => {
+      await store.refreshAll();
+      const previousEntries = store.entries;
+      const previousMaster = store.master;
+      const previousCategories = store.categories;
+
       vi.stubGlobal(
         "fetch",
         vi.fn().mockImplementation((url: string) => {
@@ -366,8 +372,45 @@ describe("store", () => {
         })
       );
       await store.refreshAll(true);
-      expect(store.entries).toEqual(freshEntries);
-      expect(store.categories).toEqual(freshCategories);
+      expect(store.entries).toEqual(previousEntries);
+      expect(store.master).toEqual(previousMaster);
+      expect(store.categories).toEqual(previousCategories);
+      expect(toast.msg).toBe("Couldn't refresh balances: net::ERR_NETWORK_CHANGED");
+      expect(toast.action?.label).toBe("Retry");
+    });
+
+    it("reports every failed read when core reads fail", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const action = new URLSearchParams(url.split("?")[1]).get("action");
+          if (action === "getEntries" || action === "getMaster") {
+            return Promise.reject(new Error(`${action} failed`));
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+        }),
+      );
+
+      await store.refreshAll(true);
+
+      expect(toast.msg).toBe("Couldn't refresh entries: getEntries failed; balances: getMaster failed");
+    });
+
+    it("reports optional failures alongside a failed MASTER read", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation((url: string) => {
+          const action = new URLSearchParams(url.split("?")[1]).get("action");
+          if (action === "getMaster" || action === "getStats") {
+            return Promise.reject(new Error(`${action} failed`));
+          }
+          return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+        }),
+      );
+
+      await store.refreshAll(true);
+
+      expect(toast.msg).toBe("Couldn't refresh balances: getMaster failed; statistics: getStats failed");
     });
   });
 
@@ -1109,11 +1152,12 @@ describe("store — deleteEntries", () => {
 // getStats graceful degradation (#129/#130) — a stats read is non-fatal.
 // STATS drives only the Summary envelope direction/pace numbers; a failure
 // there must NOT gate the connection-error state the way a core read does,
-// and must leave the last-good stats in place rather than surfacing an error.
+// and must leave the last-good stats in place while notifying the user.
 // ---------------------------------------------------------------------------
 
 describe("store — getStats graceful degradation", () => {
   let store: Awaited<typeof import("./store.svelte")>["store"];
+  let toast: Awaited<typeof import("./toast.svelte")>["toast"];
 
   // fetch that succeeds for every read EXCEPT getStats, which rejects with a
   // network-shaped (queueable) error — the strongest case, since a core read
@@ -1139,16 +1183,35 @@ describe("store — getStats graceful degradation", () => {
     vi.resetModules();
     vi.stubGlobal("fetch", makeStatsOnlyFailureFetch());
     store = (await import("./store.svelte")).store;
+    toast = (await import("./toast.svelte")).toast;
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("does not surface an error when only getStats fails", async () => {
+  it("leaves the blocking error clear but reports a toast when only getStats fails", async () => {
     await store.refreshAll(false);
     expect(store.error).toBeNull();
     expect(store.errorIsConnection).toBe(false);
+    expect(toast.msg).toBe("Couldn't refresh statistics: Network error");
+    expect(toast.action?.label).toBe("Retry");
+  });
+
+  it("reports every failed optional read in one toast", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (typeof url === "string" && (url.includes("action=getConfig") || url.includes("action=getStats"))) {
+          return Promise.reject(new Error("Network error"));
+        }
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
+      }),
+    );
+
+    await store.refreshAll(false);
+
+    expect(toast.msg).toBe("Couldn't refresh settings: Network error; statistics: Network error");
   });
 
   it("still loads the core reads when getStats fails", async () => {

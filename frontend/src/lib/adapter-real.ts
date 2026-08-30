@@ -140,12 +140,8 @@ export class RealAdapter implements GatewayAdapter {
   }
 
   async getConfig(): Promise<Config> {
-    try {
-      const data = await this.gasGet<{ config: Record<string, string> }>("getConfig");
-      return { ...DEFAULT_CONFIG, ...data.config };
-    } catch {
-      return DEFAULT_CONFIG;
-    }
+    const data = await this.gasGet<{ config: Record<string, string> }>("getConfig");
+    return { ...DEFAULT_CONFIG, ...data.config };
   }
 
   async getStats(): Promise<StatsData> {

@@ -1,7 +1,6 @@
 /**
- * Tests for api.gateway().getConfig() — the silent-fallback read action.
- * Unlike other api functions, getConfig swallows errors and returns
- * { currency: "₱" } as a default so the store's Promise.all never rejects.
+ * Tests for api.gateway().getConfig(). A response missing `currency` falls
+ * back to pesos, but request failures propagate so the UI can report them.
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
 
@@ -43,21 +42,19 @@ describe("gateway().getConfig — success path", () => {
   });
 });
 
-describe("gateway().getConfig — silent fallback to { currency: '₱' }", () => {
-  it("returns default when fetch fails (network error)", async () => {
+describe("gateway().getConfig — failure handling", () => {
+  it("rejects when fetch fails (network error)", async () => {
     const { api } = await freshModsWithConn();
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
-    const config = await api.gateway().getConfig();
-    expect(config).toEqual({ currency: "₱" });
+    await expect(api.gateway().getConfig()).rejects.toThrow("ECONNREFUSED");
   });
 
-  it("returns default when GAS returns a json.error field", async () => {
+  it("rejects when GAS returns a json.error field", async () => {
     const { api } = await freshModsWithConn();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ error: "unknown action" })),
     }));
-    const config = await api.gateway().getConfig();
-    expect(config).toEqual({ currency: "₱" });
+    await expect(api.gateway().getConfig()).rejects.toThrow("unknown action");
   });
 
   it("returns default when config object lacks the currency key", async () => {
@@ -69,14 +66,13 @@ describe("gateway().getConfig — silent fallback to { currency: '₱' }", () =>
     expect(config).toEqual({ currency: "₱" });
   });
 
-  it("returns default when connection is missing (no GAS URL configured)", async () => {
+  it("uses Mock Mode's default config when connection is missing", async () => {
     localStorage.clear();
     vi.resetModules();
     const { api } = await (async () => {
       const apiMod = await import("./api");
       return { api: apiMod };
     })();
-    const config = await api.gateway().getConfig();
-    expect(config).toEqual({ currency: "₱" });
+    expect(await api.gateway().getConfig()).toEqual({ currency: "₱" });
   });
 });

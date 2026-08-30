@@ -33,6 +33,41 @@ let nextTemporaryId = -1;
 
 const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
 
+interface RefreshFailure {
+  label: string;
+  rejection: PromiseRejectedResult;
+}
+
+function rejectionMessage(rejection: PromiseRejectedResult): string {
+  return rejection.reason instanceof Error ? rejection.reason.message : String(rejection.reason);
+}
+
+function isRejected<T>(result: PromiseSettledResult<T>): result is PromiseRejectedResult {
+  return result.status === 'rejected';
+}
+
+function notifyRefreshFailures(failures: RefreshFailure[]): void {
+  const message = `Couldn't refresh ${failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ')}`;
+  toast.show(message, {
+    label: 'Retry',
+    run: () => {
+      toast.dismiss();
+      void refreshAll();
+    },
+  });
+}
+
+function handleCoreRefreshFailures(
+  failures: RefreshFailure[],
+  silent: boolean,
+): void {
+  if (!silent) {
+    error = rejectionMessage(failures[0].rejection);
+    errorIsConnection = isQueueable(failures[0].rejection.reason);
+  }
+  notifyRefreshFailures(failures);
+}
+
 // Svelte 5 requires full reassignment to trigger reactivity on Set state.
 function addPending(id: number): void { pendingIds = new Set([...pendingIds, id]); }
 function removePending(id: number): void { pendingIds = new Set([...pendingIds].filter((p) => p !== id)); }
@@ -57,23 +92,31 @@ async function refreshAll(silent = false): Promise<void> {
       gateway().getConfig(),
       gateway().getStats(),
     ]);
-    if (e.status === 'fulfilled') entries = e.value;
-    if (m.status === 'fulfilled') master = m.value;
-    if (c.status === 'fulfilled') categories = c.value;
-    if (cfg.status === 'fulfilled') config = cfg.value;
-    // Stats is a non-fatal read, same spirit as master/config: a failure here
-    // degrades gracefully (envelope rows just miss direction/pace data) rather
-    // than gating the connection-error state below.
-    if (st.status === 'fulfilled') stats = st.value;
-
-    const failure = [e, m, c].find((r): r is PromiseRejectedResult => r.status === 'rejected');
-    if (failure) {
-      if (!silent) {
-        error = failure.reason instanceof Error ? failure.reason.message : String(failure.reason);
-        errorIsConnection = isQueueable(failure.reason);
-      }
+    // Entries, MASTER, and Categories form one financial snapshot. Never
+    // combine a fresh subset with a previous MASTER value: that can make an
+    // entry list and its displayed balances contradict each other.
+    const coreFailures: RefreshFailure[] = [];
+    if (isRejected(e)) coreFailures.push({ label: 'entries', rejection: e });
+    if (isRejected(m)) coreFailures.push({ label: 'balances', rejection: m });
+    if (isRejected(c)) coreFailures.push({ label: 'categories', rejection: c });
+    const optionalFailures: RefreshFailure[] = [];
+    if (isRejected(cfg)) optionalFailures.push({ label: 'settings', rejection: cfg });
+    if (isRejected(st)) optionalFailures.push({ label: 'statistics', rejection: st });
+    if (coreFailures.length > 0) {
+      handleCoreRefreshFailures([...coreFailures, ...optionalFailures], silent);
       return;
     }
+    // The rejection checks above make this unreachable, while narrowing the
+    // settled-result union for TypeScript before reading the values below.
+    if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
+
+    entries = e.value;
+    master = m.value;
+    categories = c.value;
+    if (cfg.status === 'fulfilled') config = cfg.value;
+    if (st.status === 'fulfilled') stats = st.value;
+
+    if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
 
     injectQueue();
     localIds = getLocalEntryIds();
