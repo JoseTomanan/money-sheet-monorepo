@@ -12,10 +12,13 @@ money-sheet-monorepo/
 └── docs/adr/       # Architecture decision records
 ```
 
-Each package has its own `package.json`. There is no root workspace and no shared
-runtime code. The frontend and integration-test packages intentionally import the
-pure, type-only wire contract from `clasp/src/lib/dispatch.ts`; those imports erase
-from their built output and keep the contract canonical.
+Each package has its own `package.json`. There is no root workspace. The frontend
+and integration-test packages intentionally import the pure, type-only wire contract
+from `clasp/src/lib/dispatch.ts`; those imports erase from their built output and
+keep the contract canonical. Mock Mode additionally runtime-imports the pure,
+GAS-free dispatcher and IO-repository modules so its mutations follow the canonical
+contract. That narrow exception must stay free of GAS globals and network behavior;
+the frontend type check and production build prove it remains bundle-safe.
 
 ## Domain
 
