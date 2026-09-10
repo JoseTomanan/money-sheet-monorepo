@@ -27,7 +27,7 @@
   const resolvedDot   = $derived(darkMode.current ? catStyle.darkDot   : catStyle.dot);
 </script>
 
-<span class="entry-date-lead font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
+<span class="entry-date-lead w-10 font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
 {#if entry.direction === 'O'}
   <span

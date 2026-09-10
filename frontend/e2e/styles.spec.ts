@@ -46,6 +46,44 @@ test("entry-card uses flex layout", async ({ page }) => {
   expect(display).toBe("flex");
 });
 
+test("outgoing category stripes stay aligned across short-date lengths", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-09-11T12:00:00"));
+  await page.reload();
+  await waitForAppReady(page);
+  await switchTab(page, "Entries");
+
+  const stripePosition = async (description: string, dateLabel: string) => {
+    const row = page.locator(".entry-card", { hasText: description });
+    await expect(row.locator(".entry-date-lead")).toHaveText(dateLabel);
+    const [rowBox, stripeBox] = await Promise.all([
+      row.boundingBox(),
+      row.locator(".entry-stripe").boundingBox(),
+    ]);
+    expect(rowBox).not.toBeNull();
+    expect(stripeBox).not.toBeNull();
+    return { x: stripeBox!.x, offset: stripeBox!.x - rowBox!.x };
+  };
+
+  const oneDigitDay = await stripePosition("dinner: cereal again", "Sep 9");
+  const twoDigitDay = await stripePosition("full cart, forgot", "Sep 10");
+  expect(oneDigitDay.x).toBeCloseTo(twoDigitDay.x, 1);
+
+  await page.locator("[data-week-trigger]").click();
+  await page.locator('[data-week-row][data-week-key="2026-08-16"]').click();
+  const otherMonth = await stripePosition("57 cans of anchovies", "Aug 22");
+  expect(otherMonth.x).toBeCloseTo(twoDigitDay.x, 1);
+
+  await switchTab(page, "Home");
+  const homeRow = page.locator(".today-row").first();
+  const [homeRowBox, homeStripeBox] = await Promise.all([
+    homeRow.boundingBox(),
+    homeRow.locator(".entry-stripe").boundingBox(),
+  ]);
+  expect(homeRowBox).not.toBeNull();
+  expect(homeStripeBox).not.toBeNull();
+  expect(homeStripeBox!.x - homeRowBox!.x).toBeCloseTo(twoDigitDay.offset, 1);
+});
+
 test("hero card is visible on Home tab", async ({ page }) => {
   const visible = await page.locator(".hero-card").isVisible();
   expect(visible).toBe(true);
