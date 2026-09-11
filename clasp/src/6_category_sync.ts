@@ -15,8 +15,15 @@ const PENDING_CATEGORY_SYNC_KEY = "PENDING_CATEGORY_SYNC";
 function getCategoryData(): CategoryRow[] {
   const sh = getCategoriesSheet();
   const lastRow = sh.getLastRow();
-  if (lastRow < 2) return [];
-  return sh.getRange(2, 2, lastRow - 1, 2).getValues() as CategoryRow[];
+  const firstRow = SHEET_LAYOUT.categories.rows.dataFirst;
+  const firstColumn = SHEET_LAYOUT.categories.columns.subcategory;
+  if (lastRow < firstRow) return [];
+  return sh.getRange(
+    firstRow,
+    firstColumn,
+    lastRow - firstRow + 1,
+    rangeWidth(firstColumn, SHEET_LAYOUT.categories.columns.category),
+  ).getValues() as CategoryRow[];
 }
 
 function withDocumentLock<T>(fn: () => T): T {
@@ -34,7 +41,7 @@ function onEditCategorySync(e: GoogleAppsScript.Events.SheetsOnEdit): void {
 
   runCategorySync({
     edit: {
-      isCategoriesSheet: range.getSheet().getName() === "Categories",
+      isCategoriesSheet: range.getSheet().getName() === SHEET_LAYOUT.categories.name,
       column: range.getColumn(),
       row: range.getRow(),
       numRows: range.getNumRows(),

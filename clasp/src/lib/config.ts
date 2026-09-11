@@ -1,4 +1,4 @@
-const CONFIG_SHEET_NAME = "Config";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
 const DEFAULT_CONFIG_ROWS: [string, string][] = [["currency", "₱"], ["nickname", ""]];
 
 /**
@@ -8,9 +8,15 @@ const DEFAULT_CONFIG_ROWS: [string, string][] = [["currency", "₱"], ["nickname
 export function parseConfigRows(rows: unknown[][]): Record<string, string> {
   const result: Record<string, string> = {};
   for (const row of rows) {
-    const key = String(row[0] ?? "").trim();
+    const key = String(row[columnIndexWithinRange(
+      SHEET_LAYOUT.config.columns.key,
+      SHEET_LAYOUT.config.columns.key,
+    )] ?? "").trim();
     if (!key) continue;
-    result[key] = String(row[1] ?? "").trim();
+    result[key] = String(row[columnIndexWithinRange(
+      SHEET_LAYOUT.config.columns.value,
+      SHEET_LAYOUT.config.columns.key,
+    )] ?? "").trim();
   }
   return result;
 }
@@ -26,8 +32,8 @@ export function ensureConfigSheet(
   ss: GoogleAppsScript.Spreadsheet.Spreadsheet,
   defaults: [string, string][] = DEFAULT_CONFIG_ROWS
 ): void {
-  if (ss.getSheetByName(CONFIG_SHEET_NAME)) return;
-  const sheet = ss.insertSheet(CONFIG_SHEET_NAME);
+  if (ss.getSheetByName(SHEET_LAYOUT.config.name)) return;
+  const sheet = ss.insertSheet(SHEET_LAYOUT.config.name);
   for (const row of defaults) {
     sheet.appendRow(row);
   }

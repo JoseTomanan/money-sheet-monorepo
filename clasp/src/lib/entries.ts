@@ -7,13 +7,14 @@
  */
 
 import { isSeparatorRow } from "./repository";
+import { SHEET_LAYOUT } from "./0_sheetLayout";
 
 /**
  * Scans the raw values from the Entry-ID column (col H, row 2 onward) and
  * returns the 1-based sheet row index where the target Entry lives, or null
  * if not found.
  *
- * Row mapping: `idColumnValues[i]` corresponds to sheet row `i + 2`.
+ * Row mapping starts at `SHEET_LAYOUT.io.rows.dataFirst`.
  *
  * @param idColumnValues  The array of raw cell values from col H (row 2+).
  *                        Blank cells (separator rows) have `""` as value.
@@ -29,7 +30,7 @@ export function findRowByEntryId(
     const raw = idColumnValues[i];
     if (isSeparatorRow(raw)) continue;
     if (Number(raw) === targetId) {
-      return i + 2; // convert 0-based index to 1-based sheet row (data starts at row 2)
+      return i + SHEET_LAYOUT.io.rows.dataFirst;
     }
   }
   return null;

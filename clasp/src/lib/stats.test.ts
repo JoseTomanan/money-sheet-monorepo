@@ -5,51 +5,53 @@ import {
   spendingPaceFormulas,
   windowTotalFormulas,
   windowCategorySpendFormulas,
-  STATS_SHEET_NAME,
   STATS_CATEGORIES,
-  STATS_ROWS,
-  STATS_WINDOW_ROWS,
   STATS_WINDOWS,
   PACE_DAYS,
 } from "./stats";
+import { SHEET_LAYOUT } from "./0_sheetLayout";
 
 // ---------------------------------------------------------------------------
-// STATS_ROWS — fixed anchor rows
+// SHEET_LAYOUT.stats.rows — fixed anchor rows
 // ---------------------------------------------------------------------------
 
-describe("STATS_ROWS", () => {
+describe("SHEET_LAYOUT STATS rows", () => {
   it("lays out the category block starting at row 3, one row per category", () => {
-    expect(STATS_ROWS.categoryHeader).toBe(2);
-    expect(STATS_ROWS.categoryFirst).toBe(3);
-    expect(STATS_ROWS.categoryLast).toBe(2 + STATS_CATEGORIES.length);
+    const rows = SHEET_LAYOUT.stats.rows;
+    expect(rows.categoryHeader).toBe(2);
+    expect(rows.categoryFirst).toBe(3);
+    expect(rows.categoryLast).toBe(rows.categoryFirst + STATS_CATEGORIES.length - 1);
   });
 
   it("lays out the pace block after a separator row, spanning PACE_DAYS rows", () => {
-    expect(STATS_ROWS.paceSeparator).toBe(STATS_ROWS.categoryLast + 1);
-    expect(STATS_ROWS.paceHeader).toBe(STATS_ROWS.paceSeparator + 1);
-    expect(STATS_ROWS.paceFirst).toBe(STATS_ROWS.paceHeader + 1);
-    expect(STATS_ROWS.paceLast).toBe(STATS_ROWS.paceFirst + PACE_DAYS - 1);
+    const rows = SHEET_LAYOUT.stats.rows;
+    expect(rows.paceSeparator).toBe(rows.categoryLast + 1);
+    expect(rows.paceHeader).toBe(rows.paceSeparator + 1);
+    expect(rows.paceFirst).toBe(rows.paceHeader + 1);
+    expect(rows.paceLast).toBe(rows.paceFirst + PACE_DAYS - 1);
   });
 });
 
 // ---------------------------------------------------------------------------
-// STATS_WINDOW_ROWS — #132 rolling-window anchor rows (appended after #129)
+// #132 rolling-window anchor rows (appended after #129)
 // ---------------------------------------------------------------------------
 
-describe("STATS_WINDOW_ROWS", () => {
+describe("SHEET_LAYOUT STATS window rows", () => {
   it("lays out the window-totals block right after the pace block, one row per STATS_WINDOWS entry", () => {
-    expect(STATS_WINDOW_ROWS.windowSeparator).toBe(STATS_ROWS.paceLast + 1);
-    expect(STATS_WINDOW_ROWS.windowTotalsHeader).toBe(STATS_WINDOW_ROWS.windowSeparator + 1);
-    expect(STATS_WINDOW_ROWS.windowTotalsFirst).toBe(STATS_WINDOW_ROWS.windowTotalsHeader + 1);
-    expect(STATS_WINDOW_ROWS.windowTotalsLast).toBe(STATS_WINDOW_ROWS.windowTotalsFirst + STATS_WINDOWS.length - 1);
+    const rows = SHEET_LAYOUT.stats.rows;
+    expect(rows.windowSeparator).toBe(rows.paceLast + 1);
+    expect(rows.windowTotalsHeader).toBe(rows.windowSeparator + 1);
+    expect(rows.windowTotalsFirst).toBe(rows.windowTotalsHeader + 1);
+    expect(rows.windowTotalsLast).toBe(rows.windowTotalsFirst + STATS_WINDOWS.length - 1);
   });
 
   it("lays out the window-category-spend block after its own separator, spanning windows x categories rows", () => {
-    expect(STATS_WINDOW_ROWS.windowCatSeparator).toBe(STATS_WINDOW_ROWS.windowTotalsLast + 1);
-    expect(STATS_WINDOW_ROWS.windowCatHeader).toBe(STATS_WINDOW_ROWS.windowCatSeparator + 1);
-    expect(STATS_WINDOW_ROWS.windowCatFirst).toBe(STATS_WINDOW_ROWS.windowCatHeader + 1);
-    expect(STATS_WINDOW_ROWS.windowCatLast).toBe(
-      STATS_WINDOW_ROWS.windowCatFirst + STATS_WINDOWS.length * STATS_CATEGORIES.length - 1
+    const rows = SHEET_LAYOUT.stats.rows;
+    expect(rows.windowCategorySeparator).toBe(rows.windowTotalsLast + 1);
+    expect(rows.windowCategoryHeader).toBe(rows.windowCategorySeparator + 1);
+    expect(rows.windowCategoryFirst).toBe(rows.windowCategoryHeader + 1);
+    expect(rows.windowCategoryLast).toBe(
+      rows.windowCategoryFirst + STATS_WINDOWS.length * STATS_CATEGORIES.length - 1
     );
   });
 
@@ -157,6 +159,28 @@ describe("windowCategorySpendFormulas", () => {
   });
 });
 
+describe("formula regression", () => {
+  it("keeps every generated formula byte-for-byte unchanged", () => {
+    expect(categoryMonthChangeFormulas(3)).toEqual({
+      incoming: `=SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"I",'INCOMING/OUTGOING'!$D:$D,$A3,'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-1)+1,'INCOMING/OUTGOING'!$B:$B,"<="&EOMONTH(TODAY(),0))`,
+      outgoing: `=SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$D:$D,$A3,'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-1)+1,'INCOMING/OUTGOING'!$B:$B,"<="&EOMONTH(TODAY(),0))`,
+      net: "=B3-C3",
+    });
+    expect(spendingPaceFormulas(12)).toEqual({
+      thisMonth: `=IF($A12>DAY(EOMONTH(TODAY(),0)),"",SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-1)+1,'INCOMING/OUTGOING'!$B:$B,"<="&MIN(EOMONTH(TODAY(),-1)+$A12,TODAY())))`,
+      usual: `=IF($A12>DAY(EOMONTH(TODAY(),0)),"",IFERROR(AVERAGE(SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-1)+1,'INCOMING/OUTGOING'!$B:$B,"<="&MIN(EOMONTH(TODAY(),-1)+$A12,EOMONTH(TODAY(),-0))),SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-2)+1,'INCOMING/OUTGOING'!$B:$B,"<="&MIN(EOMONTH(TODAY(),-2)+$A12,EOMONTH(TODAY(),-1))),SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$B:$B,">="&EOMONTH(TODAY(),-3)+1,'INCOMING/OUTGOING'!$B:$B,"<="&MIN(EOMONTH(TODAY(),-3)+$A12,EOMONTH(TODAY(),-2)))),0))`,
+    });
+    expect(windowTotalFormulas(45, "TODAY()-30")).toEqual({
+      incoming: `=SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"I",'INCOMING/OUTGOING'!$B:$B,">="&TODAY()-30,'INCOMING/OUTGOING'!$B:$B,"<="&TODAY())`,
+      outgoing: `=SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$B:$B,">="&TODAY()-30,'INCOMING/OUTGOING'!$B:$B,"<="&TODAY())`,
+      net: "=B45-C45",
+    });
+    expect(windowCategorySpendFormulas(50, "TODAY()-30")).toEqual({
+      outgoing: `=SUMIFS('INCOMING/OUTGOING'!$G:$G,'INCOMING/OUTGOING'!$F:$F,"O",'INCOMING/OUTGOING'!$D:$D,$B50,'INCOMING/OUTGOING'!$B:$B,">="&TODAY()-30,'INCOMING/OUTGOING'!$B:$B,"<="&TODAY())`,
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // ensureStatsSheet — fake spreadsheet helpers (mirrors config.test.ts)
 // ---------------------------------------------------------------------------
@@ -182,7 +206,7 @@ describe("ensureStatsSheet", () => {
   it("inserts a 'STATS' sheet when one does not exist", () => {
     const { ss, insertSheet } = makeSpreadsheet(null);
     ensureStatsSheet(ss);
-    expect(insertSheet).toHaveBeenCalledWith(STATS_SHEET_NAME);
+    expect(insertSheet).toHaveBeenCalledWith(SHEET_LAYOUT.stats.name);
   });
 
   it("does not insert a sheet when 'STATS' already exists", () => {

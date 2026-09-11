@@ -4,7 +4,14 @@ function getConfig(): ConfigMap {
   const sh = getConfigSheetOrNull();
   if (!sh) return {};
   const lastRow = sh.getLastRow();
-  if (lastRow < 1) return {};
-  const rows = sh.getRange(1, 1, lastRow, 2).getValues();
+  const firstRow = SHEET_LAYOUT.config.rows.dataFirst;
+  const firstColumn = SHEET_LAYOUT.config.columns.key;
+  if (lastRow < firstRow) return {};
+  const rows = sh.getRange(
+    firstRow,
+    firstColumn,
+    lastRow - firstRow + 1,
+    rangeWidth(firstColumn, SHEET_LAYOUT.config.columns.value),
+  ).getValues();
   return parseConfigRows(rows);
 }

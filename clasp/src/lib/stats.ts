@@ -45,7 +45,7 @@
  * that resolves to: category rows 3-9, separator row 10, pace header row 11,
  * pace rows 12-42, separator row 43, window-totals header row 44, window-totals
  * rows 45-47, separator row 48, window-category header row 49, window-category
- * rows 50-70. `STATS_ROWS` below is the source of truth for these offsets —
+ * rows 50-70. `SHEET_LAYOUT.stats.rows` is the source of truth for these offsets —
  * read it, don't recompute from STATS_CATEGORIES.length/STATS_WINDOWS.length
  * by hand.
  *
@@ -58,8 +58,7 @@
  */
 
 import { CATEGORY_ORDER } from "./categories";
-
-export const STATS_SHEET_NAME = "STATS";
+import { columnToA1, SHEET_LAYOUT } from "./0_sheetLayout";
 
 // Backwards-compatible name for STATS consumers; the ordered domain lives in
 // categories.ts and is also used by MASTER parsing.
@@ -72,8 +71,6 @@ export const TRAILING_MONTHS = 3;
 // months; days that don't exist in the current month evaluate to "" (blank),
 // filtered out by the reader in 3_stats.ts.
 export const PACE_DAYS = 31;
-
-const IO_SHEET = `'INCOMING/OUTGOING'`;
 
 /**
  * Rolling windows for the Deeper Statistics page (#132), trailing back from
@@ -92,33 +89,16 @@ export const STATS_WINDOWS: StatsWindowDef[] = [
   { key: "12mo", startFormula: "EDATE(TODAY(),-12)" },
 ];
 
-/** Fixed anchor rows — see the module doc comment for the layout diagram. */
-export const STATS_ROWS = {
-  title: 1,
-  categoryHeader: 2,
-  categoryFirst: 3,
-  categoryLast: 2 + STATS_CATEGORIES.length,
-  paceSeparator: 3 + STATS_CATEGORIES.length,
-  paceHeader: 4 + STATS_CATEGORIES.length,
-  paceFirst: 5 + STATS_CATEGORIES.length,
-  paceLast: 4 + STATS_CATEGORIES.length + PACE_DAYS,
-} as const;
+/** Builds an absolute whole-column A1 reference from a numeric coordinate. */
+function quotedFullColumn(sheetName: string, column: number): string {
+  const label = columnToA1(column);
+  return `'${sheetName}'!$${label}:$${label}`;
+}
 
-/**
- * Second anchor-row block, appended AFTER `STATS_ROWS` so the existing #129
- * blocks (category, pace) keep their exact row numbers untouched. Computed
- * from `STATS_ROWS.paceLast`, the last fixed row of the #129 layout.
- */
-export const STATS_WINDOW_ROWS = {
-  windowSeparator: STATS_ROWS.paceLast + 1,
-  windowTotalsHeader: STATS_ROWS.paceLast + 2,
-  windowTotalsFirst: STATS_ROWS.paceLast + 3,
-  windowTotalsLast: STATS_ROWS.paceLast + 2 + STATS_WINDOWS.length,
-  windowCatSeparator: STATS_ROWS.paceLast + 3 + STATS_WINDOWS.length,
-  windowCatHeader: STATS_ROWS.paceLast + 4 + STATS_WINDOWS.length,
-  windowCatFirst: STATS_ROWS.paceLast + 5 + STATS_WINDOWS.length,
-  windowCatLast: STATS_ROWS.paceLast + 4 + STATS_WINDOWS.length + STATS_WINDOWS.length * STATS_CATEGORIES.length,
-} as const;
+/** Builds a same-sheet A1 cell reference from numeric coordinates. */
+function rowCell(column: number, row: number, absoluteColumn = false): string {
+  return `${absoluteColumn ? "$" : ""}${columnToA1(column)}${row}`;
+}
 
 /**
  * Builds the three formula cells (incoming, outgoing, net) for one Category
@@ -127,13 +107,20 @@ export const STATS_WINDOW_ROWS = {
  * reference `$A{row}` instead of hardcoding the category string twice.
  */
 export function categoryMonthChangeFormulas(row: number): { incoming: string; outgoing: string; net: string } {
+  const io = SHEET_LAYOUT.io.columns;
+  const stats = SHEET_LAYOUT.stats.columns.categoryMonth;
+  const ioDate = quotedFullColumn(SHEET_LAYOUT.io.name, io.date);
+  const ioAmount = quotedFullColumn(SHEET_LAYOUT.io.name, io.amount);
+  const ioDirection = quotedFullColumn(SHEET_LAYOUT.io.name, io.direction);
+  const ioMainCategory = quotedFullColumn(SHEET_LAYOUT.io.name, io.mainCategory);
+  const categoryCell = rowCell(stats.category, row, true);
   const boundsThisMonth =
-    `${IO_SHEET}!$B:$B,">="&EOMONTH(TODAY(),-1)+1,${IO_SHEET}!$B:$B,"<="&EOMONTH(TODAY(),0)`;
+    `${ioDate},">="&EOMONTH(TODAY(),-1)+1,${ioDate},"<="&EOMONTH(TODAY(),0)`;
   const incoming =
-    `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"I",${IO_SHEET}!$D:$D,$A${row},${boundsThisMonth})`;
+    `=SUMIFS(${ioAmount},${ioDirection},"I",${ioMainCategory},${categoryCell},${boundsThisMonth})`;
   const outgoing =
-    `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",${IO_SHEET}!$D:$D,$A${row},${boundsThisMonth})`;
-  const net = `=B${row}-C${row}`;
+    `=SUMIFS(${ioAmount},${ioDirection},"O",${ioMainCategory},${categoryCell},${boundsThisMonth})`;
+  const net = `=${rowCell(stats.incoming, row)}-${rowCell(stats.outgoing, row)}`;
   return { incoming, outgoing, net };
 }
 
@@ -143,19 +130,25 @@ export function categoryMonthChangeFormulas(row: number): { incoming: string; ou
  * the 1-indexed sheet row the day number lives in (column A).
  */
 export function spendingPaceFormulas(row: number): { thisMonth: string; usual: string } {
-  const dayGuard = `$A${row}>DAY(EOMONTH(TODAY(),0))`;
+  const io = SHEET_LAYOUT.io.columns;
+  const stats = SHEET_LAYOUT.stats.columns.pace;
+  const ioDate = quotedFullColumn(SHEET_LAYOUT.io.name, io.date);
+  const ioAmount = quotedFullColumn(SHEET_LAYOUT.io.name, io.amount);
+  const ioDirection = quotedFullColumn(SHEET_LAYOUT.io.name, io.direction);
+  const dayCell = rowCell(stats.day, row, true);
+  const dayGuard = `${dayCell}>DAY(EOMONTH(TODAY(),0))`;
 
   const thisMonth =
-    `=IF(${dayGuard},"",SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",` +
-    `${IO_SHEET}!$B:$B,">="&EOMONTH(TODAY(),-1)+1,` +
-    `${IO_SHEET}!$B:$B,"<="&MIN(EOMONTH(TODAY(),-1)+$A${row},TODAY())))`;
+    `=IF(${dayGuard},"",SUMIFS(${ioAmount},${ioDirection},"O",` +
+    `${ioDate},">="&EOMONTH(TODAY(),-1)+1,` +
+    `${ioDate},"<="&MIN(EOMONTH(TODAY(),-1)+${dayCell},TODAY())))`;
 
   const monthTerms: string[] = [];
   for (let m = 1; m <= TRAILING_MONTHS; m++) {
     monthTerms.push(
-      `SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",` +
-        `${IO_SHEET}!$B:$B,">="&EOMONTH(TODAY(),-${m})+1,` +
-        `${IO_SHEET}!$B:$B,"<="&MIN(EOMONTH(TODAY(),-${m})+$A${row},EOMONTH(TODAY(),-${m - 1})))`
+      `SUMIFS(${ioAmount},${ioDirection},"O",` +
+        `${ioDate},">="&EOMONTH(TODAY(),-${m})+1,` +
+        `${ioDate},"<="&MIN(EOMONTH(TODAY(),-${m})+${dayCell},EOMONTH(TODAY(),-${m - 1})))`
     );
   }
   const usual = `=IF(${dayGuard},"",IFERROR(AVERAGE(${monthTerms.join(",")}),0))`;
@@ -171,10 +164,15 @@ export function spendingPaceFormulas(row: number): { thisMonth: string; usual: s
  * bound is always TODAY().
  */
 export function windowTotalFormulas(row: number, startFormula: string): { incoming: string; outgoing: string; net: string } {
-  const bounds = `${IO_SHEET}!$B:$B,">="&${startFormula},${IO_SHEET}!$B:$B,"<="&TODAY()`;
-  const incoming = `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"I",${bounds})`;
-  const outgoing = `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",${bounds})`;
-  const net = `=B${row}-C${row}`;
+  const io = SHEET_LAYOUT.io.columns;
+  const stats = SHEET_LAYOUT.stats.columns.windowTotals;
+  const ioDate = quotedFullColumn(SHEET_LAYOUT.io.name, io.date);
+  const ioAmount = quotedFullColumn(SHEET_LAYOUT.io.name, io.amount);
+  const ioDirection = quotedFullColumn(SHEET_LAYOUT.io.name, io.direction);
+  const bounds = `${ioDate},">="&${startFormula},${ioDate},"<="&TODAY()`;
+  const incoming = `=SUMIFS(${ioAmount},${ioDirection},"I",${bounds})`;
+  const outgoing = `=SUMIFS(${ioAmount},${ioDirection},"O",${bounds})`;
+  const net = `=${rowCell(stats.incoming, row)}-${rowCell(stats.outgoing, row)}`;
   return { incoming, outgoing, net };
 }
 
@@ -186,9 +184,16 @@ export function windowTotalFormulas(row: number, startFormula: string): { incomi
  * inclusive start-date bound — the end bound is always TODAY().
  */
 export function windowCategorySpendFormulas(row: number, startFormula: string): { outgoing: string } {
+  const io = SHEET_LAYOUT.io.columns;
+  const stats = SHEET_LAYOUT.stats.columns.windowCategory;
+  const ioDate = quotedFullColumn(SHEET_LAYOUT.io.name, io.date);
+  const ioAmount = quotedFullColumn(SHEET_LAYOUT.io.name, io.amount);
+  const ioDirection = quotedFullColumn(SHEET_LAYOUT.io.name, io.direction);
+  const ioMainCategory = quotedFullColumn(SHEET_LAYOUT.io.name, io.mainCategory);
+  const categoryCell = rowCell(stats.category, row, true);
   const outgoing =
-    `=SUMIFS(${IO_SHEET}!$G:$G,${IO_SHEET}!$F:$F,"O",${IO_SHEET}!$D:$D,$B${row},` +
-    `${IO_SHEET}!$B:$B,">="&${startFormula},${IO_SHEET}!$B:$B,"<="&TODAY())`;
+    `=SUMIFS(${ioAmount},${ioDirection},"O",${ioMainCategory},${categoryCell},` +
+    `${ioDate},">="&${startFormula},${ioDate},"<="&TODAY())`;
   return { outgoing };
 }
 
@@ -203,14 +208,14 @@ export function windowCategorySpendFormulas(row: number, startFormula: string): 
  * mirroring `ensureConfigSheet` (lib/config.ts).
  */
 export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
-  if (ss.getSheetByName(STATS_SHEET_NAME)) return;
-  const sheet = ss.insertSheet(STATS_SHEET_NAME);
+  if (ss.getSheetByName(SHEET_LAYOUT.stats.name)) return;
+  const sheet = ss.insertSheet(SHEET_LAYOUT.stats.name);
 
   sheet.appendRow(["STATS", "", "", ""]);
   sheet.appendRow(["CATEGORY", "INCOMING (MTD)", "OUTGOING (MTD)", "NET CHANGE (MTD)"]);
 
   STATS_CATEGORIES.forEach((category, i) => {
-    const row = STATS_ROWS.categoryFirst + i;
+    const row = SHEET_LAYOUT.stats.rows.categoryFirst + i;
     const { incoming, outgoing, net } = categoryMonthChangeFormulas(row);
     sheet.appendRow([category, incoming, outgoing, net]);
   });
@@ -219,7 +224,7 @@ export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): 
   sheet.appendRow(["DAY", "CUMULATIVE OUTGOING (THIS MONTH)", "CUMULATIVE OUTGOING (USUAL)"]);
 
   for (let day = 1; day <= PACE_DAYS; day++) {
-    const row = STATS_ROWS.paceFirst + day - 1;
+    const row = SHEET_LAYOUT.stats.rows.paceFirst + day - 1;
     const { thisMonth, usual } = spendingPaceFormulas(row);
     sheet.appendRow([day, thisMonth, usual]);
   }
@@ -230,7 +235,7 @@ export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): 
   sheet.appendRow(["WINDOW", "INCOMING", "OUTGOING", "NET"]);
 
   STATS_WINDOWS.forEach((w, i) => {
-    const row = STATS_WINDOW_ROWS.windowTotalsFirst + i;
+    const row = SHEET_LAYOUT.stats.rows.windowTotalsFirst + i;
     const { incoming, outgoing, net } = windowTotalFormulas(row, w.startFormula);
     sheet.appendRow([w.key, incoming, outgoing, net]);
   });
@@ -240,7 +245,9 @@ export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): 
 
   STATS_WINDOWS.forEach((w, wi) => {
     STATS_CATEGORIES.forEach((category, ci) => {
-      const row = STATS_WINDOW_ROWS.windowCatFirst + wi * STATS_CATEGORIES.length + ci;
+      const row = SHEET_LAYOUT.stats.rows.windowCategoryFirst
+        + wi * STATS_CATEGORIES.length
+        + ci;
       const { outgoing } = windowCategorySpendFormulas(row, w.startFormula);
       sheet.appendRow([w.key, category, outgoing]);
     });
