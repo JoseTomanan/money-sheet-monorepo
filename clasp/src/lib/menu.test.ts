@@ -40,17 +40,17 @@ describe("buildMenu", () => {
 
   it("calls addToUi to attach each menu to the spreadsheet", () => {
     buildMenu(makeUi());
-    expect(mockAddToUi).toHaveBeenCalledTimes(2); // "Autohide" and "Categories"
+    expect(mockAddToUi).toHaveBeenCalledTimes(3);
   });
 
-  it("calls addSeparator once to separate autohide items from setup", () => {
+  it("does not leave a separator where the setup item used to be", () => {
     buildMenu(makeUi());
-    expect(mockAddSeparator).toHaveBeenCalledOnce();
+    expect(mockAddSeparator).not.toHaveBeenCalled();
   });
 
-  it('adds "Run setup" item wired to the setup function', () => {
+  it('does not advertise the obsolete "Run setup" action', () => {
     buildMenu(makeUi());
-    expect(mockAddItem).toHaveBeenCalledWith("Run setup", "setup");
+    expect(mockAddItem).not.toHaveBeenCalledWith("Run setup", "setup");
   });
 
   it('creates a second menu named "Categories", separate from "Autohide"', () => {
@@ -72,6 +72,19 @@ describe("buildMenu", () => {
     expect(mockAddItem).toHaveBeenCalledWith(
       "Retry last category sync",
       "retryLastCategorySync"
+    );
+  });
+
+  it('creates a "Connection" menu with show and rotate actions', () => {
+    buildMenu(makeUi());
+    expect(mockCreateMenu).toHaveBeenCalledWith("Connection");
+    expect(mockAddItem).toHaveBeenCalledWith(
+      "Show connection details",
+      "showConnectionDetails"
+    );
+    expect(mockAddItem).toHaveBeenCalledWith(
+      "Rotate API secret",
+      "rotateConnectionSecret"
     );
   });
 });
