@@ -1,7 +1,7 @@
 /**
  * STATS sheet — formula-driven, GAS read-only (mirrors MASTER, docs/adr/0011).
- * `ensureStatsSheet` is the one-time creation routine (called from setup(),
- * `7_setup.ts`) that writes the sheet's fixed layout and cell formulas.
+ * `ensureStatsSheet` records the one-time creation routine used to build or
+ * repair the maintained template's fixed layout and cell formulas.
  * `3_stats.ts`'s `getStats()` reads it back — GAS never writes into the data
  * cells after creation.
  *
