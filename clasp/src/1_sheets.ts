@@ -37,9 +37,9 @@ function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   return ss.getSheetByName(SHEET_CONFIG);
 }
 
-// Tolerant: returns null if the STATS sheet doesn't exist yet (spreadsheets
-// created before docs/adr/0011, until they re-run setup()). GAS never writes
-// to STATS — see lib/stats.ts for the formula-driven layout.
+// Tolerant: returns null if the STATS sheet doesn't exist in a legacy
+// spreadsheet created before docs/adr/0011. GAS never writes to STATS — see
+// lib/stats.ts for the formula-driven layout.
 function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(SHEET_STATS);
