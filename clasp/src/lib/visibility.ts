@@ -50,9 +50,10 @@ function weekStartOfRow(row: IoRow, formatDate: CalendarDateFormatter): string |
 }
 
 /**
- * Finds completed weeks whose first Entry is not immediately preceded by that
- * week's separator. Descending sheet-row order lets callers apply every plan
- * to the same snapshot without adjusting later coordinates after an insert.
+ * Finds current or completed weeks whose first Entry is not immediately
+ * preceded by that week's separator. Descending sheet-row order lets callers
+ * apply every plan to the same snapshot without adjusting later coordinates
+ * after an insert.
  */
 export function planMissingSeparators(
   rows: IoRow[],
@@ -68,7 +69,7 @@ export function planMissingSeparators(
     const weekStart = weekStartOfRow(row, formatDate);
     if (
       weekStart === null ||
-      weekStart >= currentWeekStart ||
+      weekStart > currentWeekStart ||
       firstEntryIndexByWeek.has(weekStart)
     ) continue;
     firstEntryIndexByWeek.set(weekStart, index);

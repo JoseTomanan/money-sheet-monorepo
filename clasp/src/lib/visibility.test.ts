@@ -16,7 +16,7 @@ describe("planMissingSeparators", () => {
     expect(planMissingSeparators([], CURRENT_DATE, formatDate)).toEqual([]);
   });
 
-  it("plans every missing completed week in descending row order and never separates current or future weeks", () => {
+  it("plans every missing current or completed week in descending row order and never separates future weeks", () => {
     const rows = [
       entry("2026-01-05", 1),
       entry("2026-01-12", 2),
@@ -25,9 +25,19 @@ describe("planMissingSeparators", () => {
     ];
 
     expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([
+      { sheetRow: 4, weekStart: "2026-02-08", label: "FEB 8-14" },
       { sheetRow: 3, weekStart: "2026-01-11", label: "JAN 11-17" },
       { sheetRow: 2, weekStart: "2026-01-04", label: "JAN 4-10" },
     ]);
+  });
+
+  it("does not duplicate an existing current-week separator", () => {
+    const rows = [
+      separator("2026-02-08"),
+      entry("2026-02-08", 1),
+    ];
+
+    expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([]);
   });
 
   it("skips missing, blank, and malformed dates and leaves an already-separated week alone", () => {
@@ -102,12 +112,13 @@ describe("maintainVisibility", () => {
     maintainVisibility({ readRows, insertSeparatorRow, setRowVisibility }, CURRENT_DATE, formatDate);
 
     expect(readRows).toHaveBeenCalledTimes(2);
-    expect(insertSeparatorRow).toHaveBeenNthCalledWith(1, 3, "2026-01-11", "JAN 11-17");
-    expect(insertSeparatorRow).toHaveBeenNthCalledWith(2, 2, "2026-01-04", "JAN 4-10");
+    expect(insertSeparatorRow).toHaveBeenNthCalledWith(1, 4, "2026-02-08", "FEB 8-14");
+    expect(insertSeparatorRow).toHaveBeenNthCalledWith(2, 3, "2026-01-11", "JAN 11-17");
+    expect(insertSeparatorRow).toHaveBeenNthCalledWith(3, 2, "2026-01-04", "JAN 4-10");
     expect(setRowVisibility).toHaveBeenCalledTimes(4);
     expect(setRowVisibility).toHaveBeenNthCalledWith(1, 2, 2, false);
     expect(setRowVisibility).toHaveBeenNthCalledWith(2, 4, 1, true);
     expect(setRowVisibility).toHaveBeenNthCalledWith(3, 5, 1, false);
-    expect(setRowVisibility).toHaveBeenNthCalledWith(4, 6, 1, true);
+    expect(setRowVisibility).toHaveBeenNthCalledWith(4, 6, 2, true);
   });
 });
