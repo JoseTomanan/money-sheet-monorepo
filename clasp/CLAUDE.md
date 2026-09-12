@@ -37,6 +37,7 @@ Only pure `lib/` functions can be unit tested locally. Any function that calls `
 
 ### Key invariants
 
+- **`src/lib/0_sheetLayout.ts` is the single coordinate source of truth.** All fixed GAS-managed sheet names and 1-based row/column coordinates live in `SHEET_LAYOUT`; range widths, returned-array indices, and generated A1 references are derived from it. The `0_` prefix makes the runtime definition load before other stripped lib files, and `_sheetLayout_globals.ts` exposes it to numbered GAS files.
 - **Col H (Entry ID)** is the stable row identifier written by `addEntry` and never reused or overwritten by `updateEntry`.
 - **Col D (MAIN_CAT)** is ARRAYFORMULA-driven in the sheet — GAS never writes to it. After `addEntry`, `SpreadsheetApp.flush()` is called and col D is read back to return the resolved `mainCategory`.
 - **MASTER data row** is always row 3. Do not use `getLastRow()` to locate it; extra formula rows below would give a wrong index.

@@ -76,7 +76,7 @@ The single transaction log. One row per Entry. Column layout:
 `B=DATE | C=TAG | D=[VLOOKUP] MAIN CATEGORY | E=DESCRIPTION | F=I/O | G=AMOUNT | H=ENTRY ID | I=MUTATION ID`
 
 #### Week Separator
-A non-Entry row in INCOMING/OUTGOING that visually divides one week's Entries from the next. Identified solely by a **blank Entry ID (column H)** — that blank is what tells every reader the row is not an Entry. Carries the week-start date in column B and an italic week label in column E; all other columns, including Mutation ID (column I), are blank. Inserted only for **completed** weeks — the current week is never separated. Separators are never removed once placed: deleting the last Entry of a week leaves its separator behind as an empty week heading (see issue #141).
+A non-Entry row in INCOMING/OUTGOING that visually divides one week's Entries from the next. Identified solely by a **blank Entry ID (column H)** — that blank is what tells every reader the row is not an Entry. Carries the week-start date in column B and an italic week label in column E; all other columns, including Mutation ID (column I), are blank. Autohide inserts a missing separator for each current or completed week that has Entries; future weeks are not separated. Separators are never removed once placed: deleting the last Entry of a week leaves its separator behind as an empty week heading (see issue #141).
 
 ### MASTER sheet
 A single summary row. Shows ON HAND plus the Budget for each Category. Entirely formula-driven; GAS only reads it, never writes to it.

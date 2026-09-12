@@ -1,40 +1,28 @@
-const SHEET_IO = "INCOMING/OUTGOING";
-const SHEET_MASTER = "MASTER";
-const SHEET_CATEGORIES = "Categories";
-const SHEET_CONFIG = "Config";
-// Literal, not a reference to lib/stats.ts's STATS_SHEET_NAME: dist/lib/*.js
-// loads AFTER the numbered top-level files (alphabetically, "lib" > digits),
-// so a top-level const initializer here can't safely read a lib-module const
-// at load time. Kept equal to STATS_SHEET_NAME by convention; the two are
-// small enough (a single string literal) that drift risk is low, same as the
-// other SHEET_* consts in this file, none of which reference lib modules.
-const SHEET_STATS = "STATS";
-
 function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_IO);
-  if (!sh) throw new Error(`Sheet not found: ${SHEET_IO}`);
+  const sh = ss.getSheetByName(SHEET_LAYOUT.io.name);
+  if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.io.name}`);
   return sh;
 }
 
 function getMasterSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_MASTER);
-  if (!sh) throw new Error(`Sheet not found: ${SHEET_MASTER}`);
+  const sh = ss.getSheetByName(SHEET_LAYOUT.master.name);
+  if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.master.name}`);
   return sh;
 }
 
 function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_CATEGORIES);
-  if (!sh) throw new Error(`Sheet not found: ${SHEET_CATEGORIES}`);
+  const sh = ss.getSheetByName(SHEET_LAYOUT.categories.name);
+  if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.categories.name}`);
   return sh;
 }
 
 // Tolerant: returns null if the Config sheet doesn't exist (legacy spreadsheets).
 function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(SHEET_CONFIG);
+  return ss.getSheetByName(SHEET_LAYOUT.config.name);
 }
 
 // Tolerant: returns null if the STATS sheet doesn't exist in a legacy
@@ -42,7 +30,7 @@ function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
 // lib/stats.ts for the formula-driven layout.
 function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(SHEET_STATS);
+  return ss.getSheetByName(SHEET_LAYOUT.stats.name);
 }
 
 // The live GAS-backed IoRepository adapter. Defaults to the INCOMING/OUTGOING
@@ -54,8 +42,14 @@ function liveIoRepository(
   return {
     readRows(): IoRow[] {
       const lastRow = sh.getLastRow();
-      if (lastRow < 2) return [];
-      return sh.getRange(2, IO_COL.DATE, lastRow - 1, 8).getValues();
+      const firstRow = SHEET_LAYOUT.io.rows.dataFirst;
+      if (lastRow < firstRow) return [];
+      return sh.getRange(
+        firstRow,
+        SHEET_LAYOUT.io.columns.date,
+        lastRow - firstRow + 1,
+        rangeWidth(SHEET_LAYOUT.io.columns.date, SHEET_LAYOUT.io.columns.mutationId),
+      ).getValues();
     },
     insertRowBefore(sheetRow: number): void {
       sh.insertRowBefore(sheetRow);
@@ -65,8 +59,8 @@ function liveIoRepository(
       // A UTC midnight Date renders as the same calendar day in the
       // spreadsheet's Asia/Manila timezone. The planner owns the canonical
       // week-start string; this adapter only materialises it in Sheets.
-      sh.getRange(sheetRow, IO_COL.DATE).setValue(new Date(`${weekStart}T00:00:00Z`));
-      const labelRange = sh.getRange(sheetRow, IO_COL.DESC);
+      sh.getRange(sheetRow, SHEET_LAYOUT.io.columns.date).setValue(new Date(`${weekStart}T00:00:00Z`));
+      const labelRange = sh.getRange(sheetRow, SHEET_LAYOUT.io.columns.description);
       labelRange.setValue(label);
       labelRange.setFontStyle("italic");
       // All other fields, especially Entry ID (col H), stay blank.
@@ -79,7 +73,7 @@ function liveIoRepository(
       }
     },
     writeEntryFields(sheetRow, fields): void {
-      // Never writes IO_COL.MAIN_CAT (col D) — it is ARRAYFORMULA-driven.
+      // Never writes Main Category (col D) — it is ARRAYFORMULA-driven.
       // Each consecutive-column run is written with one setValues() call so a
       // failure partway through can't leave the row half-written (docs/adr/0009).
       for (const run of planFieldWrites(fields)) {
@@ -88,7 +82,7 @@ function liveIoRepository(
     },
     resolveMainCategory(sheetRow: number): string {
       SpreadsheetApp.flush();
-      return String(sh.getRange(sheetRow, IO_COL.MAIN_CAT).getValue());
+      return String(sh.getRange(sheetRow, SHEET_LAYOUT.io.columns.mainCategory).getValue());
     },
     deleteRow(sheetRow: number): void {
       sh.deleteRow(sheetRow);
@@ -98,5 +92,7 @@ function liveIoRepository(
 
 /** Adds the idempotency-key column on a migration/setup run; historical rows stay blank. */
 function ensureMutationIdColumn(): void {
-  getIOSheet().getRange(1, IO_COL.MUTATION_ID).setValue("MUTATION ID");
+  getIOSheet()
+    .getRange(SHEET_LAYOUT.io.rows.header, SHEET_LAYOUT.io.columns.mutationId)
+    .setValue("MUTATION ID");
 }

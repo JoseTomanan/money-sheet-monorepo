@@ -6,11 +6,11 @@
  * strings, so they can be tested without SpreadsheetApp or a host timezone.
  */
 import {
-  ID_INDEX,
   isSeparatorRow,
   type IoRow,
   type VisibilityRepository,
 } from "./repository";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
 import {
   spreadsheetWeekLabelFromStr,
   weekStartOfStr,
@@ -18,6 +18,10 @@ import {
 } from "./weeks";
 
 export type CalendarDateFormatter = (raw: unknown) => string;
+
+function ioValue(row: IoRow, column: number): unknown {
+  return row[columnIndexWithinRange(column, SHEET_LAYOUT.io.columns.date)];
+}
 
 export interface SeparatorInsertion {
   /** 1-based sheet row in the pre-insertion snapshot. */
@@ -45,14 +49,15 @@ function dateStringOf(raw: unknown, formatDate: CalendarDateFormatter): string |
 }
 
 function weekStartOfRow(row: IoRow, formatDate: CalendarDateFormatter): string | null {
-  const dateStr = dateStringOf(row[0], formatDate);
+  const dateStr = dateStringOf(ioValue(row, SHEET_LAYOUT.io.columns.date), formatDate);
   return dateStr === null ? null : weekStartOfStr(dateStr);
 }
 
 /**
- * Finds completed weeks whose first Entry is not immediately preceded by that
- * week's separator. Descending sheet-row order lets callers apply every plan
- * to the same snapshot without adjusting later coordinates after an insert.
+ * Finds current or completed weeks whose first Entry is not immediately
+ * preceded by that week's separator. Descending sheet-row order lets callers
+ * apply every plan to the same snapshot without adjusting later coordinates
+ * after an insert.
  */
 export function planMissingSeparators(
   rows: IoRow[],
@@ -64,11 +69,11 @@ export function planMissingSeparators(
 
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
-    if (isSeparatorRow(row[ID_INDEX])) continue;
+    if (isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId))) continue;
     const weekStart = weekStartOfRow(row, formatDate);
     if (
       weekStart === null ||
-      weekStart >= currentWeekStart ||
+      weekStart > currentWeekStart ||
       firstEntryIndexByWeek.has(weekStart)
     ) continue;
     firstEntryIndexByWeek.set(weekStart, index);
@@ -77,10 +82,16 @@ export function planMissingSeparators(
   return [...firstEntryIndexByWeek]
     .flatMap(([weekStart, index]): SeparatorInsertion[] => {
       const above = rows[index - 1];
-      const aboveDate = above ? dateStringOf(above[0], formatDate) : null;
-      if (above && isSeparatorRow(above[ID_INDEX]) && aboveDate === weekStart) return [];
+      const aboveDate = above
+        ? dateStringOf(ioValue(above, SHEET_LAYOUT.io.columns.date), formatDate)
+        : null;
+      if (
+        above
+        && isSeparatorRow(ioValue(above, SHEET_LAYOUT.io.columns.entryId))
+        && aboveDate === weekStart
+      ) return [];
       return [{
-        sheetRow: index + 2,
+        sheetRow: index + SHEET_LAYOUT.io.rows.dataFirst,
         weekStart,
         label: spreadsheetWeekLabelFromStr(weekStart),
       }];
@@ -99,7 +110,9 @@ function visibleForRow(
 
   const tier = weekTierFromStr(weekStart, currentWeekStart);
   if (tier === "current") return true;
-  if (tier === "recent") return isSeparatorRow(row[ID_INDEX]);
+  if (tier === "recent") {
+    return isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId));
+  }
   return false;
 }
 
@@ -122,7 +135,11 @@ export function planVisibilityRanges(
       previous.numRows++;
       return;
     }
-    ranges.push({ sheetRow: index + 2, numRows: 1, visible });
+    ranges.push({
+      sheetRow: index + SHEET_LAYOUT.io.rows.dataFirst,
+      numRows: 1,
+      visible,
+    });
   });
 
   return ranges;

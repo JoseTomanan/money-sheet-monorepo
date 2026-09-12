@@ -8,15 +8,12 @@
  * property stash) lives in 6_category_sync.ts.
  */
 
-import { isSeparatorRow, ID_INDEX, type IoRow, type IoRepository } from "./repository";
+import { isSeparatorRow, type IoRow, type IoRepository } from "./repository";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
 
 // 1-based column of the Categories sheet's Subcategory field. Renames/deletes
 // are only ever detected on this column — col C (parent Category) edits are a
 // documented no-op, since col D's VLOOKUP re-resolves automatically.
-export const CAT_COL = {
-  SUBCATEGORY: 2,
-} as const;
-
 export interface CategoryEditInput {
   isCategoriesSheet: boolean;
   column: number;
@@ -36,8 +33,8 @@ export function classifyCategoryEdit(input: CategoryEditInput): CategoryEditClas
   const isSingleCell = input.numRows === 1 && input.numCols === 1;
   if (
     !input.isCategoriesSheet ||
-    input.column !== CAT_COL.SUBCATEGORY ||
-    input.row < 2 ||
+    input.column !== SHEET_LAYOUT.categories.columns.subcategory ||
+    input.row < SHEET_LAYOUT.categories.rows.dataFirst ||
     !isSingleCell
   ) {
     return { kind: "ignore" };
@@ -55,8 +52,8 @@ export function classifyCategoryEdit(input: CategoryEditInput): CategoryEditClas
   return { kind: "ignore" };
 }
 
-// catData rows: [Subcategory, Category] — catData[0] is sheet row 2, i.e.
-// catData[i] is sheet row (i + 2). Mirrors getCategories()'s own slice
+// catData rows: [Subcategory, Category]. catData[i] maps from
+// SHEET_LAYOUT.categories.rows.dataFirst. Mirrors getCategories()'s own slice
 // (4_categories.ts) so callers can read the Categories sheet once and reuse
 // it for both collision-checking and parent-lookup.
 export type CategoryRow = [string, string];
@@ -68,25 +65,35 @@ export type CategoryRow = [string, string];
  */
 export function parentCategoryForRow(catData: CategoryRow[], row: number): string | null {
   let currentCategory = "";
-  for (let i = 0; i <= row - 2 && i < catData.length; i++) {
-    const categoryCell = String(catData[i][1] ?? "").trim();
+  for (
+    let i = 0;
+    i <= row - SHEET_LAYOUT.categories.rows.dataFirst && i < catData.length;
+    i++
+  ) {
+    const categoryCell = String(
+      catData[i][columnIndexWithinRange(
+        SHEET_LAYOUT.categories.columns.category,
+        SHEET_LAYOUT.categories.columns.subcategory,
+      )] ?? "",
+    ).trim();
     if (categoryCell !== "") currentCategory = categoryCell;
   }
   return currentCategory !== "" ? currentCategory : null;
 }
 
-// 0-based positions within the B–H row slice IoRepository.readRows() returns
-// ([date, tag, mainCategory, description, direction, amount, id]) — mirrors
-// repository.ts's ID_INDEX rather than redefining it.
-const TAG_INDEX = 1;
-const DIR_INDEX = 4;
+// Positions in the returned IO row are derived from the shared 1-based layout.
+function ioValue(row: IoRow, column: number): unknown {
+  return row[columnIndexWithinRange(column, SHEET_LAYOUT.io.columns.date)];
+}
 
 // THE match predicate for a bulk retag — an Outgoing, non-separator row whose
 // Tag exactly equals oldTag. Single home so the pre-lock count
 // (countMatchingOutgoingTags) and the actual write (retagOutgoingRows) can
 // never disagree.
 function isMatchingOutgoingRow(row: IoRow, oldTag: string): boolean {
-  return !isSeparatorRow(row[ID_INDEX]) && row[DIR_INDEX] === "O" && row[TAG_INDEX] === oldTag;
+  return !isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId))
+    && ioValue(row, SHEET_LAYOUT.io.columns.direction) === "O"
+    && ioValue(row, SHEET_LAYOUT.io.columns.tag) === oldTag;
 }
 
 /** Counts Outgoing rows whose Tag exactly equals oldTag. Skips separators. */
@@ -109,14 +116,24 @@ export function findNameCollision(
   catData: CategoryRow[],
   row: number
 ): NameCollision | null {
-  const ownIndex = row - 2;
+  const ownIndex = row - SHEET_LAYOUT.categories.rows.dataFirst;
   let currentCategory = "";
   const categories = new Set<string>();
   let collidingParent: string | null = null;
 
   for (let i = 0; i < catData.length; i++) {
-    const subcategory = String(catData[i][0] ?? "").trim();
-    const categoryCell = String(catData[i][1] ?? "").trim();
+    const subcategory = String(
+      catData[i][columnIndexWithinRange(
+        SHEET_LAYOUT.categories.columns.subcategory,
+        SHEET_LAYOUT.categories.columns.subcategory,
+      )] ?? "",
+    ).trim();
+    const categoryCell = String(
+      catData[i][columnIndexWithinRange(
+        SHEET_LAYOUT.categories.columns.category,
+        SHEET_LAYOUT.categories.columns.subcategory,
+      )] ?? "",
+    ).trim();
     if (categoryCell !== "") currentCategory = categoryCell;
     if (currentCategory !== "") categories.add(currentCategory);
     if (i !== ownIndex && subcategory === newName) collidingParent = currentCategory;
@@ -147,7 +164,7 @@ export function retagOutgoingRows(
   let count = 0;
   rows.forEach((row, i) => {
     if (isMatchingOutgoingRow(row, oldTag)) {
-      repo.writeEntryFields(i + 2, { tag: newTag });
+      repo.writeEntryFields(i + SHEET_LAYOUT.io.rows.dataFirst, { tag: newTag });
       count++;
     }
   });
