@@ -2,9 +2,6 @@
 // At runtime, dist/lib/repository.js is loaded first (export keyword stripped by build step).
 // Derived from the lib module's own exports so a signature change there fails
 // `tsc --noEmit` here instead of silently drifting (issue #109).
-declare const IO_COL: typeof import("./lib/repository").IO_COL;
-declare const ID_INDEX: typeof import("./lib/repository").ID_INDEX;
-declare const MUTATION_ID_INDEX: typeof import("./lib/repository").MUTATION_ID_INDEX;
 declare const isSeparatorRow: typeof import("./lib/repository").isSeparatorRow;
 declare const planFieldWrites: typeof import("./lib/repository").planFieldWrites;
 declare const listEntries: typeof import("./lib/repository").listEntries;

@@ -1,7 +1,7 @@
 /**
  * repository.ts — the single INCOMING/OUTGOING repository port.
  *
- * Owns the column map, the separator-row predicate, the port interface,
+ * Uses the shared layout contract and owns the separator-row predicate and port interface,
  * and pure glue functions that operate against an injected IoRepository.
  * Contains no SpreadsheetApp calls so it can be unit-tested with a fake.
  * The GAS-facing live adapter lives in 1_sheets.ts (liveIoRepository).
@@ -9,27 +9,18 @@
 
 import { findRowByEntryId } from "./entries";
 import { findInsertionIndex } from "./weeks";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
 import type { Direction, EntryData, AddEntryPayload, UpdateEntryPatch } from "./dispatch";
 
-// 1-based sheet columns for INCOMING/OUTGOING — the single column map.
-export const IO_COL = {
-  DATE: 2,
-  TAG: 3,
-  MAIN_CAT: 4,
-  DESC: 5,
-  DIR: 6,
-  AMOUNT: 7,
-  ID: 8,
-  MUTATION_ID: 9,
-} as const;
+// Coordinates live in SHEET_LAYOUT; this module derives returned-row positions.
 
 // A data row as returned by readRows(): cols B–I →
 // [date, tag, mainCategory, description, direction, amount, id, mutationId]
 export type IoRow = unknown[];
 
-// col H position within the 0-based B–H slice returned by readRows()
-export const ID_INDEX = 6;
-export const MUTATION_ID_INDEX = 7;
+function ioValue(row: IoRow, column: number): unknown {
+  return row[columnIndexWithinRange(column, SHEET_LAYOUT.io.columns.date)];
+}
 
 /**
  * THE separator predicate: a row with a blank Entry ID (col H) is a week
@@ -53,13 +44,13 @@ export interface EntryFields {
 // Col D (MAIN_CAT) is never a key here — it is ARRAYFORMULA-driven and must
 // never be written, so it's naturally excluded from any run.
 const FIELD_COLUMNS: [keyof EntryFields, number][] = [
-  ["date", IO_COL.DATE],
-  ["tag", IO_COL.TAG],
-  ["description", IO_COL.DESC],
-  ["direction", IO_COL.DIR],
-  ["amount", IO_COL.AMOUNT],
-  ["id", IO_COL.ID],
-  ["mutationId", IO_COL.MUTATION_ID],
+  ["date", SHEET_LAYOUT.io.columns.date],
+  ["tag", SHEET_LAYOUT.io.columns.tag],
+  ["description", SHEET_LAYOUT.io.columns.description],
+  ["direction", SHEET_LAYOUT.io.columns.direction],
+  ["amount", SHEET_LAYOUT.io.columns.amount],
+  ["id", SHEET_LAYOUT.io.columns.entryId],
+  ["mutationId", SHEET_LAYOUT.io.columns.mutationId],
 ];
 
 /**
@@ -130,17 +121,17 @@ export function listEntries(
   const entries: EntryData[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const id = row[ID_INDEX];
+    const id = ioValue(row, SHEET_LAYOUT.io.columns.entryId);
     if (isSeparatorRow(id)) continue;
     entries.push({
       id: Number(id),
-      date: formatDate(row[0]),
-      tag: String(row[1]),
-      mainCategory: String(row[2]),
-      description: String(row[3]),
-      direction: String(row[4]) as Direction,
-      amount: Number(row[5]) || 0,
-      row: 2 + i,
+      date: formatDate(ioValue(row, SHEET_LAYOUT.io.columns.date)),
+      tag: String(ioValue(row, SHEET_LAYOUT.io.columns.tag)),
+      mainCategory: String(ioValue(row, SHEET_LAYOUT.io.columns.mainCategory)),
+      description: String(ioValue(row, SHEET_LAYOUT.io.columns.description)),
+      direction: String(ioValue(row, SHEET_LAYOUT.io.columns.direction)) as Direction,
+      amount: Number(ioValue(row, SHEET_LAYOUT.io.columns.amount)) || 0,
+      row: SHEET_LAYOUT.io.rows.dataFirst + i,
     });
   }
   return entries;
@@ -157,18 +148,21 @@ export function findEntriesByMutationId(
 ): EntryData[] {
   const matchingRows = rows
     .map((row, index) => ({ row, index }))
-    .filter(({ row }) => row[MUTATION_ID_INDEX] === mutationId && !isSeparatorRow(row[ID_INDEX]));
+    .filter(({ row }) =>
+      ioValue(row, SHEET_LAYOUT.io.columns.mutationId) === mutationId
+      && !isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId))
+    );
 
   return matchingRows
     .map(({ row, index }) => ({
-      id: Number(row[ID_INDEX]),
-      date: formatDate(row[0]),
-      tag: String(row[1]),
-      mainCategory: String(row[2]),
-      description: String(row[3]),
-      direction: String(row[4]) as Direction,
-      amount: Number(row[5]) || 0,
-      row: 2 + index,
+      id: Number(ioValue(row, SHEET_LAYOUT.io.columns.entryId)),
+      date: formatDate(ioValue(row, SHEET_LAYOUT.io.columns.date)),
+      tag: String(ioValue(row, SHEET_LAYOUT.io.columns.tag)),
+      mainCategory: String(ioValue(row, SHEET_LAYOUT.io.columns.mainCategory)),
+      description: String(ioValue(row, SHEET_LAYOUT.io.columns.description)),
+      direction: String(ioValue(row, SHEET_LAYOUT.io.columns.direction)) as Direction,
+      amount: Number(ioValue(row, SHEET_LAYOUT.io.columns.amount)) || 0,
+      row: SHEET_LAYOUT.io.rows.dataFirst + index,
     }))
     .sort((a, b) => a.id - b.id);
 }
@@ -198,12 +192,15 @@ export function patchEntry(
   formatDate: (raw: unknown) => string,
 ): void {
   const rows = repo.readRows();
-  const targetRow = findRowByEntryId(rows.map((r) => r[ID_INDEX]), id);
+  const targetRow = findRowByEntryId(
+    rows.map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId)),
+    id,
+  );
   if (targetRow === null) throw new Error(`Entry ${id} not found`);
 
-  const targetIndex = targetRow - 2;
+  const targetIndex = targetRow - SHEET_LAYOUT.io.rows.dataFirst;
   const target = rows[targetIndex];
-  if (patch.date === undefined || patch.date === formatDate(target[0])) {
+  if (patch.date === undefined || patch.date === formatDate(ioValue(target, SHEET_LAYOUT.io.columns.date))) {
     repo.writeEntryFields(targetRow, patch);
     return;
   }
@@ -214,23 +211,25 @@ export function patchEntry(
   // selected or written because their blank ID cannot match `id`.
   const rowsWithoutTarget = rows.filter((_, index) => index !== targetIndex);
   const dates = rowsWithoutTarget.map((row) => {
-    const value = row[0];
+    const value = ioValue(row, SHEET_LAYOUT.io.columns.date);
     return value instanceof Date ? value : value ? new Date(String(value)) : null;
   });
   const destinationIndex = findInsertionIndex(dates, new Date(patch.date));
-  const destinationRow = 2 + destinationIndex;
-  const lastRowAfterDelete = rowsWithoutTarget.length + 1;
+  const destinationRow = SHEET_LAYOUT.io.rows.dataFirst + destinationIndex;
+  const lastRowAfterDelete = rowsWithoutTarget.length + SHEET_LAYOUT.io.rows.dataFirst - 1;
 
   // Preserve every stored value except formula-driven Main Category (col D),
   // which must never be written by GAS. Entry ID and Mutation ID move intact.
   const fields: EntryFields = {
     date: patch.date,
-    tag: patch.tag ?? String(target[1]),
-    description: patch.description ?? String(target[3]),
-    direction: patch.direction ?? (String(target[4]) as Direction),
-    amount: patch.amount ?? Number(target[5]),
-    id: Number(target[ID_INDEX]),
-    mutationId: target[MUTATION_ID_INDEX] == null ? "" : String(target[MUTATION_ID_INDEX]),
+    tag: patch.tag ?? String(ioValue(target, SHEET_LAYOUT.io.columns.tag)),
+    description: patch.description ?? String(ioValue(target, SHEET_LAYOUT.io.columns.description)),
+    direction: patch.direction ?? (String(ioValue(target, SHEET_LAYOUT.io.columns.direction)) as Direction),
+    amount: patch.amount ?? Number(ioValue(target, SHEET_LAYOUT.io.columns.amount)),
+    id: Number(ioValue(target, SHEET_LAYOUT.io.columns.entryId)),
+    mutationId: ioValue(target, SHEET_LAYOUT.io.columns.mutationId) == null
+      ? ""
+      : String(ioValue(target, SHEET_LAYOUT.io.columns.mutationId)),
   };
 
   repo.deleteRow(targetRow);
@@ -253,19 +252,22 @@ export function insertEntry(
   rows: IoRow[] = repo.readRows(),
 ): EntryData {
 
-  const existingIds = rows.map((r) => r[ID_INDEX]).filter((id) => !isSeparatorRow(id)).map(Number);
+  const existingIds = rows
+    .map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId))
+    .filter((id) => !isSeparatorRow(id))
+    .map(Number);
   let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
   const idSet = new Set(existingIds);
   while (idSet.has(nextId)) nextId++;
 
   const dates: (Date | null)[] = rows.map((r) => {
-    const v = r[0];
+    const v = ioValue(r, SHEET_LAYOUT.io.columns.date);
     return v instanceof Date ? v : v ? new Date(String(v)) : null;
   });
   const newDate = new Date(payload.date);
   const idx = findInsertionIndex(dates, newDate);
-  const sheetRow = 2 + idx;
-  const lastRow = rows.length + 1;
+  const sheetRow = SHEET_LAYOUT.io.rows.dataFirst + idx;
+  const lastRow = rows.length + SHEET_LAYOUT.io.rows.dataFirst - 1;
 
   let targetRow: number;
   if (sheetRow <= lastRow) {
@@ -316,24 +318,27 @@ export function insertEntries(
   rows: IoRow[] = repo.readRows(),
 ): EntryData[] {
 
-  const existingIds = rows.map((r) => r[ID_INDEX]).filter((id) => !isSeparatorRow(id)).map(Number);
+  const existingIds = rows
+    .map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId))
+    .filter((id) => !isSeparatorRow(id))
+    .map(Number);
   let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
   const idSet = new Set(existingIds);
   while (idSet.has(nextId)) nextId++;
 
   const dates: (Date | null)[] = rows.map((r) => {
-    const v = r[0];
+    const v = ioValue(r, SHEET_LAYOUT.io.columns.date);
     return v instanceof Date ? v : v ? new Date(String(v)) : null;
   });
 
-  let lastRow = rows.length + 1;
+  let lastRow = rows.length + SHEET_LAYOUT.io.rows.dataFirst - 1;
   const targetRows: number[] = [];
   const entries: EntryData[] = [];
 
   for (const payload of payloads) {
     const newDate = new Date(payload.date);
     const idx = findInsertionIndex(dates, newDate);
-    const sheetRow = 2 + idx;
+    const sheetRow = SHEET_LAYOUT.io.rows.dataFirst + idx;
 
     let targetRow: number;
     if (sheetRow <= lastRow) {
@@ -382,7 +387,10 @@ export function insertEntries(
 /** Deletes the Entry matching `id`. Throws if not found. */
 export function removeEntry(repo: Pick<IoRepository, "readRows" | "deleteRow">, id: number): void {
   const rows = repo.readRows();
-  const targetRow = findRowByEntryId(rows.map((r) => r[ID_INDEX]), id);
+  const targetRow = findRowByEntryId(
+    rows.map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId)),
+    id,
+  );
   if (targetRow === null) throw new Error(`Entry ${id} not found`);
   repo.deleteRow(targetRow);
 }
