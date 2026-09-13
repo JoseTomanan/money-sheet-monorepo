@@ -123,6 +123,67 @@ describe("EntrySheet — formula evaluation on blur", () => {
 });
 
 describe("EntrySheet — in-flight save latch", () => {
+  it("closes a new Entry as soon as its unresolved add is accepted", async () => {
+    let resolveSave!: (saved: boolean) => void;
+    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onclose = vi.fn();
+    const { getByRole, getByPlaceholderText } = render(
+      EntrySheet,
+      baseProps({ onsave, onclose }),
+    );
+
+    await fireEvent.click(getByRole("button", { name: /^Food$/ }));
+    await fireEvent.click(getByRole("button", { name: /^Dining$/ }));
+    await fireEvent.input(getByPlaceholderText("0.00"), { target: { value: "50" } });
+    const click = fireEvent.click(getByRole("button", { name: "Save" }));
+    await Promise.resolve();
+
+    try {
+      expect(onsave).toHaveBeenCalledOnce();
+      expect(onclose).toHaveBeenCalledOnce();
+      await fireEvent.click(getByRole("button", { name: "Saving…" }));
+      expect(onsave).toHaveBeenCalledOnce();
+    } finally {
+      resolveSave(false);
+      await click;
+    }
+  });
+
+  it("closes a new Split Entry while its unresolved batch add continues", async () => {
+    let resolveSave!: (saved: boolean) => void;
+    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onclose = vi.fn();
+    const { getAllByRole, getByRole, getAllByPlaceholderText, getByText } = render(
+      EntrySheet,
+      baseProps({ onsave, onclose }),
+    );
+
+    await fireEvent.click(getByRole("button", { name: /^Food$/ }));
+    await fireEvent.click(getByRole("button", { name: /^Dining$/ }));
+    await fireEvent.input(getAllByPlaceholderText("0.00")[0], { target: { value: "30" } });
+    await fireEvent.click(getByText("Add leg"));
+    await fireEvent.click(getAllByRole("button", { name: /^Food$/ })[1]);
+    await fireEvent.click(getAllByRole("button", { name: /^Groceries$/ })[1]);
+    await fireEvent.input(getAllByPlaceholderText("0.00")[1], { target: { value: "20" } });
+
+    const click = fireEvent.click(getByRole("button", { name: "Save" }));
+    await Promise.resolve();
+
+    try {
+      expect(onsave).toHaveBeenCalledWith(expect.objectContaining({
+        type: "add",
+        payload: expect.arrayContaining([
+          expect.objectContaining({ tag: "Dining", amount: 30 }),
+          expect.objectContaining({ tag: "Groceries", amount: 20 }),
+        ]),
+      }));
+      expect(onclose).toHaveBeenCalledOnce();
+    } finally {
+      resolveSave(false);
+      await click;
+    }
+  });
+
   it("shows Saving… and cannot submit a second in-flight save", async () => {
     let resolveSave!: (saved: boolean) => void;
     const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
@@ -137,6 +198,22 @@ describe("EntrySheet — in-flight save latch", () => {
 
     resolveSave(true);
     await waitFor(() => expect(onclose).toHaveBeenCalledOnce());
+  });
+
+  it("keeps a failed Edit Entry open and ready to retry", async () => {
+    let resolveSave!: (saved: boolean) => void;
+    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onclose = vi.fn();
+    const { getByRole } = render(EntrySheet, baseProps({ onsave, onclose, entry: makeEntry() }));
+
+    const click = fireEvent.click(getByRole("button", { name: "Save" }));
+    await Promise.resolve();
+    expect(onclose).not.toHaveBeenCalled();
+
+    resolveSave(false);
+    await click;
+    expect(onclose).not.toHaveBeenCalled();
+    expect(getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 });
 
