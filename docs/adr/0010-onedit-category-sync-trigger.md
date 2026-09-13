@@ -68,7 +68,7 @@ stashed value — not a general re-diff of the Categories sheet.
 `installWeeklyVisibilityTrigger`'s idempotent pattern (delete any trigger
 already bound to the handler, then create fresh) and is exposed via a new
 `ui.createMenu("Categories")` menu, not folded into "Autohide" and not added
-to `runSetup()` — existing spreadsheets are unaffected until a user installs
+to the automatic Connection bootstrap — existing spreadsheets are unaffected until a user installs
 it once.
 
 ## Consequences

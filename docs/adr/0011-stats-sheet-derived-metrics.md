@@ -27,9 +27,10 @@ Deeper Statistics slice (#132) will extend whichever one is chosen.
 **All derived/computed metrics live in a formula-driven spreadsheet that GAS
 only reads — the MASTER pattern, not the per-subcategory-breakdown pattern.**
 
-A new **STATS** sheet is added, created by `ensureStatsSheet` (`clasp/src/lib/stats.ts`,
-called from `setup()` in `clasp/src/7_setup.ts`, mirroring `ensureConfigSheet`).
-Like MASTER, STATS is written once at creation time as live spreadsheet
+A new **STATS** sheet is added to the maintained template. The retained
+`ensureStatsSheet` helper documents and tests its fixed structure for legacy or
+maintenance use, but Connection bootstrap does not create it. Like MASTER,
+STATS is populated as live spreadsheet
 formulas (SUMIFS, EOMONTH, IF/IFERROR — the same formula vocabulary MASTER's
 SUMIF budgets use) and is **never written to by GAS afterward**. A new
 `getStats` GET action (unauthenticated, like `getEntries`/`getMaster`/
