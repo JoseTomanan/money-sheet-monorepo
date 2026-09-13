@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import type { AddEntryPayload, GatewayAdapter, UpdateEntryPatch } from "../src/lib/types";
 
 async function waitForAppReady(page: Page) {
   await page.locator(".app-shell").waitFor({ state: "visible" });
@@ -7,6 +8,36 @@ async function waitForAppReady(page: Page) {
 
 async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
   await page.locator(".tab-bar-pill").getByRole("button", { name: label }).click();
+}
+
+async function holdMockAdds(page: Page) {
+  await page.evaluate(async () => {
+    const modulePath = "/money-sheet-monorepo/src/lib/api.ts";
+    const api = await import(modulePath);
+    const base = api.gateway() as GatewayAdapter;
+    const waitForRelease = () => new Promise<void>((resolve) => {
+      window.addEventListener("release-e2e-add", () => resolve(), { once: true });
+    });
+
+    api.setAdapter({
+      getEntries: () => base.getEntries(),
+      getMaster: () => base.getMaster(),
+      getCategories: () => base.getCategories(),
+      getConfig: () => base.getConfig(),
+      getStats: () => base.getStats(),
+      addEntry: async (payload: AddEntryPayload, mutationId?: string) => {
+        await waitForRelease();
+        return base.addEntry(payload, mutationId);
+      },
+      addEntries: async (payloads: AddEntryPayload[], mutationId?: string) => {
+        await waitForRelease();
+        return base.addEntries(payloads, mutationId);
+      },
+      updateEntry: (id: number, patch: UpdateEntryPatch) => base.updateEntry(id, patch),
+      deleteEntry: (id: number) => base.deleteEntry(id),
+      validateConnection: (gasUrl: string, apiSecret: string) => base.validateConnection(gasUrl, apiSecret),
+    });
+  });
 }
 
 async function addEntryViaUi(
@@ -41,6 +72,28 @@ async function addEntryViaUi(
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await waitForAppReady(page);
+});
+
+test("Add Entry closes while its optimistic row is still synchronizing", async ({ page }) => {
+  const desc = `pending-add-${Date.now()}`;
+  await holdMockAdds(page);
+  await switchTab(page, "Entries");
+  await page.getByRole("button", { name: "Add entry", exact: true }).click();
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
+  await page.locator(".amount-input").fill("50");
+  await page.locator(".field-input").first().fill(desc);
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
+
+  await page.locator("button.header-btn.save").click();
+
+  await expect(page.locator('.sheet[data-state="open"]')).toBeHidden();
+  const pendingRow = page.locator(".entry-card", { hasText: desc });
+  await expect(pendingRow).toBeVisible();
+  await expect(pendingRow).toHaveClass(/animate-\[shimmer_1s_ease-in-out_infinite\]/);
+
+  await page.evaluate(() => window.dispatchEvent(new Event("release-e2e-add")));
+  await expect(pendingRow).not.toHaveClass(/animate-\[shimmer_1s_ease-in-out_infinite\]/);
 });
 
 // AC: adding an entry — appears immediately, no full-page spinner
