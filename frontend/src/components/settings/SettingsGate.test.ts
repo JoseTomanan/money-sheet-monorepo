@@ -47,10 +47,11 @@ describe("SettingsGate", () => {
     expect(link).toHaveAttribute("href", expect.stringContaining("docs.google.com/spreadsheets"));
   });
 
-  it("renders instructions mentioning the Autohide menu and Run setup item", () => {
-    const { getByText } = render(SettingsGate, { onsaved: vi.fn() });
-    expect(getByText(/autohide/i)).toBeInTheDocument();
-    expect(getByText(/run setup/i)).toBeInTheDocument();
+  it("directs users to the automatically provisioned Connection details", () => {
+    const { getByText, queryByText } = render(SettingsGate, { onsaved: vi.fn() });
+    expect(getByText(/connection.*show connection details/i)).toBeInTheDocument();
+    expect(getByText(/automatically created/i)).toBeInTheDocument();
+    expect(queryByText(/run setup/i)).not.toBeInTheDocument();
   });
 
   it("renders instructions mentioning deploying as a web app", () => {

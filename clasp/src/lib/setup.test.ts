@@ -1,75 +1,170 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { runSetup } from "./setup";
+import {
+  bootstrapApiSecret,
+  buildConnectionDetailsHtml,
+  rotateApiSecret,
+} from "./setup";
 
-const mockSetProperty = vi.fn();
-const mockGetProperty = vi.fn();
 const mockAlert = vi.fn();
 
 const Button = { YES: "YES", NO: "NO" } as any;
 const ButtonSet = { YES_NO: "YES_NO" } as any;
 
-function makeProps(existingSecret: string | null = null) {
-  mockGetProperty.mockReturnValue(existingSecret);
-  return {
-    setProperty: mockSetProperty,
-    getProperty: mockGetProperty,
-  } as unknown as GoogleAppsScript.Properties.Properties;
-}
 function makeUi() {
   return { alert: mockAlert, Button, ButtonSet } as unknown as GoogleAppsScript.Base.Ui;
 }
 const fakeSecret = () => "test-uuid-1234";
 
+function makeMemoryProps(initial: Record<string, string> = {}) {
+  const values = { ...initial };
+  return {
+    values,
+    props: {
+      getProperty: (key: string) => values[key] ?? null,
+      setProperty: (key: string, value: string) => {
+        values[key] = value;
+      },
+      setProperties: (properties: Record<string, string>) => {
+        Object.assign(values, properties);
+      },
+    } as unknown as GoogleAppsScript.Properties.Properties,
+  };
+}
+
 beforeEach(() => {
-  mockSetProperty.mockReset();
-  mockGetProperty.mockReset();
   mockAlert.mockReset();
 });
 
-describe("runSetup", () => {
-  it("stores the generated secret as API_SECRET in Script Properties", () => {
-    runSetup(makeProps(), makeUi(), fakeSecret);
-    expect(mockSetProperty).toHaveBeenCalledWith("API_SECRET", "test-uuid-1234");
+describe("bootstrapApiSecret", () => {
+  it("provisions an API secret when a spreadsheet has no bootstrap properties", () => {
+    const { props, values } = makeMemoryProps();
+
+    const secret = bootstrapApiSecret(props, "spreadsheet-copy", fakeSecret);
+
+    expect(secret).toBe("test-uuid-1234");
+    expect(values).toEqual({
+      API_SECRET: "test-uuid-1234",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
   });
 
-  it("shows the generated secret to the user via ui.alert()", () => {
-    runSetup(makeProps(), makeUi(), fakeSecret);
-    expect(mockAlert).toHaveBeenCalledWith("test-uuid-1234");
+  it("keeps the existing secret when the same spreadsheet is reopened", () => {
+    const { props } = makeMemoryProps({
+      API_SECRET: "existing-secret",
+      API_SECRET_SPREADSHEET_ID: "same-spreadsheet",
+    });
+    const generateSecret = vi.fn(() => "replacement-secret");
+
+    const secret = bootstrapApiSecret(props, "same-spreadsheet", generateSecret);
+
+    expect(secret).toBe("existing-secret");
+    expect(generateSecret).not.toHaveBeenCalled();
   });
 
-  it("the secret shown in the alert is the same value stored in properties", () => {
-    let counter = 0;
-    const countingSecret = () => `secret-${++counter}`;
-    runSetup(makeProps(), makeUi(), countingSecret);
-    const stored = mockSetProperty.mock.calls[0][1];
-    const shown = mockAlert.mock.calls[0][0];
-    expect(shown).toBe(stored);
+  it("replaces an inherited secret when a copied spreadsheet has a new identity", () => {
+    const { props, values } = makeMemoryProps({
+      API_SECRET: "source-template-secret",
+      API_SECRET_SPREADSHEET_ID: "source-template",
+    });
+
+    const secret = bootstrapApiSecret(props, "spreadsheet-copy", fakeSecret);
+
+    expect(secret).toBe("test-uuid-1234");
+    expect(values).toEqual({
+      API_SECRET: "test-uuid-1234",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
   });
 
-  it("when no API_SECRET exists, proceeds without a confirmation dialog", () => {
-    runSetup(makeProps(null), makeUi(), fakeSecret);
-    expect(mockAlert).toHaveBeenCalledOnce();
-    expect(mockAlert).toHaveBeenCalledWith("test-uuid-1234");
+  it("adopts a legacy secret that predates spreadsheet identity metadata", () => {
+    const { props, values } = makeMemoryProps({ API_SECRET: "legacy-secret" });
+    const generateSecret = vi.fn(() => "replacement-secret");
+
+    const secret = bootstrapApiSecret(props, "legacy-spreadsheet", generateSecret);
+
+    expect(secret).toBe("legacy-secret");
+    expect(values.API_SECRET_SPREADSHEET_ID).toBe("legacy-spreadsheet");
+    expect(generateSecret).not.toHaveBeenCalled();
   });
 
-  it("when API_SECRET already exists, shows a YES/NO confirmation before proceeding", () => {
+  it("repairs partial properties when the stored secret is empty", () => {
+    const { props, values } = makeMemoryProps({
+      API_SECRET: "",
+      API_SECRET_SPREADSHEET_ID: "same-spreadsheet",
+    });
+
+    const secret = bootstrapApiSecret(props, "same-spreadsheet", fakeSecret);
+
+    expect(secret).toBe("test-uuid-1234");
+    expect(values.API_SECRET).toBe("test-uuid-1234");
+  });
+
+  it("repairs partial properties when only the spreadsheet identity remains", () => {
+    const { props, values } = makeMemoryProps({
+      API_SECRET_SPREADSHEET_ID: "same-spreadsheet",
+    });
+
+    bootstrapApiSecret(props, "same-spreadsheet", fakeSecret);
+
+    expect(values.API_SECRET).toBe("test-uuid-1234");
+  });
+});
+
+describe("rotateApiSecret", () => {
+  it("deliberately replaces the secret while preserving its spreadsheet binding", () => {
+    const { props, values } = makeMemoryProps({
+      API_SECRET: "existing-secret",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
     mockAlert.mockReturnValueOnce(Button.YES);
-    runSetup(makeProps("existing-secret"), makeUi(), fakeSecret);
-    expect(mockAlert).toHaveBeenCalledWith(
-      expect.stringContaining("already exists"),
-      ButtonSet.YES_NO
+
+    const secret = rotateApiSecret(
+      props,
+      makeUi(),
+      "spreadsheet-copy",
+      fakeSecret
     );
+
+    expect(secret).toBe("test-uuid-1234");
+    expect(values).toEqual({
+      API_SECRET: "test-uuid-1234",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
   });
 
-  it("when API_SECRET exists and user clicks NO, does not overwrite the secret", () => {
+  it("leaves the existing secret unchanged when rotation is cancelled", () => {
+    const { props, values } = makeMemoryProps({
+      API_SECRET: "existing-secret",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
     mockAlert.mockReturnValueOnce(Button.NO);
-    runSetup(makeProps("existing-secret"), makeUi(), fakeSecret);
-    expect(mockSetProperty).not.toHaveBeenCalled();
+
+    const secret = rotateApiSecret(
+      props,
+      makeUi(),
+      "spreadsheet-copy",
+      fakeSecret
+    );
+
+    expect(secret).toBeNull();
+    expect(values.API_SECRET).toBe("existing-secret");
+  });
+});
+
+describe("buildConnectionDetailsHtml", () => {
+  it("renders the API secret in a selectable field with a copy action", () => {
+    const html = buildConnectionDetailsHtml("test-uuid-1234");
+
+    expect(html).toContain('value="test-uuid-1234"');
+    expect(html).toContain("readonly");
+    expect(html).toContain("navigator.clipboard.writeText");
+    expect(html).toContain("Copy secret");
   });
 
-  it("when API_SECRET exists and user clicks YES, overwrites with the new secret", () => {
-    mockAlert.mockReturnValueOnce(Button.YES);
-    runSetup(makeProps("existing-secret"), makeUi(), fakeSecret);
-    expect(mockSetProperty).toHaveBeenCalledWith("API_SECRET", "test-uuid-1234");
+  it("escapes an opaque secret before placing it in HTML", () => {
+    const html = buildConnectionDetailsHtml('words & "symbols"');
+
+    expect(html).toContain('value="words &amp; &quot;symbols&quot;"');
+    expect(html).not.toContain('value="words & "symbols""');
   });
 });

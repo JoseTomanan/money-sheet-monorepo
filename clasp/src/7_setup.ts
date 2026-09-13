@@ -1,11 +1,27 @@
-function setup(): void {
+function showSecretDialog(secret: string): void {
+  const output = HtmlService.createHtmlOutput(buildConnectionDetailsHtml(secret))
+    .setWidth(520)
+    .setHeight(230);
+  SpreadsheetApp.getUi().showModalDialog(output, "Money Sheet connection");
+}
+
+function showConnectionDetails(): void {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  runSetup(
+  const secret = bootstrapApiSecret(
     PropertiesService.getScriptProperties(),
-    SpreadsheetApp.getUi(),
+    ss.getId(),
     () => Utilities.getUuid()
   );
-  ensureConfigSheet(ss);
-  ensureStatsSheet(ss);
-  ensureMutationIdColumn();
+  showSecretDialog(secret);
+}
+
+function rotateConnectionSecret(): void {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const secret = rotateApiSecret(
+    PropertiesService.getScriptProperties(),
+    SpreadsheetApp.getUi(),
+    ss.getId(),
+    () => Utilities.getUuid()
+  );
+  if (secret !== null) showSecretDialog(secret);
 }

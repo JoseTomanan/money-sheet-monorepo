@@ -26,17 +26,13 @@ Google Sheets acts as the database. A Google Apps Script web app is deployed as 
 
 ### 1. Copy the template
 
-Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/1dW0X378z9MXCqZ9YK2oxCqk3FjX6TUP2h7yLSdjmd6g/template/preview) and click **Use Template**. This creates your own copy with all three sheets pre-configured (INCOMING/OUTGOING, MASTER, Categories) and the GAS script already attached.
+Open the [Google Sheet template](https://docs.google.com/spreadsheets/d/1dW0X378z9MXCqZ9YK2oxCqk3FjX6TUP2h7yLSdjmd6g/template/preview) and click **Use Template**. This creates your own copy with INCOMING/OUTGOING, MASTER, Categories, Config, and STATS pre-configured and the GAS script already attached.
 
-### 2. Run setup
+### 2. Copy the API secret
 
-In your new sheet, open the **Autohide → Run setup** menu item. This:
-- Generates a random API secret, saves it to Script Properties, and shows it in an alert — copy it now.
-- Creates a **Config** sheet with default settings (currency symbol: `₱`, plus an empty `nickname`).
-- Creates the formula-driven **STATS** sheet that powers the summary view.
-- Adds the `MUTATION ID` header in column I of **INCOMING/OUTGOING**; existing rows remain blank.
+Opening the copied sheet automatically provisions a unique API secret for that copy. Open **Connection → Show connection details**, then click **Copy secret**. The secret stays the same whenever you reopen this spreadsheet.
 
-Alternatively, open **Extensions → Apps Script**, select the `setup` function, and click **Run**.
+Keep the secret private. If it is compromised, use **Connection → Rotate API secret** and update every saved app Connection; rotation immediately invalidates the previous secret.
 
 ### 3. Deploy the web app
 
