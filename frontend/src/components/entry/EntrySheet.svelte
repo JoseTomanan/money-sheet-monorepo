@@ -48,8 +48,14 @@
   async function handleSave() {
     if (saving || form.saveDisabled) return;
     saving = true;
+    const mutation = form.buildMutation(entry?.id);
+    if (mutation.type === 'add') {
+      void onsave(mutation);
+      onclose();
+      return;
+    }
     try {
-      const saved = await onsave(form.buildMutation(entry?.id));
+      const saved = await onsave(mutation);
       if (saved) onclose();
     } finally {
       saving = false;
