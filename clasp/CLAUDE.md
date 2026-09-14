@@ -9,9 +9,9 @@ Run from `clasp/`:
 ```bash
 npm install
 npx tsc --noEmit          # type-check only
-npm run build             # tsc → dist/, then strip exports from dist/lib/
+npm run build             # tsc → dist/, then flatten/validate GAS modules
 npm run push              # build + clasp push to GAS
-npm test                  # vitest watch (lib tests only)
+npm test                  # vitest watch (lib and build/architecture tests)
 npm run test:run          # vitest run (CI / single pass)
 npx vitest run src/lib/weeks.test.ts   # run a single test file
 ```
@@ -22,9 +22,11 @@ npx vitest run src/lib/weeks.test.ts   # run a single test file
 
 GAS loads all files from `dist/` alphabetically in a single global scope — there are no modules at runtime. The numeric filename prefixes (`0_types.ts`, `1_sheets.ts`, …, `9_main.ts`) set load order explicitly. Types defined in earlier files are therefore available to later ones without any imports.
 
-### src/lib/ — testable pure functions
+### src/lib/ — testable modules and dependency roles
 
-Files under `src/lib/` (e.g. `weeks.ts`, `setup.ts`, `menu.ts`) use ES `export` keywords so Vitest can import them. The `scripts/strip-exports.js` post-build step rewrites `dist/lib/*.js` to remove the `export` keyword, making them plain globals at GAS runtime.
+Files under `src/lib/` use ES module syntax so Vitest and the frontend's narrow pure-module imports can consume them. Production modules are migrating into `domain/`, `application/`, `presentation/`, and `infrastructure/`; only `composition.ts` may wire Presentation to Infrastructure. `scripts/architecture.test.js` enforces that dependency direction while exact migration allowlists permit the remaining flat modules and root artifacts.
+
+The `scripts/strip-exports.js` post-build step recursively reads compiled role modules, validates supported module syntax and exported-global uniqueness, and emits deterministic flat filenames in dependency order. It strips supported relative imports/exports because GAS has no module loader. Existing flat `lib` modules remain supported during migration; never bypass this step or hand-edit `dist/`.
 
 The corresponding `_*_globals.ts` files (`_week_globals.ts`, `_setup_globals.ts`, `_menu_globals.ts`, `_config_globals.ts`, `_entries_globals.ts`, `_dispatch_globals.ts`, `_repository_globals.ts`, `_locking_globals.ts`) declare ambient global types so the non-module GAS files can call those functions without TypeScript errors. They're plain `.ts` files, not `.d.ts` — `tsconfig.json` sets `skipLibCheck: true`, which silently skips type-checking of `.d.ts` files (including hand-written ones), so a `.d.ts` mirror could drift from the lib module it mirrors without `tsc --noEmit` ever catching it. Each mirror derives its types from the corresponding `src/lib/*.ts` module via `typeof import(...)` rather than hand-copying the signature, so a drift there is a compile error (issue #109). `_contract_parity.ts` additionally asserts the GAS-global domain types in `0_types.ts`/`2_entries.ts` stay structurally identical to `src/lib/dispatch.ts`'s canonical wire types.
 
