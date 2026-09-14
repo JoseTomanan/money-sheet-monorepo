@@ -1,31 +1,71 @@
 name: Deploy GAS
 
 on:
-  push:
+  pull_request:
     branches: [main]
+    types: [closed]
     paths:
       - "clasp/**"
       - ".github/workflows/gas-deploy.yml"
-  workflow_dispatch:
+
+concurrency:
+  group: deploy-gas-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
+    name: Deploy ${{ matrix.target }}
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ matrix.target }}
+      url: ${{ steps.target.outputs.url }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [gas-personal, gas-template]
     defaults:
       run:
         working-directory: clasp
+    env:
+      CLASP_SCRIPT_ID: ${{ vars.CLASP_SCRIPT_ID }}
+      CLASP_DEPLOYMENT_ID: ${{ vars.CLASP_DEPLOYMENT_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: clasp/package-lock.json
       - run: npm ci
+      - name: Validate target configuration
+        run: |
+          test -n "$CLASP_SCRIPT_ID" || { echo "CLASP_SCRIPT_ID is not configured for ${{ matrix.target }}" >&2; exit 1; }
+          test -n "$CLASP_DEPLOYMENT_ID" || { echo "CLASP_DEPLOYMENT_ID is not configured for ${{ matrix.target }}" >&2; exit 1; }
+      - name: Select Apps Script project
+        run: |
+          node -e 'const fs = require("fs"); const config = JSON.parse(fs.readFileSync(".clasp.json", "utf8")); config.scriptId = process.env.CLASP_SCRIPT_ID; fs.writeFileSync(".clasp.json", JSON.stringify(config, null, 2) + "\n");'
       - name: Write clasp credentials
-        run: echo "$CLASP_CREDENTIALS" > ~/.clasprc.json
+        run: |
+          test -n "$CLASP_CREDENTIALS" || { echo "CLASP_CREDENTIALS is not configured" >&2; exit 1; }
+          printf '%s' "$CLASP_CREDENTIALS" > ~/.clasprc.json
+          chmod 600 ~/.clasprc.json
         env:
           CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+      - run: npm run test:run
       - run: npm run build
       - run: npx @google/clasp push -f
-      - run: npx @google/clasp deploy --deploymentId AKfycbxdLiLCsSghYoyKEF5qk0yV8eBUCIDpFEZrWwlmjC-qS1FdZEIdGocV3BQ9TYjK74Xonw --description "Frontend API"
+      - name: Redeploy stable web app URL
+        run: npx @google/clasp deploy --deploymentId "$CLASP_DEPLOYMENT_ID" --description "${{ matrix.target }} from ${{ github.event.pull_request.merge_commit_sha }}"
+      - name: Record target URL
+        id: target
+        run: echo "url=https://script.google.com/macros/s/${CLASP_DEPLOYMENT_ID}/exec" >> "$GITHUB_OUTPUT"
+      - name: Smoke-test deployed API
+        run: |
+          response="$(curl --fail --silent --show-error --location --retry 2 --retry-delay 2 "${{ steps.target.outputs.url }}?action=getConfig")"
+          echo "$response" | jq -e '.ok == true' > /dev/null
