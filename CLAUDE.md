@@ -97,7 +97,7 @@ selection; do not introduce SvelteKit or browser-path routing.
 
 ## Deployment
 
-- **GAS**: GitHub Actions runs `clasp push -f` on push to `master`, using `CLASP_CREDENTIALS` secret
+- **GAS**: after a PR with `clasp/**` changes is merged into `main`, GitHub Actions builds, tests, pushes, redeploys, and smoke-tests both the personal and template-bound Apps Script projects. Target IDs come from the `gas-personal` and `gas-template` GitHub environments; both use the `CLASP_CREDENTIALS` secret. Direct pushes and manual dispatch do not deploy (ADR-0015).
 - **Frontend**: GitHub Actions builds `frontend/` and deploys `dist/` to GitHub Pages
 
 ## ADRs
