@@ -3,7 +3,7 @@ import {
   bootstrapApiSecret,
   buildConnectionDetailsHtml,
   rotateApiSecret,
-} from "./setup";
+} from "./infrastructure/setup";
 
 const mockAlert = vi.fn();
 

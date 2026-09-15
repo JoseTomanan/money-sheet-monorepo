@@ -178,6 +178,16 @@ function exportedGlobalNames(content, fileName) {
 
 function flattenCompiledLib(root) {
   const distLib = path.join(root, "dist", "lib");
+  if (fs.existsSync(distLib)) {
+    const nestedSources = fs
+      .readdirSync(distLib, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .flatMap((entry) => compiledJavaScriptFiles(path.join(distLib, entry.name)));
+    for (const sourcePath of nestedSources) {
+      const relativePath = path.relative(distLib, sourcePath);
+      fs.rmSync(path.join(distLib, flattenedName(relativePath)), { force: true });
+    }
+  }
   const files = compiledJavaScriptFiles(distLib);
   const outputs = new Map();
   const globals = new Map();
@@ -224,6 +234,33 @@ function flattenCompiledLib(root) {
 }
 
 function build(root = path.join(__dirname, "..")) {
+  const srcRoot = path.join(root, "src");
+  const distRoot = path.join(root, "dist");
+  if (fs.existsSync(distRoot)) {
+    for (const entry of fs.readdirSync(distRoot, { withFileTypes: true })) {
+      if (
+        entry.isFile() &&
+        entry.name.endsWith(".js") &&
+        !fs.existsSync(path.join(srcRoot, entry.name.replace(/\.js$/, ".ts")))
+      ) {
+        fs.rmSync(path.join(distRoot, entry.name));
+      }
+    }
+
+    const distLib = path.join(distRoot, "lib");
+    if (fs.existsSync(distLib)) {
+      for (const entry of fs.readdirSync(distLib, { withFileTypes: true })) {
+        if (
+          entry.isFile() &&
+          entry.name.endsWith(".js") &&
+          entry.name !== "composition.js" &&
+          !/^[1-4]_(domain|application|presentation|infrastructure)__/.test(entry.name)
+        ) {
+          fs.rmSync(path.join(distLib, entry.name));
+        }
+      }
+    }
+  }
   flattenCompiledLib(root);
   fs.copyFileSync(
     path.join(root, "src", "appsscript.json"),

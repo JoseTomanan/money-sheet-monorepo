@@ -9,7 +9,7 @@ import {
   decodePendingSync,
   runCategorySync,
   retryCategorySync,
-} from "./categorySync";
+} from "./infrastructure/categorySync";
 
 /**
  * classifyCategoryEdit(input)

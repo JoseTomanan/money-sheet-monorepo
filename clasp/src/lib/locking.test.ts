@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runExclusive } from "./locking";
+import { runExclusive } from "./infrastructure/locking";
 
 describe("runExclusive", () => {
   it("waits for the lock, runs fn, and returns fn's result", () => {

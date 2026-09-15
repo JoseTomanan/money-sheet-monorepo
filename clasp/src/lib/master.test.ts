@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMasterRows } from "./master";
+import { parseMasterRows } from "./infrastructure/master";
 
 describe("parseMasterRows", () => {
   it("returns ON HAND and every recognized Category budget", () => {

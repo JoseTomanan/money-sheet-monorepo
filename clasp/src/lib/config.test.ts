@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseConfigRows, ensureConfigSheet } from "./config";
+import { parseConfigRows, ensureConfigSheet } from "./infrastructure/config";
 
 // ---------------------------------------------------------------------------
 // parseConfigRows

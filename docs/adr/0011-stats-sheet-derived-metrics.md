@@ -48,7 +48,7 @@ that client-side computation and replacing it with a sheet-formula
 equivalent is tracked as its own epic sub-issue (#128, "Retire client-side
 aggregation") — this ADR records the *decision*, not the migration.
 
-**Wire shape** (`clasp/src/lib/dispatch.ts`):
+**Wire shape** (`clasp/src/lib/application/dispatch.ts`):
 
 ```ts
 interface CategoryMonthChange {

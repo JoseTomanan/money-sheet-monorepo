@@ -1,11 +1,8 @@
 import type {
-  Direction,
-  EntryData as Entry,
   AddEntryPayload,
   AddEntryRequest,
   AddEntriesPayload,
   UpdateEntryPatch,
-  CategoryMap,
   ConfigMap,
   CategoryMonthChange,
   SpendingPaceDay,
@@ -13,16 +10,17 @@ import type {
   WindowTotal,
   WindowCategorySpend,
   StatsData,
-} from "../../clasp/src/lib/dispatch";
+} from "../../clasp/src/lib/application/dispatch";
+import type { Direction, Entry } from "../../clasp/src/lib/domain/entry";
+import type { CategoryMap } from "../../clasp/src/lib/domain/category";
 
+export type { Direction, Entry } from "../../clasp/src/lib/domain/entry";
+export type { CategoryMap } from "../../clasp/src/lib/domain/category";
 export type {
-  Direction,
-  EntryData as Entry,
   AddEntryPayload,
   AddEntryRequest,
   AddEntriesPayload,
   UpdateEntryPatch,
-  CategoryMap,
   ConfigMap,
   CategoryMonthChange,
   SpendingPaceDay,
@@ -30,7 +28,7 @@ export type {
   WindowTotal,
   WindowCategorySpend,
   StatsData,
-} from "../../clasp/src/lib/dispatch";
+} from "../../clasp/src/lib/application/dispatch";
 
 function requireEnv(name: string): string {
   const v = process.env[name];

@@ -21,7 +21,7 @@ import {
   type AddEntryRequest,
   type ApiResponse,
   type DispatchDeps,
-} from "../../../clasp/src/lib/dispatch";
+} from "../../../clasp/src/lib/application/dispatch";
 import {
   findEntriesByMutationId,
   insertEntries,
@@ -33,7 +33,7 @@ import {
   type EntryFields,
   type IoRepository,
   type IoRow,
-} from "../../../clasp/src/lib/repository";
+} from "../../../clasp/src/lib/infrastructure/entryRepository";
 
 function daysAgo(n: number): string {
   const [y, m, d] = today().split('-').map(Number);
