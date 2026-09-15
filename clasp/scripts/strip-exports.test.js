@@ -88,7 +88,7 @@ describe("GAS module flattening", () => {
     );
   });
 
-  it("emits every role deterministically while preserving legacy artifacts", () => {
+  it("emits every role deterministically while pruning legacy artifacts", () => {
     const root = fixture({
       "domain/value.js": "export const domainValue = 1;\n",
       "application/use-case.js": "export const applicationValue = 2;\n",
@@ -98,6 +98,7 @@ describe("GAS module flattening", () => {
       "legacy.js": "export const legacyValue = 0;\n",
     });
     writeFileSync(join(root, "src", "appsscript.json"), '{"timeZone":"UTC"}\n');
+    writeFileSync(join(root, "src", "9_main.ts"), "function doGet() {}\n");
     writeFileSync(join(root, "dist", "9_main.js"), "function doGet() {}\n");
 
     build(root);
@@ -121,7 +122,6 @@ describe("GAS module flattening", () => {
         ["3_presentation__http.js", "const presentationValue = 3;\n"],
         ["4_infrastructure__sheets.js", "const infrastructureValue = 4;\n"],
         ["composition.js", "const compositionValue = 5;\n"],
-        ["legacy.js", "const legacyValue = 0;\n"],
       ],
       second: first,
       manifest: '{"timeZone":"UTC"}\n',
@@ -140,6 +140,31 @@ describe("GAS module flattening", () => {
     expect(
       existsSync(join(root, "dist", "lib", "1_domain__valid.js"))
     ).toBe(false);
+  });
+
+  it("prunes compiled root files whose TypeScript entrypoints were removed", () => {
+    const root = fixture({
+      "domain/value.js": "export const domainValue = 1;\n",
+    });
+    writeFileSync(join(root, "dist", "2_entries.js"), "function stale() {}\n");
+
+    build(root);
+
+    expect(existsSync(join(root, "dist", "2_entries.js"))).toBe(false);
+  });
+
+  it("replaces stale flattened role artifacts on an incremental build", () => {
+    const root = fixture({
+      "application/action.js": "export const action = 'new';\n",
+      "2_application__action.js": "const action = 'stale';\n",
+    });
+
+    flattenCompiledLib(root);
+
+    expect(readFileSync(
+      join(root, "dist", "lib", "2_application__action.js"),
+      "utf8",
+    )).toBe("const action = 'new';\n");
   });
 
   it("detects globals exported through a local export list", () => {
