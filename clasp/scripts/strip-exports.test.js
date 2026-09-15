@@ -12,6 +12,8 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
+const vm = require("node:vm");
+const ts = require("typescript");
 const { build, flattenCompiledLib } = require("./strip-exports.js");
 
 function fixture(files) {
@@ -26,7 +28,68 @@ function fixture(files) {
   return root;
 }
 
+function productionFixture() {
+  const root = mkdtempSync(join(tmpdir(), "money-sheet-production-build-"));
+  const sourceRoot = join(import.meta.dirname, "..", "src");
+
+  function compileDirectory(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const sourcePath = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        compileDirectory(sourcePath);
+      } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
+        const relativePath = sourcePath
+          .slice(sourceRoot.length + 1)
+          .replace(/\.ts$/, ".js");
+        const outputPath = join(root, "dist", relativePath);
+        mkdirSync(dirname(outputPath), { recursive: true });
+        const output = ts.transpileModule(readFileSync(sourcePath, "utf8"), {
+          compilerOptions: {
+            alwaysStrict: true,
+            module: ts.ModuleKind.ES2015,
+            target: ts.ScriptTarget.ES2019,
+          },
+          fileName: sourcePath,
+        }).outputText;
+        writeFileSync(outputPath, output);
+      }
+    }
+  }
+
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(
+    join(root, "src", "appsscript.json"),
+    readFileSync(join(sourceRoot, "appsscript.json"), "utf8"),
+  );
+  compileDirectory(sourceRoot);
+  return root;
+}
+
+function javascriptFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const entryPath = join(directory, entry.name);
+      return entry.isDirectory() ? javascriptFiles(entryPath) : [entryPath];
+    })
+    .filter((filePath) => filePath.endsWith(".js"))
+    .sort();
+}
+
 describe("GAS module flattening", () => {
+  it("evaluates the complete generated program in GAS shared-global order", () => {
+    const root = productionFixture();
+    build(root);
+    const context = vm.createContext({});
+
+    expect(() => {
+      for (const filePath of javascriptFiles(join(root, "dist"))) {
+        vm.runInContext(readFileSync(filePath, "utf8"), context, {
+          filename: filePath,
+        });
+      }
+    }).not.toThrow();
+  });
+
   it("flattens a nested Domain module and removes cross-directory module syntax", () => {
     const root = fixture({
       "domain/rules.js":

@@ -55,15 +55,17 @@ export interface EntryFields {
 // Maps EntryFields keys to their 1-based sheet column, in column order.
 // Col D (MAIN_CAT) is never a key here — it is ARRAYFORMULA-driven and must
 // never be written, so it's naturally excluded from any run.
-const FIELD_COLUMNS: [keyof EntryFields, number][] = [
-  ["date", SHEET_LAYOUT.io.columns.date],
-  ["tag", SHEET_LAYOUT.io.columns.tag],
-  ["description", SHEET_LAYOUT.io.columns.description],
-  ["direction", SHEET_LAYOUT.io.columns.direction],
-  ["amount", SHEET_LAYOUT.io.columns.amount],
-  ["id", SHEET_LAYOUT.io.columns.entryId],
-  ["mutationId", SHEET_LAYOUT.io.columns.mutationId],
-];
+function fieldColumns(): [keyof EntryFields, number][] {
+  return [
+    ["date", SHEET_LAYOUT.io.columns.date],
+    ["tag", SHEET_LAYOUT.io.columns.tag],
+    ["description", SHEET_LAYOUT.io.columns.description],
+    ["direction", SHEET_LAYOUT.io.columns.direction],
+    ["amount", SHEET_LAYOUT.io.columns.amount],
+    ["id", SHEET_LAYOUT.io.columns.entryId],
+    ["mutationId", SHEET_LAYOUT.io.columns.mutationId],
+  ];
+}
 
 /**
  * Groups whichever `fields` are present into maximal consecutive-column runs,
@@ -78,7 +80,7 @@ export function planFieldWrites(
   let current: { startCol: number; values: unknown[] } | null = null;
   let lastCol = -Infinity;
 
-  for (const [key, col] of FIELD_COLUMNS) {
+  for (const [key, col] of fieldColumns()) {
     if (fields[key] === undefined) continue;
     if (current && col === lastCol + 1) {
       current.values.push(fields[key]);
