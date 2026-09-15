@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const {
   analyzeArchitecture,
+  analyzeGlobalBridge,
   CURRENT_ARCHITECTURE_POLICY,
   readProductionFiles,
 } = require("./architecture.js");
@@ -152,6 +153,88 @@ describe("clasp dependency roles", () => {
     const files = readProductionFiles(join(import.meta.dirname, "..", "src"));
 
     expect(analyzeArchitecture(files, CURRENT_ARCHITECTURE_POLICY)).toEqual([]);
+    expect(
+      analyzeGlobalBridge(files, CURRENT_ARCHITECTURE_POLICY.rootEntrypoints)
+    ).toEqual([]);
+  });
+
+  it("rejects a hand-copied composition declaration in the GAS bridge", () => {
+    expect(
+      analyzeGlobalBridge(
+        {
+          "src/_globals.ts": "declare const compositionDoGet: (event: unknown) => unknown;\n",
+          "src/lib/composition.ts": "export function compositionDoGet(event: unknown) { return event; }\n",
+          "src/9_main.ts": "function doGet(event: unknown) { return compositionDoGet(event); }\n",
+        },
+        ["src/9_main.ts"]
+      )
+    ).toEqual([
+      expect.stringMatching(/_globals\.ts.*compositionDoGet.*typeof import/i),
+    ]);
+  });
+
+  it("rejects a bridge that omits a composition global used by a root entrypoint", () => {
+    expect(
+      analyzeGlobalBridge(
+        {
+          "src/_globals.ts":
+            'declare const compositionDoGet: typeof import("./lib/composition").compositionDoGet;\n',
+          "src/lib/composition.ts":
+            "export const compositionDoGet = () => undefined;\nexport const compositionDoPost = () => undefined;\n",
+          "src/9_main.ts":
+            "function doGet() { return compositionDoGet(); }\nfunction doPost() { return compositionDoPost(); }\n",
+        },
+        ["src/9_main.ts"]
+      )
+    ).toEqual([
+      expect.stringMatching(/9_main\.ts.*compositionDoPost.*missing.*_globals\.ts/i),
+    ]);
+  });
+
+  it("rejects an unused composition declaration in the GAS bridge", () => {
+    expect(
+      analyzeGlobalBridge(
+        {
+          "src/_globals.ts":
+            'declare const compositionDoGet: typeof import("./lib/composition").compositionDoGet;\ndeclare const compositionUnused: typeof import("./lib/composition").compositionUnused;\n',
+          "src/lib/composition.ts":
+            "export const compositionDoGet = () => undefined;\nexport const compositionUnused = () => undefined;\n",
+          "src/9_main.ts": "function doGet() { return compositionDoGet(); }\n",
+        },
+        ["src/9_main.ts"]
+      )
+    ).toEqual([
+      expect.stringMatching(/_globals\.ts.*compositionUnused.*not used.*root entrypoint/i),
+    ]);
+  });
+
+  it("rejects a hand-copied wire type in the GAS bridge", () => {
+    expect(
+      analyzeGlobalBridge(
+        {
+          "src/_globals.ts": "type Entry = { id: number };\n",
+          "src/lib/composition.ts": "export const compositionDoGet = () => undefined;\n",
+        },
+        []
+      )
+    ).toEqual([
+      expect.stringMatching(/_globals\.ts type Entry.*import\(\.\.\.\)/i),
+    ]);
+  });
+
+  it("rejects a second ambient GAS bridge", () => {
+    expect(
+      analyzeGlobalBridge(
+        {
+          "src/_globals.ts": "",
+          "src/_entries_globals.ts": "declare const addEntry: () => void;\n",
+          "src/lib/composition.ts": "",
+        },
+        []
+      )
+    ).toEqual([
+      expect.stringMatching(/_entries_globals\.ts.*extra ambient GAS bridge/i),
+    ]);
   });
 
   it("finishes the migration with only explicit root entrypoints and no exemptions", () => {

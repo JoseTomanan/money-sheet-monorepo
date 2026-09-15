@@ -101,6 +101,155 @@ function staticImports(source, fileName) {
   return specifiers;
 }
 
+function hasDeclareModifier(statement) {
+  return statement.modifiers?.some(
+    (modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword
+  );
+}
+
+function isCompositionTypeQuery(type, name, source) {
+  if (!type) return false;
+  const text = type.getText(source).replaceAll(/\s+/g, "");
+  return text === `typeofimport(\"./lib/composition\").${name}` ||
+    text === `typeofimport('./lib/composition').${name}`;
+}
+
+function isModuleDerivedType(type, source) {
+  const text = type.getText(source).replaceAll(/\s+/g, "");
+  return /^(?:typeof)?import\((["']).+\1\)\.[A-Za-z_$][\w$]*$/.test(text);
+}
+
+function exportedValueNames(source, fileName) {
+  const parsed = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const names = new Set();
+  for (const statement of parsed.statements) {
+    const exported = statement.modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+    );
+    if (!exported) continue;
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) names.add(declaration.name.text);
+      }
+    } else if (
+      (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
+      statement.name
+    ) {
+      names.add(statement.name.text);
+    }
+  }
+  return names;
+}
+
+function identifierNames(source, fileName, candidates) {
+  const parsed = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const names = new Set();
+  function visit(node) {
+    if (ts.isIdentifier(node) && candidates.has(node.text)) names.add(node.text);
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  return names;
+}
+
+function analyzeGlobalBridge(files, rootEntrypoints) {
+  const normalizedFiles = Object.fromEntries(
+    Object.entries(files).map(([filePath, source]) => [normalized(filePath), source])
+  );
+  const bridgePath = "src/_globals.ts";
+  const bridge = normalizedFiles[bridgePath];
+  const violations = Object.keys(normalizedFiles)
+    .filter((filePath) => /^src\/_[^/]+_globals\.ts$/.test(filePath))
+    .sort()
+    .map((filePath) => `${filePath} is an extra ambient GAS bridge`);
+  if (bridge === undefined) return [...violations, `${bridgePath} is missing`];
+
+  const source = ts.createSourceFile(
+    bridgePath,
+    bridge,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const declarations = new Set();
+  for (const statement of source.statements) {
+    if (ts.isTypeAliasDeclaration(statement)) {
+      if (!isModuleDerivedType(statement.type, source)) {
+        violations.push(
+          `${bridgePath} type ${statement.name.text} must use import(...)`
+        );
+      }
+      continue;
+    }
+    if (ts.isInterfaceDeclaration(statement)) {
+      violations.push(
+        `${bridgePath} interface ${statement.name.text} must use import(...)`
+      );
+      continue;
+    }
+    if (!ts.isVariableStatement(statement) || !hasDeclareModifier(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const name = declaration.name.text;
+      if (name.startsWith("composition")) declarations.add(name);
+      if (
+        name.startsWith("composition") &&
+        !isCompositionTypeQuery(declaration.type, name, source)
+      ) {
+        violations.push(
+          `${bridgePath} declaration ${name} must use typeof import(\"./lib/composition\")`
+        );
+      }
+    }
+  }
+
+  const compositionPath = "src/lib/composition.ts";
+  const composition = normalizedFiles[compositionPath];
+  if (composition === undefined) {
+    violations.push(`${compositionPath} is missing`);
+    return violations;
+  }
+  const compositionExports = exportedValueNames(composition, compositionPath);
+  const usedByRoots = new Set();
+  for (const rootEntrypoint of rootEntrypoints) {
+    const rootPath = normalized(rootEntrypoint);
+    const root = normalizedFiles[rootPath];
+    if (root === undefined) continue;
+    for (const name of identifierNames(root, rootPath, compositionExports)) {
+      usedByRoots.add(name);
+      if (!declarations.has(name)) {
+        violations.push(
+          `${rootPath} uses ${name}, which is missing from ${bridgePath}`
+        );
+      }
+    }
+  }
+  for (const name of declarations) {
+    if (!compositionExports.has(name)) {
+      violations.push(
+        `${bridgePath} declaration ${name} is not exported by ${compositionPath}`
+      );
+    } else if (!usedByRoots.has(name)) {
+      violations.push(
+        `${bridgePath} declaration ${name} is not used by a root entrypoint`
+      );
+    }
+  }
+  return violations;
+}
+
 function readProductionFiles(srcRoot) {
   const files = {};
   function walk(directory) {
@@ -230,6 +379,7 @@ function analyzeArchitecture(files, policy = null) {
 
 module.exports = {
   analyzeArchitecture,
+  analyzeGlobalBridge,
   CURRENT_ARCHITECTURE_POLICY,
   readProductionFiles,
 };
