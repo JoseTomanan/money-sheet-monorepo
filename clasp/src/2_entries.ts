@@ -10,7 +10,7 @@ function formatEntryDate(raw: unknown): string {
 }
 
 function getEntries(): Entry[] {
-  return listEntries(liveIoRepository(), formatEntryDate);
+  return entryApplication().list();
 }
 
 interface AddEntryPayload {
@@ -39,38 +39,12 @@ type IdempotentAddEntriesResult =
   | { status: "mismatch" };
 
 function addEntry(request: AddEntryRequest): IdempotentAddEntryResult {
-  return runExclusive(LockService.getDocumentLock(), 10_000, () => {
-    const repo = liveIoRepository();
-    const rows = repo.readRows();
-    const existing = findEntriesByMutationId(rows, request.mutationId, formatEntryDate);
-    if (existing.length > 0) {
-      return payloadsMatch(existing, [request])
-        ? { status: "duplicate", entry: existing[0] }
-        : { status: "mismatch" };
-    }
-    return {
-      status: "created",
-      entry: insertEntry(repo, request, request.mutationId, rows),
-    };
-  });
+  return entryApplication().add(request);
 }
 
 /** Inserts all legs under one document-lock acquisition (issue #111). */
 function addEntries(request: AddEntriesPayload): IdempotentAddEntriesResult {
-  return runExclusive(LockService.getDocumentLock(), 10_000, () => {
-    const repo = liveIoRepository();
-    const rows = repo.readRows();
-    const existing = findEntriesByMutationId(rows, request.mutationId, formatEntryDate);
-    if (existing.length > 0) {
-      return payloadsMatch(existing, request.entries)
-        ? { status: "duplicate", entries: existing }
-        : { status: "mismatch" };
-    }
-    return {
-      status: "created",
-      entries: insertEntries(repo, request.entries, request.mutationId, rows),
-    };
-  });
+  return entryApplication().addMany(request);
 }
 
 interface UpdateEntryPatch {
@@ -82,11 +56,61 @@ interface UpdateEntryPatch {
 }
 
 function updateEntry(id: number, patch: UpdateEntryPatch): void {
-  runExclusive(LockService.getDocumentLock(), 10_000, () =>
-    patchEntry(liveIoRepository(), id, patch, formatEntryDate)
-  );
+  const result = entryApplication().update(id, patch);
+  if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
 }
 
 function deleteEntry(id: number): void {
-  runExclusive(LockService.getDocumentLock(), 10_000, () => removeEntry(liveIoRepository(), id));
+  const result = entryApplication().remove(id);
+  if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
+}
+
+function applicationEntryRepository(io: IoRepository): EntryRepository {
+  let rows: IoRow[] | null = null;
+  const snapshot = (): IoRow[] => rows ??= io.readRows();
+  return {
+    list: () => listEntries(io, formatEntryDate),
+    findByMutationId: (mutationId) => findEntriesByMutationId(
+      snapshot(),
+      mutationId,
+      formatEntryDate,
+    ).map((entry) => ({ ...entry, mutationId })),
+    insert: (request) => insertEntry(io, request, request.mutationId, snapshot()),
+    insertMany: (request) => insertEntries(
+      io,
+      request.entries,
+      request.mutationId,
+      snapshot(),
+    ),
+    update: (id, patch) => {
+      try {
+        patchEntry(io, id, patch, formatEntryDate);
+        return true;
+      } catch (error) {
+        if (String(error).toLowerCase().includes("not found")) return false;
+        throw error;
+      }
+    },
+    remove: (id) => {
+      try {
+        removeEntry(io, id);
+        return true;
+      } catch (error) {
+        if (String(error).toLowerCase().includes("not found")) return false;
+        throw error;
+      }
+    },
+  };
+}
+
+function entryApplication(): ReturnType<typeof createEntryApplication> {
+  const io = liveIoRepository();
+  return createEntryApplication({
+    repository: applicationEntryRepository(io),
+    transact: (work) => runExclusive(
+      LockService.getDocumentLock(),
+      10_000,
+      () => work(applicationEntryRepository(io)),
+    ),
+  });
 }

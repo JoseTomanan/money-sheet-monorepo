@@ -7,9 +7,9 @@
 // asserts the GAS-global domain types from 0_types.ts stay structurally identical
 // to their canonical Domain counterparts.
 
-type DispatchErrorCode = import("./lib/dispatch").ErrorCode;
-type DispatchRequest = import("./lib/dispatch").DispatchRequest;
-type DispatchDeps = import("./lib/dispatch").DispatchDeps;
-type DispatchResponse = import("./lib/dispatch").ApiResponse;
+type DispatchErrorCode = import("./lib/application/dispatch").ErrorCode;
+type DispatchRequest = import("./lib/application/dispatch").DispatchRequest;
+type DispatchDeps = import("./lib/application/dispatch").DispatchDeps;
+type DispatchResponse = import("./lib/application/dispatch").ApiResponse;
 
-declare const dispatch: typeof import("./lib/dispatch").dispatch;
+declare const dispatch: typeof import("./lib/application/dispatch").dispatch;

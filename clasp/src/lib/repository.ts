@@ -7,11 +7,10 @@
  * The GAS-facing live adapter lives in 1_sheets.ts (liveIoRepository).
  */
 
-import { findRowByEntryId } from "./entries";
 import { findInsertionIndex } from "./domain/calendar";
 import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
 import type { Direction, Entry as EntryData } from "./domain/entry";
-import type { AddEntryPayload, UpdateEntryPatch } from "./dispatch";
+import type { AddEntryPayload, UpdateEntryPatch } from "./application/dispatch";
 
 // Coordinates live in SHEET_LAYOUT; this module derives returned-row positions.
 
@@ -21,6 +20,18 @@ export type IoRow = unknown[];
 
 function ioValue(row: IoRow, column: number): unknown {
   return row[columnIndexWithinRange(column, SHEET_LAYOUT.io.columns.date)];
+}
+
+export function findRowByEntryId(
+  idColumnValues: unknown[],
+  targetId: number,
+): number | null {
+  for (let i = 0; i < idColumnValues.length; i++) {
+    const raw = idColumnValues[i];
+    if (isSeparatorRow(raw)) continue;
+    if (Number(raw) === targetId) return i + SHEET_LAYOUT.io.rows.dataFirst;
+  }
+  return null;
 }
 
 /**
@@ -93,19 +104,6 @@ export interface IoRepository {
   insertRowBefore(sheetRow: number): void;
   /** Flushes pending writes and reads back the formula-driven Main Category (col D). */
   resolveMainCategory(sheetRow: number): string;
-}
-
-/**
- * The deliberately separate port used by weekly separator maintenance.
- * Entry writers do not need to implement visibility-only sheet operations.
- */
-export interface VisibilityRepository {
-  /** The single snapshot used by each visibility-maintenance phase. */
-  readRows(): IoRow[];
-  /** Inserts a fully-formed separator before the given 1-based sheet row. */
-  insertSeparatorRow(sheetRow: number, weekStart: string, label: string): void;
-  /** Shows or hides one consecutive 1-based sheet-row range. */
-  setRowVisibility(sheetRow: number, numRows: number, visible: boolean): void;
 }
 
 /**

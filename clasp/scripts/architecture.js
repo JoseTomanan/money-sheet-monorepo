@@ -49,7 +49,6 @@ const CURRENT_ARCHITECTURE_POLICY = Object.freeze({
     "src/lib/0_sheetLayout.ts",
     "src/lib/categorySync.ts",
     "src/lib/config.ts",
-    "src/lib/dispatch.ts",
     "src/lib/entries.ts",
     "src/lib/locking.ts",
     "src/lib/master.ts",
@@ -57,7 +56,6 @@ const CURRENT_ARCHITECTURE_POLICY = Object.freeze({
     "src/lib/repository.ts",
     "src/lib/setup.ts",
     "src/lib/stats.ts",
-    "src/lib/visibility.ts",
   ],
 });
 

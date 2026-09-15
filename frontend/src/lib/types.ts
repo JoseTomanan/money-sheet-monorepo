@@ -3,7 +3,7 @@ import type {
   AddEntryPayload,
   UpdateEntryPatch,
   StatsData,
-} from "../../../clasp/src/lib/dispatch";
+} from "../../../clasp/src/lib/application/dispatch";
 import type { Direction, Entry } from "../../../clasp/src/lib/domain/entry";
 import type { CategoryMap } from "../../../clasp/src/lib/domain/category";
 
@@ -21,7 +21,7 @@ export type {
   WindowTotal,
   WindowCategorySpend,
   StatsData,
-} from "../../../clasp/src/lib/dispatch";
+} from "../../../clasp/src/lib/application/dispatch";
 
 export interface Connection {
   gasUrl: string;

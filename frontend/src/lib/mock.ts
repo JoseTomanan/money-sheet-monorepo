@@ -21,7 +21,7 @@ import {
   type AddEntryRequest,
   type ApiResponse,
   type DispatchDeps,
-} from "../../../clasp/src/lib/dispatch";
+} from "../../../clasp/src/lib/application/dispatch";
 import {
   findEntriesByMutationId,
   insertEntries,

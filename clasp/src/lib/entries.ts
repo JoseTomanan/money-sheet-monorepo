@@ -6,8 +6,7 @@
  * 2_entries.ts call these helpers after acquiring the DocumentLock.
  */
 
-import { isSeparatorRow } from "./repository";
-import { SHEET_LAYOUT } from "./0_sheetLayout";
+export { findRowByEntryId } from "./repository";
 
 /**
  * Scans the raw values from the Entry-ID column (col H, row 2 onward) and
@@ -22,16 +21,3 @@ import { SHEET_LAYOUT } from "./0_sheetLayout";
  * @param targetId        The Entry ID to find (positive integer).
  * @returns               The 1-based sheet row index, or null if not found.
  */
-export function findRowByEntryId(
-  idColumnValues: unknown[],
-  targetId: number
-): number | null {
-  for (let i = 0; i < idColumnValues.length; i++) {
-    const raw = idColumnValues[i];
-    if (isSeparatorRow(raw)) continue;
-    if (Number(raw) === targetId) {
-      return i + SHEET_LAYOUT.io.rows.dataFirst;
-    }
-  }
-  return null;
-}

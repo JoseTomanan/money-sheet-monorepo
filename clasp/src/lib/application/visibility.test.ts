@@ -4,16 +4,15 @@ import {
   planMissingSeparators,
   planVisibilityRanges,
 } from "./visibility";
-import type { IoRow } from "./repository";
+import type { VisibilityRow } from "./visibility";
 
 const CURRENT_DATE = "2026-02-08";
-const formatDate = (raw: unknown) => String(raw);
-const entry = (date: string, id: number): IoRow => [date, "Dining", "FOOD", "", "O", 1, id, ""];
-const separator = (weekStart: string): IoRow => [weekStart, "", "", "", "", "", "", ""];
+const entry = (date: string, id: number): VisibilityRow => ({ sheetRow: id + 1, date, separator: false });
+const separator = (weekStart: string, sheetRow = 2): VisibilityRow => ({ sheetRow, date: weekStart, separator: true });
 
 describe("planMissingSeparators", () => {
   it("returns no work for an empty sheet", () => {
-    expect(planMissingSeparators([], CURRENT_DATE, formatDate)).toEqual([]);
+    expect(planMissingSeparators([], CURRENT_DATE)).toEqual([]);
   });
 
   it("plans every missing current or completed week in descending row order and never separates future weeks", () => {
@@ -24,7 +23,7 @@ describe("planMissingSeparators", () => {
       entry("2026-02-15", 4),
     ];
 
-    expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([
+    expect(planMissingSeparators(rows, CURRENT_DATE)).toEqual([
       { sheetRow: 4, weekStart: "2026-02-08", label: "FEB 8-14" },
       { sheetRow: 3, weekStart: "2026-01-11", label: "JAN 11-17" },
       { sheetRow: 2, weekStart: "2026-01-04", label: "JAN 4-10" },
@@ -33,34 +32,34 @@ describe("planMissingSeparators", () => {
 
   it("does not duplicate an existing current-week separator", () => {
     const rows = [
-      separator("2026-02-08"),
-      entry("2026-02-08", 1),
+      separator("2026-02-08", 2),
+      { ...entry("2026-02-08", 1), sheetRow: 3 },
     ];
 
-    expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([]);
+    expect(planMissingSeparators(rows, CURRENT_DATE)).toEqual([]);
   });
 
   it("skips missing, blank, and malformed dates and leaves an already-separated week alone", () => {
     const rows = [
-      ["", "", "", "", "", "", 1, ""],
-      entry("not-a-date", 2),
-      separator("2026-01-11"),
-      entry("2026-01-12", 3),
+      { sheetRow: 2, date: "", separator: false },
+      { ...entry("not-a-date", 2), sheetRow: 3 },
+      separator("2026-01-11", 4),
+      { ...entry("2026-01-12", 3), sheetRow: 5 },
     ];
 
-    expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([]);
+    expect(planMissingSeparators(rows, CURRENT_DATE)).toEqual([]);
   });
 
   it("adds a separator before a backdated Entry even when that week's old separator remains later", () => {
     const rows = [
-      separator("2026-01-04"),
-      entry("2026-01-10", 1),
-      entry("2026-01-11", 2), // backdated entry inserted before this separator
-      separator("2026-01-11"),
-      entry("2026-01-12", 3),
+      separator("2026-01-04", 2),
+      { ...entry("2026-01-10", 1), sheetRow: 3 },
+      { ...entry("2026-01-11", 2), sheetRow: 4 }, // backdated entry inserted before this separator
+      separator("2026-01-11", 5),
+      { ...entry("2026-01-12", 3), sheetRow: 6 },
     ];
 
-    expect(planMissingSeparators(rows, CURRENT_DATE, formatDate)).toEqual([
+    expect(planMissingSeparators(rows, CURRENT_DATE)).toEqual([
       { sheetRow: 4, weekStart: "2026-01-11", label: "JAN 11-17" },
     ]);
   });
@@ -70,14 +69,14 @@ describe("planVisibilityRanges", () => {
   it("keeps current rows visible, only recent separators visible, hides old rows, and coalesces ranges", () => {
     const rows = [
       entry("2026-02-08", 1),
-      separator("2026-01-11"),
-      entry("2026-01-12", 2),
-      separator("2026-01-04"),
-      entry("2026-01-05", 3),
-      ["", "", "", "", "", "", 4, ""],
+      separator("2026-01-11", 3),
+      { ...entry("2026-01-12", 2), sheetRow: 4 },
+      separator("2026-01-04", 5),
+      { ...entry("2026-01-05", 3), sheetRow: 6 },
+      { sheetRow: 7, date: "", separator: false },
     ];
 
-    expect(planVisibilityRanges(rows, CURRENT_DATE, formatDate)).toEqual([
+    expect(planVisibilityRanges(rows, CURRENT_DATE)).toEqual([
       { sheetRow: 2, numRows: 2, visible: true },
       { sheetRow: 4, numRows: 3, visible: false },
       { sheetRow: 7, numRows: 1, visible: true },
@@ -90,7 +89,7 @@ describe("planVisibilityRanges", () => {
       entry("not-a-date", 2),
     ];
 
-    expect(planVisibilityRanges(rows, CURRENT_DATE, formatDate)).toEqual([
+    expect(planVisibilityRanges(rows, CURRENT_DATE)).toEqual([
       { sheetRow: 2, numRows: 2, visible: true },
     ]);
   });
@@ -98,18 +97,19 @@ describe("planVisibilityRanges", () => {
 
 describe("maintainVisibility", () => {
   it("uses exactly two snapshots, applies stable separator coordinates, and sends coalesced visibility ranges", () => {
-    const rows: IoRow[] = [
+    const rows: VisibilityRow[] = [
       entry("2026-01-05", 1),
       entry("2026-01-12", 2),
       entry("2026-02-08", 3),
     ];
     const readRows = vi.fn(() => rows);
     const insertSeparatorRow = vi.fn((sheetRow: number, weekStart: string, label: string) => {
-      rows.splice(sheetRow - 2, 0, [weekStart, "", "", label, "", "", "", ""]);
+      rows.splice(sheetRow - 2, 0, { sheetRow, date: weekStart, separator: true });
+      rows.forEach((row, index) => row.sheetRow = index + 2);
     });
     const setRowVisibility = vi.fn();
 
-    maintainVisibility({ readRows, insertSeparatorRow, setRowVisibility }, CURRENT_DATE, formatDate);
+    maintainVisibility({ readRows, insertSeparatorRow, setRowVisibility }, CURRENT_DATE);
 
     expect(readRows).toHaveBeenCalledTimes(2);
     expect(insertSeparatorRow).toHaveBeenNthCalledWith(1, 4, "2026-02-08", "FEB 8-14");

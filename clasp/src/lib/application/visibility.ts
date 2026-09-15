@@ -6,21 +6,21 @@
  * strings, so they can be tested without SpreadsheetApp or a host timezone.
  */
 import {
-  isSeparatorRow,
-  type IoRow,
-  type VisibilityRepository,
-} from "./repository";
-import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
-import {
   spreadsheetWeekLabelFromStr,
   weekStartOfStr,
   weekTierFromStr,
-} from "./domain/calendar";
+} from "../domain/calendar";
 
-export type CalendarDateFormatter = (raw: unknown) => string;
+export interface VisibilityRow {
+  sheetRow: number;
+  date: string;
+  separator: boolean;
+}
 
-function ioValue(row: IoRow, column: number): unknown {
-  return row[columnIndexWithinRange(column, SHEET_LAYOUT.io.columns.date)];
+export interface VisibilityRepository {
+  readRows(): VisibilityRow[];
+  insertSeparatorRow(sheetRow: number, weekStart: string, label: string): void;
+  setRowVisibility(sheetRow: number, numRows: number, visible: boolean): void;
 }
 
 export interface SeparatorInsertion {
@@ -37,9 +37,9 @@ export interface VisibilityRange {
   visible: boolean;
 }
 
-function dateStringOf(raw: unknown, formatDate: CalendarDateFormatter): string | null {
+function dateStringOf(raw: string): string | null {
   if (!raw) return null;
-  const dateStr = formatDate(raw);
+  const dateStr = raw;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
 
   const parsed = new Date(`${dateStr}T00:00:00Z`);
@@ -48,8 +48,8 @@ function dateStringOf(raw: unknown, formatDate: CalendarDateFormatter): string |
     : dateStr;
 }
 
-function weekStartOfRow(row: IoRow, formatDate: CalendarDateFormatter): string | null {
-  const dateStr = dateStringOf(ioValue(row, SHEET_LAYOUT.io.columns.date), formatDate);
+function weekStartOfRow(row: VisibilityRow): string | null {
+  const dateStr = dateStringOf(row.date);
   return dateStr === null ? null : weekStartOfStr(dateStr);
 }
 
@@ -60,17 +60,16 @@ function weekStartOfRow(row: IoRow, formatDate: CalendarDateFormatter): string |
  * after an insert.
  */
 export function planMissingSeparators(
-  rows: IoRow[],
+  rows: VisibilityRow[],
   currentDate: string,
-  formatDate: CalendarDateFormatter,
 ): SeparatorInsertion[] {
   const currentWeekStart = weekStartOfStr(currentDate);
   const firstEntryIndexByWeek = new Map<string, number>();
 
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
-    if (isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId))) continue;
-    const weekStart = weekStartOfRow(row, formatDate);
+    if (row.separator) continue;
+    const weekStart = weekStartOfRow(row);
     if (
       weekStart === null ||
       weekStart > currentWeekStart ||
@@ -83,15 +82,15 @@ export function planMissingSeparators(
     .flatMap(([weekStart, index]): SeparatorInsertion[] => {
       const above = rows[index - 1];
       const aboveDate = above
-        ? dateStringOf(ioValue(above, SHEET_LAYOUT.io.columns.date), formatDate)
+        ? dateStringOf(above.date)
         : null;
       if (
         above
-        && isSeparatorRow(ioValue(above, SHEET_LAYOUT.io.columns.entryId))
+        && above.separator
         && aboveDate === weekStart
       ) return [];
       return [{
-        sheetRow: index + SHEET_LAYOUT.io.rows.dataFirst,
+        sheetRow: rows[index].sheetRow,
         weekStart,
         label: spreadsheetWeekLabelFromStr(weekStart),
       }];
@@ -100,18 +99,17 @@ export function planMissingSeparators(
 }
 
 function visibleForRow(
-  row: IoRow,
+  row: VisibilityRow,
   currentWeekStart: string,
-  formatDate: CalendarDateFormatter,
 ): boolean {
-  const weekStart = weekStartOfRow(row, formatDate);
+  const weekStart = weekStartOfRow(row);
   if (weekStart === null) return true;
   if (weekStart >= currentWeekStart) return true;
 
   const tier = weekTierFromStr(weekStart, currentWeekStart);
   if (tier === "current") return true;
   if (tier === "recent") {
-    return isSeparatorRow(ioValue(row, SHEET_LAYOUT.io.columns.entryId));
+    return row.separator;
   }
   return false;
 }
@@ -121,22 +119,21 @@ function visibleForRow(
  * the same visibility state into one range-shaped repository operation.
  */
 export function planVisibilityRanges(
-  rows: IoRow[],
+  rows: VisibilityRow[],
   currentDate: string,
-  formatDate: CalendarDateFormatter,
 ): VisibilityRange[] {
   const currentWeekStart = weekStartOfStr(currentDate);
   const ranges: VisibilityRange[] = [];
 
   rows.forEach((row, index) => {
-    const visible = visibleForRow(row, currentWeekStart, formatDate);
+    const visible = visibleForRow(row, currentWeekStart);
     const previous = ranges[ranges.length - 1];
     if (previous && previous.visible === visible) {
       previous.numRows++;
       return;
     }
     ranges.push({
-      sheetRow: index + SHEET_LAYOUT.io.rows.dataFirst,
+      sheetRow: row.sheetRow,
       numRows: 1,
       visible,
     });
@@ -152,14 +149,13 @@ export function planVisibilityRanges(
 export function maintainVisibility(
   repo: VisibilityRepository,
   currentDate: string,
-  formatDate: CalendarDateFormatter,
 ): void {
-  const separatorPlan = planMissingSeparators(repo.readRows(), currentDate, formatDate);
+  const separatorPlan = planMissingSeparators(repo.readRows(), currentDate);
   separatorPlan.forEach(({ sheetRow, weekStart, label }) =>
     repo.insertSeparatorRow(sheetRow, weekStart, label)
   );
 
-  const visibilityPlan = planVisibilityRanges(repo.readRows(), currentDate, formatDate);
+  const visibilityPlan = planVisibilityRanges(repo.readRows(), currentDate);
   visibilityPlan.forEach(({ sheetRow, numRows, visible }) =>
     repo.setRowVisibility(sheetRow, numRows, visible)
   );

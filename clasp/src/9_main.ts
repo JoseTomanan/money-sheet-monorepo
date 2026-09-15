@@ -1,5 +1,5 @@
 // HTTP entry points. All routing, auth, payload validation, and the response
-// envelope live in the pure `dispatch` module (src/lib/dispatch.ts) so they can
+// envelope live in the pure `dispatch` module (src/lib/application/dispatch.ts) so they can
 // be unit-tested without a GAS deployment. These functions only build the
 // dependency bundle (the GAS-API bound side) and serialize the response.
 

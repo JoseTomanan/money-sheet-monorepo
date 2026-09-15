@@ -10,6 +10,7 @@
 
 import { isSeparatorRow, type IoRow, type IoRepository } from "./repository";
 import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
+import { applyCategorySync } from "./application/categorySync";
 
 // 1-based column of the Categories sheet's Subcategory field. Renames/deletes
 // are only ever detected on this column — col C (parent Category) edits are a
@@ -213,26 +214,26 @@ const LOCK_FAILURE_MESSAGE =
  */
 function confirmAndRetag(
   deps: { repo: Pick<IoRepository, "readRows" | "writeEntryFields">; ui: SyncUi; withLock<T>(fn: () => T): T },
+  kind: PendingCategorySync["kind"],
   oldValue: string,
   newTag: string,
   confirmPrompt: string,
   onLockFailure: () => void,
   onSuccess?: () => void
 ): void {
-  const rows = deps.repo.readRows();
-  const count = countMatchingOutgoingTags(rows, oldValue);
-
-  const response = deps.ui.alert(
-    `${confirmPrompt} This will update ${count} entries.`,
-    deps.ui.ButtonSet.YES_NO
-  );
-  if (response !== deps.ui.Button.YES) return;
-
-  try {
-    deps.withLock(() => retagOutgoingRows(deps.repo, oldValue, newTag));
-    onSuccess?.();
-  } catch {
-    onLockFailure();
+  const result = applyCategorySync({
+    change: { kind, oldValue, newTag },
+    count: (tag) => countMatchingOutgoingTags(deps.repo.readRows(), tag),
+    confirm: (count) => deps.ui.alert(
+      `${confirmPrompt} This will update ${count} entries.`,
+      deps.ui.ButtonSet.YES_NO,
+    ) === deps.ui.Button.YES,
+    transact: deps.withLock,
+    retag: (oldTag, replacement) => retagOutgoingRows(deps.repo, oldTag, replacement),
+    onLockFailure: () => onLockFailure(),
+  });
+  if (result.status === "applied") onSuccess?.();
+  if (result.status === "deferred") {
     deps.ui.alert(LOCK_FAILURE_MESSAGE);
   }
 }
@@ -272,7 +273,7 @@ export function runCategorySync(deps: RunCategorySyncDeps): void {
     confirmPrompt = `Delete "${oldValue}"? Its entries will be reassigned to "${newTag}".`;
   }
 
-  confirmAndRetag(deps, oldValue, newTag, confirmPrompt, () =>
+  confirmAndRetag(deps, classification.kind, oldValue, newTag, confirmPrompt, () =>
     deps.stash({ kind: classification.kind, oldValue, newTag })
   );
 }
@@ -300,6 +301,7 @@ export function retryCategorySync(deps: RetryCategorySyncDeps): void {
 
   confirmAndRetag(
     deps,
+    pending.kind,
     pending.oldValue,
     pending.newTag,
     `Retry syncing "${pending.oldValue}" to "${pending.newTag}"?`,

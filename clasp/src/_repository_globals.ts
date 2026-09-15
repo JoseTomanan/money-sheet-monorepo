@@ -3,6 +3,7 @@
 // Derived from the lib module's own exports so a signature change there fails
 // `tsc --noEmit` here instead of silently drifting (issue #109).
 declare const isSeparatorRow: typeof import("./lib/repository").isSeparatorRow;
+declare const findRowByEntryId: typeof import("./lib/repository").findRowByEntryId;
 declare const planFieldWrites: typeof import("./lib/repository").planFieldWrites;
 declare const listEntries: typeof import("./lib/repository").listEntries;
 declare const findEntriesByMutationId: typeof import("./lib/repository").findEntriesByMutationId;
@@ -13,4 +14,3 @@ declare const patchEntry: typeof import("./lib/repository").patchEntry;
 declare const removeEntry: typeof import("./lib/repository").removeEntry;
 declare type IoRepository = import("./lib/repository").IoRepository;
 declare type IoRow = import("./lib/repository").IoRow;
-declare type VisibilityRepository = import("./lib/repository").VisibilityRepository;

@@ -16,10 +16,10 @@ type __Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends 
 type __Expect<T extends true> = T;
 
 type __AssertEntry = __Expect<__Equal<Entry, import("./lib/domain/entry").Entry>>;
-type __AssertAddEntryPayload = __Expect<__Equal<AddEntryPayload, import("./lib/dispatch").AddEntryPayload>>;
-type __AssertAddEntryRequest = __Expect<__Equal<AddEntryRequest, import("./lib/dispatch").AddEntryRequest>>;
-type __AssertAddEntriesPayload = __Expect<__Equal<AddEntriesPayload, import("./lib/dispatch").AddEntriesPayload>>;
-type __AssertUpdateEntryPatch = __Expect<__Equal<UpdateEntryPatch, import("./lib/dispatch").UpdateEntryPatch>>;
+type __AssertAddEntryPayload = __Expect<__Equal<AddEntryPayload, import("./lib/application/dispatch").AddEntryPayload>>;
+type __AssertAddEntryRequest = __Expect<__Equal<AddEntryRequest, import("./lib/application/dispatch").AddEntryRequest>>;
+type __AssertAddEntriesPayload = __Expect<__Equal<AddEntriesPayload, import("./lib/application/dispatch").AddEntriesPayload>>;
+type __AssertUpdateEntryPatch = __Expect<__Equal<UpdateEntryPatch, import("./lib/application/dispatch").UpdateEntryPatch>>;
 type __AssertCategoryMap = __Expect<__Equal<CategoryMap, import("./lib/domain/category").CategoryMap>>;
-type __AssertConfigMap = __Expect<__Equal<ConfigMap, import("./lib/dispatch").ConfigMap>>;
-type __AssertStatsData = __Expect<__Equal<StatsData, import("./lib/dispatch").StatsData>>;
+type __AssertConfigMap = __Expect<__Equal<ConfigMap, import("./lib/application/dispatch").ConfigMap>>;
+type __AssertStatsData = __Expect<__Equal<StatsData, import("./lib/application/dispatch").StatsData>>;

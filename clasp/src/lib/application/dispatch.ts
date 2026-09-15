@@ -45,48 +45,31 @@ import {
   entryInvariantViolation,
   type Direction,
   type Entry as EntryData,
-} from "./domain/entry";
-import { checkTagDirection, type CategoryMap } from "./domain/category";
-import { isValidCalendarDate } from "./domain/calendar";
+} from "../domain/entry";
+import { checkTagDirection, type CategoryMap } from "../domain/category";
+import { isValidCalendarDate } from "../domain/calendar";
+import type {
+  AddEntriesPayload,
+  AddEntryPayload,
+  AddEntryRequest,
+  IdempotentAddEntriesResult,
+  IdempotentAddEntryResult,
+  UpdateEntryPatch,
+} from "./entries";
+
+export type {
+  AddEntriesPayload,
+  AddEntryPayload,
+  AddEntryRequest,
+  IdempotentAddEntriesResult,
+  IdempotentAddEntryResult,
+  UpdateEntryPatch,
+} from "./entries";
 
 // Types
 // ──────────────────────────────────────────────────────────────
 
 export type ErrorCode = "auth" | "validation" | "not_found" | "internal";
-
-export interface AddEntryPayload {
-  date: string;
-  tag: string;
-  description: string;
-  direction: Direction;
-  amount: number;
-}
-
-/** One immutable browser-initiated add operation. */
-export interface AddEntryRequest extends AddEntryPayload {
-  mutationId: string;
-}
-
-export interface AddEntriesPayload {
-  entries: AddEntryPayload[];
-  mutationId: string;
-}
-
-export type IdempotentAddEntryResult =
-  | { status: "created" | "duplicate"; entry: EntryData }
-  | { status: "mismatch" };
-
-export type IdempotentAddEntriesResult =
-  | { status: "created" | "duplicate"; entries: EntryData[] }
-  | { status: "mismatch" };
-
-export interface UpdateEntryPatch {
-  date?: string;
-  tag?: string;
-  description?: string;
-  direction?: Direction;
-  amount?: number;
-}
 
 // { [key]: value } — key-value pairs from the Config sheet
 export type ConfigMap = Record<string, string>;

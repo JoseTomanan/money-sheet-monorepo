@@ -6,5 +6,6 @@ declare const runCategorySync: typeof import("./lib/categorySync").runCategorySy
 declare const retryCategorySync: typeof import("./lib/categorySync").retryCategorySync;
 declare const encodePendingSync: typeof import("./lib/categorySync").encodePendingSync;
 declare const decodePendingSync: typeof import("./lib/categorySync").decodePendingSync;
+declare const applyCategorySync: typeof import("./lib/application/categorySync").applyCategorySync;
 declare type CategoryRow = import("./lib/categorySync").CategoryRow;
 declare type PendingCategorySync = import("./lib/categorySync").PendingCategorySync;
