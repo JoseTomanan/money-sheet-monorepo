@@ -1,4 +1,4 @@
-import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./sheetLayout";
 const DEFAULT_CONFIG_ROWS: [string, string][] = [["currency", "₱"], ["nickname", ""]];
 
 /**

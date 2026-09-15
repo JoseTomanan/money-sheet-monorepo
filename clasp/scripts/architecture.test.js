@@ -154,6 +154,20 @@ describe("clasp dependency roles", () => {
     expect(analyzeArchitecture(files, CURRENT_ARCHITECTURE_POLICY)).toEqual([]);
   });
 
+  it("finishes the migration with only explicit root entrypoints and no exemptions", () => {
+    expect(CURRENT_ARCHITECTURE_POLICY).toEqual({
+      rootEntrypoints: [
+        "src/5_visibility.ts",
+        "src/6_category_sync.ts",
+        "src/6_menu.ts",
+        "src/7_setup.ts",
+        "src/9_main.ts",
+      ],
+      legacyRootArtifacts: [],
+      legacyFlatModules: [],
+    });
+  });
+
   it("makes every migration exemption exact and removable", () => {
     const violations = analyzeArchitecture(
       { "src/appsscript.json": "{}\n" },

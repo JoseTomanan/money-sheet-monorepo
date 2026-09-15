@@ -4,6 +4,16 @@ export interface CategorySyncChange {
   newTag: string;
 }
 
+export interface CategoryEditEventData {
+  sheetName: string;
+  column: number;
+  row: number;
+  numRows: number;
+  numCols: number;
+  oldValue?: string;
+  value?: string;
+}
+
 export type CategorySyncResult =
   | { status: "declined"; count: number }
   | { status: "applied"; count: number }

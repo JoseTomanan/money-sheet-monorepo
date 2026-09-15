@@ -20,13 +20,12 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.svelte",
-    "../clasp/src/lib/0_sheetLayout.ts",
+    "../clasp/src/lib/infrastructure/sheetLayout.ts",
     "../clasp/src/lib/application/dispatch.ts",
     "../clasp/src/lib/application/entries.ts",
     "../clasp/src/lib/domain/calendar.ts",
     "../clasp/src/lib/domain/category.ts",
     "../clasp/src/lib/domain/entry.ts",
-    "../clasp/src/lib/entries.ts",
-    "../clasp/src/lib/repository.ts"
+    "../clasp/src/lib/infrastructure/entryRepository.ts"
   ]
 }

@@ -2,7 +2,7 @@
  * STATS sheet — formula-driven, GAS read-only (mirrors MASTER, docs/adr/0011).
  * `ensureStatsSheet` records the one-time creation routine used to build or
  * repair the maintained template's fixed layout and cell formulas.
- * `3_stats.ts`'s `getStats()` reads it back — GAS never writes into the data
+ * `statsReader.ts`'s `getStats()` reads it back — GAS never writes into the data
  * cells after creation.
  *
  * ## Sheet layout (fixed anchor rows — never use getLastRow() to locate data,
@@ -57,8 +57,8 @@
  * in the issue #129 report and, for the #132 window blocks, in the #132 report.
  */
 
-import { CATEGORY_ORDER } from "./domain/category";
-import { columnToA1, SHEET_LAYOUT } from "./0_sheetLayout";
+import { CATEGORY_ORDER } from "../domain/category";
+import { columnToA1, SHEET_LAYOUT } from "./sheetLayout";
 
 // Backwards-compatible name for STATS consumers; the ordered domain lives in
 // categories.ts and is also used by MASTER parsing.
@@ -69,7 +69,7 @@ export const TRAILING_MONTHS = 3;
 
 // Spending-pace rows always span 1-31 so the sheet layout is stable across
 // months; days that don't exist in the current month evaluate to "" (blank),
-// filtered out by the reader in 3_stats.ts.
+// filtered out by statsReader.ts.
 export const PACE_DAYS = 31;
 
 /**
@@ -205,7 +205,7 @@ export function windowCategorySpendFormulas(row: number, startFormula: string): 
  *
  * Takes `ss` as a parameter (dependency injection) so this pure function can
  * be unit-tested with a fake spreadsheet without touching SpreadsheetApp,
- * mirroring `ensureConfigSheet` (lib/config.ts).
+ * mirroring `ensureConfigSheet` (infrastructure/config.ts).
  */
 export function ensureStatsSheet(ss: GoogleAppsScript.Spreadsheet.Spreadsheet): void {
   if (ss.getSheetByName(SHEET_LAYOUT.stats.name)) return;

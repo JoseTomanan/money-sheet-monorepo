@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildMenu } from "./menu";
+import { buildMenu } from "./presentation/menu";
 
 describe("buildMenu", () => {
   const mockAddToUi = vi.fn();

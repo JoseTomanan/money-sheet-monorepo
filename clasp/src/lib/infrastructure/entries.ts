@@ -1,3 +1,25 @@
+import { createEntryApplication, type EntryRepository } from "../application/entries";
+import type {
+  AddEntriesPayload,
+  AddEntryRequest,
+  IdempotentAddEntriesResult,
+  IdempotentAddEntryResult,
+  UpdateEntryPatch,
+} from "../application/dispatch";
+import type { Entry } from "../domain/entry";
+import {
+  findEntriesByMutationId,
+  insertEntries,
+  insertEntry,
+  listEntries,
+  patchEntry,
+  removeEntry,
+  type IoRepository,
+  type IoRow,
+} from "./entryRepository";
+import { runExclusive } from "./locking";
+import { liveIoRepository } from "./sheets";
+
 const ENTRY_TZ = "Asia/Manila";
 
 function formatEntryDate(raw: unknown): string {
@@ -9,58 +31,25 @@ function formatEntryDate(raw: unknown): string {
   }
 }
 
-function getEntries(): Entry[] {
+export function getEntries(): Entry[] {
   return entryApplication().list();
 }
 
-interface AddEntryPayload {
-  date: string;
-  tag: string;
-  description: string;
-  direction: Direction;
-  amount: number;
-}
-
-interface AddEntryRequest extends AddEntryPayload {
-  mutationId: string;
-}
-
-interface AddEntriesPayload {
-  entries: AddEntryPayload[];
-  mutationId: string;
-}
-
-type IdempotentAddEntryResult =
-  | { status: "created" | "duplicate"; entry: Entry }
-  | { status: "mismatch" };
-
-type IdempotentAddEntriesResult =
-  | { status: "created" | "duplicate"; entries: Entry[] }
-  | { status: "mismatch" };
-
-function addEntry(request: AddEntryRequest): IdempotentAddEntryResult {
+export function addEntry(request: AddEntryRequest): IdempotentAddEntryResult {
   return entryApplication().add(request);
 }
 
 /** Inserts all legs under one document-lock acquisition (issue #111). */
-function addEntries(request: AddEntriesPayload): IdempotentAddEntriesResult {
+export function addEntries(request: AddEntriesPayload): IdempotentAddEntriesResult {
   return entryApplication().addMany(request);
 }
 
-interface UpdateEntryPatch {
-  date?: string;
-  tag?: string;
-  description?: string;
-  direction?: Direction;
-  amount?: number;
-}
-
-function updateEntry(id: number, patch: UpdateEntryPatch): void {
+export function updateEntry(id: number, patch: UpdateEntryPatch): void {
   const result = entryApplication().update(id, patch);
   if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
 }
 
-function deleteEntry(id: number): void {
+export function deleteEntry(id: number): void {
   const result = entryApplication().remove(id);
   if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
 }

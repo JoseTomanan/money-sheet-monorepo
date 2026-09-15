@@ -1,4 +1,9 @@
-import { isCategory } from "./domain/category";
+import { isCategory } from "../domain/category";
+
+export interface MasterRow {
+  onHand: number;
+  budgets: Record<string, number>;
+}
 
 // The template places hidden incoming/outgoing detail columns after each
 // visible Category net-total column. They explain the formula but are not

@@ -17,46 +17,15 @@ const ALLOWED_ROLE_IMPORTS = Object.freeze({
 });
 
 const CURRENT_ARCHITECTURE_POLICY = Object.freeze({
-  rootEntrypoints: [],
-  legacyRootArtifacts: [
-    "src/0_types.ts",
-    "src/1_sheets.ts",
-    "src/2_entries.ts",
-    "src/3_master.ts",
-    "src/3_stats.ts",
-    "src/4_categories.ts",
+  rootEntrypoints: [
     "src/5_visibility.ts",
     "src/6_category_sync.ts",
     "src/6_menu.ts",
     "src/7_setup.ts",
-    "src/8_config.ts",
     "src/9_main.ts",
-    "src/_categorySync_globals.ts",
-    "src/_config_globals.ts",
-    "src/_dispatch_globals.ts",
-    "src/_entries_globals.ts",
-    "src/_locking_globals.ts",
-    "src/_master_globals.ts",
-    "src/_menu_globals.ts",
-    "src/_repository_globals.ts",
-    "src/_setup_globals.ts",
-    "src/_sheetLayout_globals.ts",
-    "src/_stats_globals.ts",
-    "src/_visibility_globals.ts",
-    "src/_week_globals.ts",
   ],
-  legacyFlatModules: [
-    "src/lib/0_sheetLayout.ts",
-    "src/lib/categorySync.ts",
-    "src/lib/config.ts",
-    "src/lib/entries.ts",
-    "src/lib/locking.ts",
-    "src/lib/master.ts",
-    "src/lib/menu.ts",
-    "src/lib/repository.ts",
-    "src/lib/setup.ts",
-    "src/lib/stats.ts",
-  ],
+  legacyRootArtifacts: [],
+  legacyFlatModules: [],
 });
 
 function normalized(filePath) {

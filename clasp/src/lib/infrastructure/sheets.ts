@@ -1,18 +1,21 @@
-function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
+import { planFieldWrites, type IoRepository, type IoRow } from "./entryRepository";
+import { rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
+
+export function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_LAYOUT.io.name);
   if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.io.name}`);
   return sh;
 }
 
-function getMasterSheet(): GoogleAppsScript.Spreadsheet.Sheet {
+export function getMasterSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_LAYOUT.master.name);
   if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.master.name}`);
   return sh;
 }
 
-function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
+export function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_LAYOUT.categories.name);
   if (!sh) throw new Error(`Sheet not found: ${SHEET_LAYOUT.categories.name}`);
@@ -20,15 +23,15 @@ function getCategoriesSheet(): GoogleAppsScript.Spreadsheet.Sheet {
 }
 
 // Tolerant: returns null if the Config sheet doesn't exist (legacy spreadsheets).
-function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
+export function getConfigSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(SHEET_LAYOUT.config.name);
 }
 
 // Tolerant: returns null if the STATS sheet doesn't exist in a legacy
 // spreadsheet created before docs/adr/0011. GAS never writes to STATS — see
-// lib/stats.ts for the formula-driven layout.
-function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
+// stats.ts for the formula-driven layout.
+export function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(SHEET_LAYOUT.stats.name);
 }
@@ -36,7 +39,7 @@ function getStatsSheetOrNull(): GoogleAppsScript.Spreadsheet.Sheet | null {
 // The live GAS-backed IoRepository adapter. Defaults to the INCOMING/OUTGOING
 // sheet, but accepts an explicit handle so callers (e.g. visibility) that
 // already hold one don't re-resolve it.
-function liveIoRepository(
+export function liveIoRepository(
   sh: GoogleAppsScript.Spreadsheet.Sheet = getIOSheet()
 ): IoRepository {
   return {
@@ -73,7 +76,7 @@ function liveIoRepository(
 }
 
 /** Adds the idempotency-key column on a migration/setup run; historical rows stay blank. */
-function ensureMutationIdColumn(): void {
+export function ensureMutationIdColumn(): void {
   getIOSheet()
     .getRange(SHEET_LAYOUT.io.rows.header, SHEET_LAYOUT.io.columns.mutationId)
     .setValue("MUTATION ID");

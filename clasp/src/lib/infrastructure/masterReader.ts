@@ -1,4 +1,8 @@
-function getMaster(): MasterRow {
+import { parseMasterRows, type MasterRow } from "./master";
+import { rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
+import { getMasterSheet } from "./sheets";
+
+export function getMaster(): MasterRow {
   const sh = getMasterSheet();
   if (sh.getLastRow() < SHEET_LAYOUT.master.rows.data) return { onHand: 0, budgets: {} };
 

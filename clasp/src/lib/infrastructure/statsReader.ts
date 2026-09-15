@@ -1,12 +1,23 @@
-// STATS sheet reader — formula-driven, GAS read-only (mirrors 3_master.ts /
-// MASTER; see docs/adr/0011 and lib/stats.ts for the full layout doc + the
+// STATS sheet reader — formula-driven, GAS read-only (mirrors masterReader.ts /
+// MASTER; see docs/adr/0011 and stats.ts for the full layout doc + the
 // exact formulas written into the sheet by ensureStatsSheet).
 //
 // Fixed anchor rows from SHEET_LAYOUT locate the data
 // blocks — never use getLastRow() to find them, same invariant as MASTER's
 // "always row 3" (extra rows appended below would shift getLastRow() past
 // the real data).
-function getStats(): StatsData {
+import type {
+  CategoryMonthChange,
+  SpendingPaceDay,
+  StatsData,
+  StatsWindow,
+  WindowCategorySpend,
+  WindowTotal,
+} from "../application/dispatch";
+import { columnIndexWithinRange, rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
+import { getStatsSheetOrNull } from "./sheets";
+
+export function getStats(): StatsData {
   const sh = getStatsSheetOrNull();
   if (!sh) return { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
 

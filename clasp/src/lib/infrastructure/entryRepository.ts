@@ -4,13 +4,13 @@
  * Uses the shared layout contract and owns the separator-row predicate and port interface,
  * and pure glue functions that operate against an injected IoRepository.
  * Contains no SpreadsheetApp calls so it can be unit-tested with a fake.
- * The GAS-facing live adapter lives in 1_sheets.ts (liveIoRepository).
+ * The GAS-facing live adapter lives in sheets.ts (liveIoRepository).
  */
 
-import { findInsertionIndex } from "./domain/calendar";
-import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
-import type { Direction, Entry as EntryData } from "./domain/entry";
-import type { AddEntryPayload, UpdateEntryPatch } from "./application/dispatch";
+import { findInsertionIndex } from "../domain/calendar";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./sheetLayout";
+import type { Direction, Entry as EntryData } from "../domain/entry";
+import type { AddEntryPayload, UpdateEntryPatch } from "../application/dispatch";
 
 // Coordinates live in SHEET_LAYOUT; this module derives returned-row positions.
 

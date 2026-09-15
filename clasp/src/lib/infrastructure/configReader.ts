@@ -1,4 +1,9 @@
-function getConfig(): ConfigMap {
+import type { ConfigMap } from "../application/dispatch";
+import { parseConfigRows } from "./config";
+import { rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
+import { getConfigSheetOrNull } from "./sheets";
+
+export function getConfig(): ConfigMap {
   // Tolerant: returns {} if Config sheet doesn't exist (legacy spreadsheets).
   // The frontend falls back to "₱" when the currency key is absent.
   const sh = getConfigSheetOrNull();

@@ -1,4 +1,8 @@
-function getCategories(): CategoryMap {
+import type { CategoryMap } from "../domain/category";
+import { columnIndexWithinRange, rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
+import { getCategoriesSheet } from "./sheets";
+
+export function getCategories(): CategoryMap {
   const sh = getCategoriesSheet();
   const lastRow = sh.getLastRow();
   const firstRow = SHEET_LAYOUT.categories.rows.dataFirst;

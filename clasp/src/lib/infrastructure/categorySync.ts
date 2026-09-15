@@ -8,9 +8,9 @@
  * property stash) lives in 6_category_sync.ts.
  */
 
-import { isSeparatorRow, type IoRow, type IoRepository } from "./repository";
-import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
-import { applyCategorySync } from "./application/categorySync";
+import { isSeparatorRow, type IoRow, type IoRepository } from "./entryRepository";
+import { columnIndexWithinRange, SHEET_LAYOUT } from "./sheetLayout";
+import { applyCategorySync } from "../application/categorySync";
 
 // 1-based column of the Categories sheet's Subcategory field. Renames/deletes
 // are only ever detected on this column — col C (parent Category) edits are a
@@ -55,7 +55,7 @@ export function classifyCategoryEdit(input: CategoryEditInput): CategoryEditClas
 
 // catData rows: [Subcategory, Category]. catData[i] maps from
 // SHEET_LAYOUT.categories.rows.dataFirst. Mirrors getCategories()'s own slice
-// (4_categories.ts) so callers can read the Categories sheet once and reuse
+// (categories.ts) so callers can read the Categories sheet once and reuse
 // it for both collision-checking and parent-lookup.
 export type CategoryRow = [string, string];
 

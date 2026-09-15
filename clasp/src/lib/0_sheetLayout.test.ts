@@ -4,7 +4,7 @@ import {
   columnToA1,
   rangeWidth,
   SHEET_LAYOUT,
-} from "./0_sheetLayout";
+} from "./infrastructure/sheetLayout";
 
 describe("SHEET_LAYOUT", () => {
   it("defines every managed sheet with fixed 1-based coordinates", () => {

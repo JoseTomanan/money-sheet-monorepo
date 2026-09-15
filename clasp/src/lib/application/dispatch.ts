@@ -98,7 +98,7 @@ export interface CategoryMonthChange {
  * cumulative outgoing through that same day ("usual" baseline). `day` is
  * 1-31; rows for days past the current month's length carry `0`/unused
  * values (the sheet formula suppresses them via IF(...,"","")) — see
- * lib/stats.ts for the exact cell math.
+ * infrastructure/stats.ts for the exact cell math.
  */
 export interface SpendingPaceDay {
   day: number;

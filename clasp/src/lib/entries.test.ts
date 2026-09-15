@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findRowByEntryId } from "./entries";
+import { findRowByEntryId } from "./infrastructure/entryRepository";
 
 /**
  * findRowByEntryId(idColumnValues, targetId)

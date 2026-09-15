@@ -8,8 +8,8 @@ import {
   STATS_CATEGORIES,
   STATS_WINDOWS,
   PACE_DAYS,
-} from "./stats";
-import { SHEET_LAYOUT } from "./0_sheetLayout";
+} from "./infrastructure/stats";
+import { SHEET_LAYOUT } from "./infrastructure/sheetLayout";
 
 // ---------------------------------------------------------------------------
 // SHEET_LAYOUT.stats.rows — fixed anchor rows

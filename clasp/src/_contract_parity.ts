@@ -1,5 +1,5 @@
 // Type-level parity guard (issue #109): asserts the GAS-global domain types declared
-// in 0_types.ts and 2_entries.ts stay structurally identical to their canonical
+// exposed through _globals.ts stay structurally identical to their canonical
 // counterparts exported from canonical Domain and dispatch modules. A `tsc --noEmit`
 // failure here means
 // one of the wire-contract copies has drifted from the other.

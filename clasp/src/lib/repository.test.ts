@@ -9,7 +9,7 @@ import {
   planFieldWrites,
   findEntriesByMutationId,
   payloadsMatch,
-} from "./repository";
+} from "./infrastructure/entryRepository";
 
 describe("planFieldWrites", () => {
   it("splits a full-field write into consecutive-column runs, skipping col D", () => {

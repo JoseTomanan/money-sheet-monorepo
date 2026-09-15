@@ -1,0 +1,25 @@
+type Direction = import("./lib/domain/entry").Direction;
+type Entry = import("./lib/domain/entry").Entry;
+type AddEntryPayload = import("./lib/application/dispatch").AddEntryPayload;
+type AddEntryRequest = import("./lib/application/dispatch").AddEntryRequest;
+type AddEntriesPayload = import("./lib/application/dispatch").AddEntriesPayload;
+type UpdateEntryPatch = import("./lib/application/dispatch").UpdateEntryPatch;
+type CategoryMap = import("./lib/domain/category").CategoryMap;
+type ConfigMap = import("./lib/application/dispatch").ConfigMap;
+type CategoryMonthChange = import("./lib/application/dispatch").CategoryMonthChange;
+type SpendingPaceDay = import("./lib/application/dispatch").SpendingPaceDay;
+type StatsWindow = import("./lib/application/dispatch").StatsWindow;
+type WindowTotal = import("./lib/application/dispatch").WindowTotal;
+type WindowCategorySpend = import("./lib/application/dispatch").WindowCategorySpend;
+type StatsData = import("./lib/application/dispatch").StatsData;
+
+declare const compositionDoGet: typeof import("./lib/composition").compositionDoGet;
+declare const compositionDoPost: typeof import("./lib/composition").compositionDoPost;
+declare const compositionOnOpen: typeof import("./lib/composition").compositionOnOpen;
+declare const compositionApplyRowVisibility: typeof import("./lib/composition").compositionApplyRowVisibility;
+declare const compositionInstallWeeklyVisibilityTrigger: typeof import("./lib/composition").compositionInstallWeeklyVisibilityTrigger;
+declare const compositionOnEditCategorySync: typeof import("./lib/composition").compositionOnEditCategorySync;
+declare const compositionInstallCategorySyncTrigger: typeof import("./lib/composition").compositionInstallCategorySyncTrigger;
+declare const compositionRetryLastCategorySync: typeof import("./lib/composition").compositionRetryLastCategorySync;
+declare const compositionShowConnectionDetails: typeof import("./lib/composition").compositionShowConnectionDetails;
+declare const compositionRotateConnectionSecret: typeof import("./lib/composition").compositionRotateConnectionSecret;
