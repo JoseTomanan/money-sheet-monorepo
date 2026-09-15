@@ -4,7 +4,7 @@
  *
  * A red test here means clasp and frontend have diverged on the same rule.
  * These tests are the enforcement mechanism replacing the "shared with…" comment
- * in clasp/src/lib/weeks.ts.
+ * in clasp/src/lib/domain/calendar.ts.
  *
  * Import paths are deliberate: we import clasp's pure lib by relative path.
  * Both files are plain TypeScript with no GAS runtime globals.
@@ -13,13 +13,13 @@
 import { describe, it, expect } from 'vitest';
 import { weekStartOf, weekLabel } from './groupEntries';
 // @ts-ignore — cross-package import; clasp lib is pure TS with no GAS globals
-import { weekStartOfStr, weekLabelFromStr } from '../../../clasp/src/lib/weeks';
+import { weekStartOfStr, weekLabelFromStr } from '../../../clasp/src/lib/domain/calendar';
 import { isValidTag } from './domain';
 import { CATEGORY_ORDER } from './theme';
 // @ts-ignore — cross-package import
-import { checkTagDirection } from '../../../clasp/src/lib/dispatch';
+import { checkTagDirection } from '../../../clasp/src/lib/domain/category';
 // @ts-ignore — cross-package import
-import { CATEGORY_ORDER as CLASP_CATEGORY_ORDER } from '../../../clasp/src/lib/categories';
+import { CATEGORY_ORDER as CLASP_CATEGORY_ORDER } from '../../../clasp/src/lib/domain/category';
 import type { CategoryMap } from './types';
 
 // ---------------------------------------------------------------------------

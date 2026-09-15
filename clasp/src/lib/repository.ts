@@ -8,9 +8,10 @@
  */
 
 import { findRowByEntryId } from "./entries";
-import { findInsertionIndex } from "./weeks";
+import { findInsertionIndex } from "./domain/calendar";
 import { columnIndexWithinRange, SHEET_LAYOUT } from "./0_sheetLayout";
-import type { Direction, EntryData, AddEntryPayload, UpdateEntryPatch } from "./dispatch";
+import type { Direction, Entry as EntryData } from "./domain/entry";
+import type { AddEntryPayload, UpdateEntryPatch } from "./dispatch";
 
 // Coordinates live in SHEET_LAYOUT; this module derives returned-row positions.
 

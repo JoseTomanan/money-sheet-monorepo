@@ -40,24 +40,19 @@
  */
 
 // ──────────────────────────────────────────────────────────────
+import {
+  amountInvariantViolation,
+  entryInvariantViolation,
+  type Direction,
+  type Entry as EntryData,
+} from "./domain/entry";
+import { checkTagDirection, type CategoryMap } from "./domain/category";
+import { isValidCalendarDate } from "./domain/calendar";
+
 // Types
 // ──────────────────────────────────────────────────────────────
 
 export type ErrorCode = "auth" | "validation" | "not_found" | "internal";
-
-export type Direction = "I" | "O";
-
-export interface EntryData {
-  id: number;
-  date: string;
-  tag: string;
-  mainCategory: string;
-  description: string;
-  direction: Direction;
-  amount: number;
-  /** 1-based INCOMING/OUTGOING sheet row. Absent for entries not yet written to the sheet. */
-  row?: number;
-}
 
 export interface AddEntryPayload {
   date: string;
@@ -92,8 +87,6 @@ export interface UpdateEntryPatch {
   direction?: Direction;
   amount?: number;
 }
-
-export type CategoryMap = Record<string, string[]>;
 
 // { [key]: value } — key-value pairs from the Config sheet
 export type ConfigMap = Record<string, string>;
@@ -219,30 +212,8 @@ function err(code: ErrorCode, message: string): ApiResponse {
   return { ok: false, error, code, message };
 }
 
-/** Build a flat set of all known subcategories from the CategoryMap. */
-function allSubcategories(categories: CategoryMap): Set<string> {
-  const set = new Set<string>();
-  for (const subs of Object.values(categories)) {
-    for (const s of subs) set.add(s);
-  }
-  return set;
-}
-
-/** Build a flat set of all known category names (keys). */
-function allCategories(categories: CategoryMap): Set<string> {
-  return new Set(Object.keys(categories));
-}
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function isValidDate(s: string): boolean {
-  if (!ISO_DATE_RE.test(s)) return false;
-  const d = new Date(s);
-  return !isNaN(d.getTime());
-}
-
 // ──────────────────────────────────────────────────────────────
-// Tag/Direction invariant check
+// Domain invariant used by the request-shape validators below
 // ──────────────────────────────────────────────────────────────
 
 /**
@@ -254,26 +225,6 @@ function isValidDate(s: string): boolean {
  * - Outgoing (O): tag must be a Subcategory (leaf value in CategoryMap), or
  *   its parent Category (top-level key) — Subcategory is optional (issue #123).
  */
-export function checkTagDirection(
-  tag: string,
-  direction: Direction,
-  categories: CategoryMap
-): string | null {
-  const cats = allCategories(categories);
-  const subs = allSubcategories(categories);
-
-  if (direction === "I") {
-    if (!cats.has(tag)) {
-      return `Tag "${tag}" is not a Category. Incoming entries require a Category tag (e.g. FOOD, HOUSING).`;
-    }
-  } else {
-    if (!subs.has(tag) && !cats.has(tag)) {
-      return `Tag "${tag}" is not a Subcategory or Category. Outgoing entries require a Subcategory (e.g. Dining, Rent) or a Category (e.g. FOOD).`;
-    }
-  }
-  return null;
-}
-
 // ──────────────────────────────────────────────────────────────
 // Payload validators
 // ──────────────────────────────────────────────────────────────
@@ -288,7 +239,7 @@ function validateAddPayload(
   const directionRaw = body.direction;
   const amountRaw = body.amount;
 
-  if (typeof date !== "string" || !date || !isValidDate(date)) {
+  if (typeof date !== "string" || !date || !isValidCalendarDate(date)) {
     return { error: err("validation", `"date" must be a valid ISO date string (YYYY-MM-DD), got: ${JSON.stringify(date)}`) };
   }
   if (typeof tag !== "string" || !tag.trim()) {
@@ -300,11 +251,12 @@ function validateAddPayload(
   const direction = directionRaw as Direction;
 
   const amount = Number(amountRaw);
-  if (!isFinite(amount)) {
-    return { error: err("validation", `"amount" must be a finite number, got: ${JSON.stringify(amountRaw)}`) };
-  }
-  const tagErr = checkTagDirection(tag.trim(), direction, categories);
-  if (tagErr) return { error: err("validation", tagErr) };
+  const amountViolation = amountInvariantViolation(amount, amountRaw);
+  if (amountViolation) return { error: err("validation", amountViolation) };
+  const invariantViolation = entryInvariantViolation({
+    date, tag: tag.trim(), direction, amount,
+  }, categories);
+  if (invariantViolation) return { error: err("validation", invariantViolation) };
 
   return {
     payload: {
@@ -381,7 +333,7 @@ function validateUpdatePayload(
 
   if (body.date !== undefined) {
     const date = String(body.date);
-    if (!isValidDate(date)) {
+    if (!isValidCalendarDate(date)) {
       return { error: err("validation", `"date" must be a valid ISO date string (YYYY-MM-DD), got: ${JSON.stringify(date)}`) };
     }
     patch.date = date;
@@ -400,9 +352,8 @@ function validateUpdatePayload(
   }
   if (body.amount !== undefined) {
     const amount = Number(body.amount);
-    if (!isFinite(amount)) {
-      return { error: err("validation", `"amount" must be a finite number, got: ${JSON.stringify(body.amount)}`) };
-    }
+    const amountViolation = amountInvariantViolation(amount, body.amount);
+    if (amountViolation) return { error: err("validation", amountViolation) };
     patch.amount = amount;
   }
 

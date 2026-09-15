@@ -1,11 +1,8 @@
 import type {
-  Direction,
-  EntryData as Entry,
   AddEntryPayload,
   AddEntryRequest,
   AddEntriesPayload,
   UpdateEntryPatch,
-  CategoryMap,
   ConfigMap,
   CategoryMonthChange,
   SpendingPaceDay,
@@ -14,15 +11,16 @@ import type {
   WindowCategorySpend,
   StatsData,
 } from "../../clasp/src/lib/dispatch";
+import type { Direction, Entry } from "../../clasp/src/lib/domain/entry";
+import type { CategoryMap } from "../../clasp/src/lib/domain/category";
 
+export type { Direction, Entry } from "../../clasp/src/lib/domain/entry";
+export type { CategoryMap } from "../../clasp/src/lib/domain/category";
 export type {
-  Direction,
-  EntryData as Entry,
   AddEntryPayload,
   AddEntryRequest,
   AddEntriesPayload,
   UpdateEntryPatch,
-  CategoryMap,
   ConfigMap,
   CategoryMonthChange,
   SpendingPaceDay,

@@ -47,7 +47,6 @@ const CURRENT_ARCHITECTURE_POLICY = Object.freeze({
   ],
   legacyFlatModules: [
     "src/lib/0_sheetLayout.ts",
-    "src/lib/categories.ts",
     "src/lib/categorySync.ts",
     "src/lib/config.ts",
     "src/lib/dispatch.ts",
@@ -59,7 +58,6 @@ const CURRENT_ARCHITECTURE_POLICY = Object.freeze({
     "src/lib/setup.ts",
     "src/lib/stats.ts",
     "src/lib/visibility.ts",
-    "src/lib/weeks.ts",
   ],
 });
 

@@ -5,7 +5,7 @@ import {
   weekLabelFromStr,
   weekStartOfStr,
   weekTierFromStr,
-} from "./weeks";
+} from "./domain/calendar";
 
 describe("findInsertionIndex", () => {
   const d = (iso: string) => new Date(iso);

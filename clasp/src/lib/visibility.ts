@@ -15,7 +15,7 @@ import {
   spreadsheetWeekLabelFromStr,
   weekStartOfStr,
   weekTierFromStr,
-} from "./weeks";
+} from "./domain/calendar";
 
 export type CalendarDateFormatter = (raw: unknown) => string;
 

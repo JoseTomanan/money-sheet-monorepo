@@ -1,4 +1,4 @@
-import { isCategory } from "./categories";
+import { isCategory } from "./domain/category";
 
 // The template places hidden incoming/outgoing detail columns after each
 // visible Category net-total column. They explain the formula but are not

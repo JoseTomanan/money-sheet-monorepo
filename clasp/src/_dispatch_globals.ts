@@ -4,8 +4,8 @@
 // These declarations are derived directly from src/lib/dispatch.ts's own exported types
 // (rather than hand-copied) so a wire-contract change there fails `tsc --noEmit` here
 // instead of silently drifting (issue #109). See also _contract_parity.ts, which
-// asserts the GAS-global domain types (Entry, CategoryMap, …) from 0_types.ts stay
-// structurally identical to dispatch.ts's own EntryData/CategoryMap/….
+// asserts the GAS-global domain types from 0_types.ts stay structurally identical
+// to their canonical Domain counterparts.
 
 type DispatchErrorCode = import("./lib/dispatch").ErrorCode;
 type DispatchRequest = import("./lib/dispatch").DispatchRequest;

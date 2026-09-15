@@ -57,7 +57,7 @@
  * in the issue #129 report and, for the #132 window blocks, in the #132 report.
  */
 
-import { CATEGORY_ORDER } from "./categories";
+import { CATEGORY_ORDER } from "./domain/category";
 import { columnToA1, SHEET_LAYOUT } from "./0_sheetLayout";
 
 // Backwards-compatible name for STATS consumers; the ordered domain lives in
