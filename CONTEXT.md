@@ -106,18 +106,18 @@ date.setUTCDate(date.getUTCDate() - date.getUTCDay()); // rewind to Sunday
 return date.toISOString().slice(0, 10);           // "YYYY-MM-DD" of week start
 ```
 
-- **clasp**: `weekStartOfStr(dateStr)` in `clasp/src/lib/weeks.ts`
+- **clasp**: `weekStartOfStr(dateStr)` in `clasp/src/lib/domain/calendar.ts`
 - **frontend**: `weekStartOf(dateStr)` in `frontend/src/lib/groupEntries.ts`
 
 Both functions produce identical output for the same input. Tests covering Dec 31 / Jan 1 crossings, all seven weekdays, and a multi-year range live in the corresponding `*.test.ts` files.
 
 **Week label format** — two different formats exist today:
 
-- **Frontend UI week picker**, via `weekLabel` (`frontend/src/lib/groupEntries.ts`), kept in parity with `weekLabelFromStr` (`clasp/src/lib/weeks.ts`) by `frontend/src/lib/parity.test.ts`:
+- **Frontend UI week picker**, via `weekLabel` (`frontend/src/lib/groupEntries.ts`), kept in parity with `weekLabelFromStr` (`clasp/src/lib/domain/calendar.ts`) by `frontend/src/lib/parity.test.ts`:
   - Same month: `"Mon D – D, YYYY"` (e.g. `"May 11 – 17, 2025"`)
   - Cross-month: `"Mon D – Mon D, YYYY"` (e.g. `"Apr 27 – May 3, 2025"`)
   - Year is always the year of the Saturday (end of week)
-- **Spreadsheet separator rows**, via `spreadsheetWeekLabelFromStr` (`clasp/src/lib/weeks.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
+- **Spreadsheet separator rows**, via `spreadsheetWeekLabelFromStr` (`clasp/src/lib/domain/calendar.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
 
 The clasp separator/visibility trigger uses `weekStartOfStr` through the pure planner in `clasp/src/lib/visibility.ts`; it has no parallel timezone-dependent week-start calculation. Its spreadsheet-only label comes from `spreadsheetWeekLabelFromStr`, which preserves the uppercase/no-year separator format.
 
