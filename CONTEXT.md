@@ -119,6 +119,6 @@ Both functions produce identical output for the same input. Tests covering Dec 3
   - Year is always the year of the Saturday (end of week)
 - **Spreadsheet separator rows**, via `spreadsheetWeekLabelFromStr` (`clasp/src/lib/domain/calendar.ts`): uppercase, no year — same month `"MAY 11-17"`, cross-month `"APR 27 - MAY 3"`.
 
-The clasp separator/visibility trigger uses `weekStartOfStr` through the pure planner in `clasp/src/lib/visibility.ts`; it has no parallel timezone-dependent week-start calculation. Its spreadsheet-only label comes from `spreadsheetWeekLabelFromStr`, which preserves the uppercase/no-year separator format.
+The clasp separator/visibility trigger uses `weekStartOfStr` through the pure planner in `clasp/src/lib/application/visibility.ts`; it has no parallel timezone-dependent week-start calculation. Its spreadsheet-only label comes from `spreadsheetWeekLabelFromStr`, which preserves the uppercase/no-year separator format.
 
 **Note for #87 implementer**: When adding configurable first-day-of-week, update `weekStartOf` (frontend) and `weekStartOfStr` (clasp) in tandem. The separator writer consumes the clasp helper, so it follows that change automatically.
