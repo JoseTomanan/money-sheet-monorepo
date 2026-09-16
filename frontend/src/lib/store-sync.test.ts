@@ -5,8 +5,8 @@
  *
  * Closes #26.
  *
- * Skips when VITE_GAS_URL is missing — safe to leave in repo.
- * Requires VITE_MOCK !== "true" so api.ts hits the live endpoint.
+ * Runs only through `npm run test:store-sync:live`, with credentials present
+ * and VITE_MOCK !== "true" so api.ts hits the live endpoint.
  */
 import {
   afterAll,
@@ -19,11 +19,15 @@ import {
 import { store } from "./store.svelte";
 import * as api from "./api";
 import { setConnection } from "./connection.svelte";
+import { shouldRunLiveStoreSyncTests } from "./store-sync-env";
 import type { AddEntryPayload, Entry } from "./types";
 
-const HAS_ENV =
-  Boolean(import.meta.env.VITE_GAS_URL) &&
-  import.meta.env.VITE_MOCK !== "true";
+const LIVE_TESTS_ENABLED = shouldRunLiveStoreSyncTests({
+  mode: import.meta.env.MODE,
+  gasUrl: import.meta.env.VITE_GAS_URL,
+  apiSecret: import.meta.env.VITE_API_SECRET,
+  mock: import.meta.env.VITE_MOCK,
+});
 
 const RUN = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const createdIds: number[] = [];
@@ -53,7 +57,7 @@ function diffNewIds(before: Entry[], after: Entry[]): number[] {
   return after.filter((e) => !beforeIds.has(e.id)).map((e) => e.id);
 }
 
-describe.skipIf(!HAS_ENV)("store ↔ GAS up-to-dateness", () => {
+describe.skipIf(!LIVE_TESTS_ENABLED)("store ↔ GAS up-to-dateness", () => {
   beforeAll(async () => {
     setConnection({
       gasUrl: import.meta.env.VITE_GAS_URL as string,

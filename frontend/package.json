@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest",
     "test:run": "vitest run --maxWorkers=1",
+    "test:store-sync:live": "vitest run src/lib/store-sync.test.ts --maxWorkers=1 --mode store-sync-live",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "shakedown": "playwright test --config=shakedown/playwright.config.ts"
