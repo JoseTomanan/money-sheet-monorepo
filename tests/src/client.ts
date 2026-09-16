@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   AddEntryPayload,
   AddEntryRequest,
@@ -84,17 +85,19 @@ export class GasClient {
   }
 
   async addEntry(payload: AddEntryPayload): Promise<Entry> {
+    const request: AddEntryRequest = { ...payload, mutationId: randomUUID() };
     const data = await this.post<{ ok: boolean; entry: Entry }>({
       action: "addEntry",
-      ...payload,
+      ...request,
     });
     return data.entry;
   }
 
   async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
+    const request: AddEntriesPayload = { entries: payloads, mutationId: randomUUID() };
     const data = await this.post<{ ok: boolean; entries: Entry[] }>({
       action: "addEntries",
-      entries: payloads,
+      ...request,
     });
     return data.entries;
   }
