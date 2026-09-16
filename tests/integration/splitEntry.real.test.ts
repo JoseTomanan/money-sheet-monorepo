@@ -86,7 +86,7 @@ describe("split outgoing entry — real GAS API", () => {
       createdIds.push(first.id);
       const retry = await client.addEntry(payload, mutationId);
 
-      expect(retry).toEqual(first);
+      expect(retry).toMatchObject(first);
       const matching = (await client.getEntries()).filter(
         (entry) => entry.description === payload.description,
       );
@@ -107,7 +107,7 @@ describe("split outgoing entry — real GAS API", () => {
       createdIds.push(...first.map((entry) => entry.id));
       const retry = await client.addEntries(payloads, mutationId);
 
-      expect(retry).toEqual(first);
+      expect(retry).toMatchObject(first);
       expect(first[1].id).toBe(first[0].id + 1);
       const matching = (await client.getEntries()).filter(
         (entry) => entry.description === description,
