@@ -10,7 +10,7 @@ const payload: AddEntryPayload = {
 };
 
 function successfulFetch(result: Record<string, unknown>) {
-  return vi.spyOn(globalThis, "fetch").mockResolvedValue(
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
     new Response(JSON.stringify({ ok: true, ...result }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -43,6 +43,17 @@ describe("GasClient add contract", () => {
     expect(String(postedBody(fetchMock).mutationId)).not.toHaveLength(0);
   });
 
+  it("reuses a caller-supplied Mutation ID for an addEntry retry", async () => {
+    const fetchMock = successfulFetch({ entry: { id: 1, ...payload, mainCategory: "FOOD" } });
+    const client = new GasClient("https://example.test/exec", "test-secret");
+
+    await client.addEntry(payload, "retry-single");
+    await client.addEntry(payload, "retry-single");
+
+    expect(postedBody(fetchMock, 0).mutationId).toBe("retry-single");
+    expect(postedBody(fetchMock, 1).mutationId).toBe("retry-single");
+  });
+
   it("sends one Mutation ID for the whole addEntries batch", async () => {
     const secondPayload: AddEntryPayload = {
       ...payload,
@@ -62,5 +73,16 @@ describe("GasClient add contract", () => {
       secret: "test-secret",
     });
     expect(String(postedBody(fetchMock).mutationId)).not.toHaveLength(0);
+  });
+
+  it("reuses a caller-supplied Mutation ID for an addEntries retry", async () => {
+    const fetchMock = successfulFetch({ entries: [] });
+    const client = new GasClient("https://example.test/exec", "test-secret");
+
+    await client.addEntries([payload], "retry-batch");
+    await client.addEntries([payload], "retry-batch");
+
+    expect(postedBody(fetchMock, 0).mutationId).toBe("retry-batch");
+    expect(postedBody(fetchMock, 1).mutationId).toBe("retry-batch");
   });
 });
