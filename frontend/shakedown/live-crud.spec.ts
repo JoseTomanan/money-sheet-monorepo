@@ -95,7 +95,7 @@ async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
 
 async function openAddSheet(page: Page) {
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 }
 
 async function fillSheet(
@@ -126,7 +126,7 @@ async function saveSheet(page: Page) {
   );
   await page.locator("button.header-btn.save").click();
   await gasPost;
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await waitForAppReady(page);
 }
 
@@ -134,7 +134,7 @@ async function openEditSheet(page: Page, description: string) {
   const card = page.locator(".entry-card", { hasText: description });
   await expect(card).toBeVisible({ timeout: 10_000 });
   await card.locator(".entry-desc").click();
-  await page.locator(".sheet.open").waitFor({ state: "visible" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "visible" });
 }
 
 // The delete button is behind pointer-events:none unless the sheet is dragged
@@ -146,7 +146,7 @@ async function deleteEntryUi(page: Page) {
   );
   await page.locator(".delete-btn").dispatchEvent("click");
   await gasPost;
-  await page.locator(".sheet.open").waitFor({ state: "detached" });
+  await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
   await waitForAppReady(page);
 }
 
