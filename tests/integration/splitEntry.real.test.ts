@@ -44,6 +44,78 @@ afterAll(async () => {
 });
 
 describe("split outgoing entry — real GAS API", () => {
+  describe("durable Entry ID allocation", () => {
+    it("does not reuse the newest Entry ID after that Entry is deleted", async () => {
+      const picks = pickSubcategories(cats, 1);
+      const date = new Date().toISOString().slice(0, 10);
+      const first = await trackedAdd(client, {
+        date,
+        tag: picks[0].subcategory,
+        description: markerDescription(RUN, "non-reuse-first"),
+        direction: "O",
+        amount: 1,
+      }, createdIds);
+
+      await client.deleteEntry(first.id);
+      const trackedIndex = createdIds.indexOf(first.id);
+      if (trackedIndex >= 0) createdIds.splice(trackedIndex, 1);
+
+      const second = await trackedAdd(client, {
+        date,
+        tag: picks[0].subcategory,
+        description: markerDescription(RUN, "non-reuse-second"),
+        direction: "O",
+        amount: 2,
+      }, createdIds);
+
+      expect(second.id).toBeGreaterThan(first.id);
+    });
+
+    it("returns the original single Entry when the Mutation ID is retried", async () => {
+      const picks = pickSubcategories(cats, 1);
+      const payload: AddEntryPayload = {
+        date: new Date().toISOString().slice(0, 10),
+        tag: picks[0].subcategory,
+        description: markerDescription(RUN, "retry-single"),
+        direction: "O",
+        amount: 3,
+      };
+      const mutationId = `${RUN}-retry-single`;
+
+      const first = await client.addEntry(payload, mutationId);
+      createdIds.push(first.id);
+      const retry = await client.addEntry(payload, mutationId);
+
+      expect(retry).toMatchObject(first);
+      const matching = (await client.getEntries()).filter(
+        (entry) => entry.description === payload.description,
+      );
+      expect(matching).toHaveLength(1);
+    });
+
+    it("returns the original ordered batch when the Mutation ID is retried", async () => {
+      const picks = pickSubcategories(cats, 2);
+      const description = markerDescription(RUN, "retry-batch");
+      const date = new Date().toISOString().slice(0, 10);
+      const payloads: AddEntryPayload[] = [
+        { date, tag: picks[0].subcategory, description, direction: "O", amount: 4 },
+        { date, tag: picks[1].subcategory, description, direction: "O", amount: 5 },
+      ];
+      const mutationId = `${RUN}-retry-batch`;
+
+      const first = await client.addEntries(payloads, mutationId);
+      createdIds.push(...first.map((entry) => entry.id));
+      const retry = await client.addEntries(payloads, mutationId);
+
+      expect(retry).toMatchObject(first);
+      expect(first[1].id).toBe(first[0].id + 1);
+      const matching = (await client.getEntries()).filter(
+        (entry) => entry.description === description,
+      );
+      expect(matching).toHaveLength(2);
+    });
+  });
+
   it("each leg in a parallel split receives a distinct entry id", async () => {
     const picks = pickSubcategories(cats, 3);
     const date = new Date().toISOString().slice(0, 10);

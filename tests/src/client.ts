@@ -84,8 +84,11 @@ export class GasClient {
     return data.stats;
   }
 
-  async addEntry(payload: AddEntryPayload): Promise<Entry> {
-    const request: AddEntryRequest = { ...payload, mutationId: randomUUID() };
+  async addEntry(
+    payload: AddEntryPayload,
+    mutationId: string = randomUUID(),
+  ): Promise<Entry> {
+    const request: AddEntryRequest = { ...payload, mutationId };
     const data = await this.post<{ ok: boolean; entry: Entry }>({
       action: "addEntry",
       ...request,
@@ -93,8 +96,11 @@ export class GasClient {
     return data.entry;
   }
 
-  async addEntries(payloads: AddEntryPayload[]): Promise<Entry[]> {
-    const request: AddEntriesPayload = { entries: payloads, mutationId: randomUUID() };
+  async addEntries(
+    payloads: AddEntryPayload[],
+    mutationId: string = randomUUID(),
+  ): Promise<Entry[]> {
+    const request: AddEntriesPayload = { entries: payloads, mutationId };
     const data = await this.post<{ ok: boolean; entries: Entry[] }>({
       action: "addEntries",
       ...request,
