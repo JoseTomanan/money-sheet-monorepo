@@ -189,6 +189,9 @@ class FakeIoRepository {
   writeEntryFields = vi.fn();
   deleteRow = vi.fn();
   resolveMainCategory = vi.fn().mockReturnValue("FOOD");
+  reserveEntryIds = vi.fn((existingIds: number[]) =>
+    existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1
+  );
 
   constructor(private rows: unknown[][]) {}
 
@@ -204,6 +207,10 @@ class MutableIoRepository {
 
   readRows() {
     return this.rows;
+  }
+
+  reserveEntryIds(existingIds: number[]) {
+    return existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
   }
 
   insertRowBefore(sheetRow: number) {
@@ -312,6 +319,27 @@ describe("patchEntry date repositioning", () => {
 });
 
 describe("insertEntry", () => {
+  it("uses the repository's durable Entry-ID reservation", () => {
+    const repo = new FakeIoRepository([
+      [new Date("2026-01-05"), "FOOD", "FOOD", "Rent", "O", 200, 1],
+    ]);
+    repo.reserveEntryIds.mockReturnValueOnce(99);
+
+    const created = insertEntry(repo, {
+      date: "2026-01-07",
+      tag: "FOOD",
+      description: "Groceries",
+      direction: "O",
+      amount: 100,
+    });
+
+    expect(repo.reserveEntryIds).toHaveBeenCalledWith([1], 1);
+    expect(repo.reserveEntryIds.mock.invocationCallOrder[0]).toBeLessThan(
+      repo.writeEntryFields.mock.invocationCallOrder[0],
+    );
+    expect(created.id).toBe(99);
+  });
+
   it("writes a mutation ID beside a newly-created Entry", () => {
     const repo = new FakeIoRepository([]);
     insertEntry(repo, { date: "2026-01-07", tag: "FOOD", description: "Groceries", direction: "O", amount: 100 }, "mutation-1");
@@ -406,6 +434,20 @@ describe("insertEntry", () => {
 });
 
 describe("insertEntries", () => {
+  it("reserves one durable contiguous ID block for the whole batch", () => {
+    const repo = new FakeIoRepository([]);
+    repo.reserveEntryIds.mockReturnValueOnce(200);
+
+    const entries = insertEntries(repo, [
+      { date: "2026-01-07", tag: "FOOD", description: "first", direction: "O", amount: 40 },
+      { date: "2026-01-07", tag: "FOOD", description: "^^", direction: "O", amount: 60 },
+    ]);
+
+    expect(repo.reserveEntryIds).toHaveBeenCalledTimes(1);
+    expect(repo.reserveEntryIds).toHaveBeenCalledWith([], 2);
+    expect(entries.map((entry) => entry.id)).toEqual([200, 201]);
+  });
+
   it("writes one shared mutation ID for every batch leg", () => {
     const repo = new FakeIoRepository([]);
     insertEntries(repo, [

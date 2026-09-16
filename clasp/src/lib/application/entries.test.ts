@@ -20,6 +20,43 @@ function entry(id: number, mutationId: string): Entry & { mutationId: string } {
 }
 
 describe("Entry application", () => {
+  it("runs the insert repository, including ID reservation, inside the transaction", () => {
+    const created = entry(8, "serialized-add");
+    let transactionActive = false;
+    const repository: EntryRepository = {
+      list: () => [],
+      findByMutationId: () => [],
+      insert: () => {
+        expect(transactionActive).toBe(true);
+        return created;
+      },
+      insertMany: () => { throw new Error("not used"); },
+      update: () => { throw new Error("not used"); },
+      remove: () => { throw new Error("not used"); },
+    };
+    const app = createEntryApplication({
+      repository,
+      transact: (work) => {
+        transactionActive = true;
+        try {
+          return work(repository);
+        } finally {
+          transactionActive = false;
+        }
+      },
+    });
+
+    expect(app.add({
+      mutationId: created.mutationId,
+      date: created.date,
+      tag: created.tag,
+      description: created.description,
+      direction: created.direction,
+      amount: created.amount,
+    })).toEqual({ status: "created", entry: created });
+    expect(transactionActive).toBe(false);
+  });
+
   it("returns the original Entry when an identical Mutation ID is retried", () => {
     const existing = entry(7, "retry-1");
     let inserted = false;

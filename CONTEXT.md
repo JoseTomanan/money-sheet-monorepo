@@ -35,7 +35,7 @@ A Subcategory-level Tag is never valid on an Incoming Entry. A bare Category-lev
 Whether an Entry is **Incoming** (`I`) or **Outgoing** (`O`). Stored in column F of INCOMING/OUTGOING. Determines the valid domain of Tag.
 
 ## Entry ID
-A stable, auto-incrementing integer stored in column H of INCOMING/OUTGOING. Written by GAS when the row is first created; never changes. Used to identify a specific Entry for edit and delete operations. Values are never reused after deletion.
+A stable, auto-incrementing integer stored in column H of INCOMING/OUTGOING. Written by GAS when the row is first created; never changes. Used to identify a specific Entry for edit and delete operations. Values are never reused after deletion. GAS reserves IDs from a per-spreadsheet high-water mark in Script Properties while holding the shared document lock; an atomic batch reserves one contiguous block in request order. A legacy spreadsheet initializes the mark from the greatest Entry ID still present on its first post-migration insert, while a copied spreadsheet rebinds inherited allocator state to its own spreadsheet identity (ADR-0016).
 
 ## Mutation ID
 An opaque browser-generated key stored in column I of INCOMING/OUTGOING for a new Entry save operation. Every delivery attempt of one single Entry or atomic batch uses the same key. GAS uses it under the document lock to return the original Entry or ordered batch on a retry, and rejects a reused key with different content. It is not an Entry identifier: GAS alone assigns Entry IDs, and historical rows intentionally retain blank Mutation IDs.

@@ -1,4 +1,5 @@
 import { planFieldWrites, type IoRepository, type IoRow } from "./entryRepository";
+import { reserveEntryIdBlock } from "./entryIdAllocator";
 import { rangeWidth, SHEET_LAYOUT } from "./sheetLayout";
 
 export function getIOSheet(): GoogleAppsScript.Spreadsheet.Sheet {
@@ -53,6 +54,14 @@ export function liveIoRepository(
         lastRow - firstRow + 1,
         rangeWidth(SHEET_LAYOUT.io.columns.date, SHEET_LAYOUT.io.columns.mutationId),
       ).getValues();
+    },
+    reserveEntryIds(existingIds: number[], count: number): number {
+      return reserveEntryIdBlock(
+        PropertiesService.getScriptProperties(),
+        sh.getParent().getId(),
+        existingIds,
+        count,
+      );
     },
     insertRowBefore(sheetRow: number): void {
       sh.insertRowBefore(sheetRow);

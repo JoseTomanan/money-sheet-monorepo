@@ -40,7 +40,7 @@ Only pure `lib/` functions can be unit tested locally. Any function that calls `
 ### Key invariants
 
 - **`src/lib/infrastructure/sheetLayout.ts` is the single coordinate source of truth.** All fixed GAS-managed sheet names and 1-based row/column coordinates live in `SHEET_LAYOUT`; range widths, returned-array indices, and generated A1 references are derived from it.
-- **Col H (Entry ID)** is the stable row identifier written by `addEntry` and never reused or overwritten by `updateEntry`.
+- **Col H (Entry ID)** is the stable row identifier written by `addEntry` and never reused or overwritten by `updateEntry`. Inserts reserve IDs from the spreadsheet-bound Script-Properties high-water mark under the shared document lock (ADR-0016).
 - **Col D (MAIN_CAT)** is ARRAYFORMULA-driven in the sheet — GAS never writes to it. After `addEntry`, `SpreadsheetApp.flush()` is called and col D is read back to return the resolved `mainCategory`.
 - **MASTER data row** is always row 3. Do not use `getLastRow()` to locate it; extra formula rows below would give a wrong index.
 - **Separator rows** are identified by a blank col H (ID). They hold a week-start `Date` in col B and a formatted label in col E.

@@ -98,6 +98,8 @@ export function planFieldWrites(
 export interface IoRepository {
   /** The single "read all data rows" operation. */
   readRows(): IoRow[];
+  /** Reserves `count` contiguous Entry IDs and returns the first ID. */
+  reserveEntryIds(existingIds: number[], count: number): number;
   /** Writes only the provided fields to the given 1-based sheet row. */
   writeEntryFields(sheetRow: number, fields: Partial<EntryFields>): void;
   /** Deletes the given 1-based sheet row entirely. */
@@ -257,9 +259,7 @@ export function insertEntry(
     .map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId))
     .filter((id) => !isSeparatorRow(id))
     .map(Number);
-  let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-  const idSet = new Set(existingIds);
-  while (idSet.has(nextId)) nextId++;
+  const nextId = repo.reserveEntryIds(existingIds, 1);
 
   const dates: (Date | null)[] = rows.map((r) => {
     const v = ioValue(r, SHEET_LAYOUT.io.columns.date);
@@ -306,7 +306,7 @@ export function insertEntry(
 
 /**
  * Inserts N new Entries in array order under a single `readRows()` call.
- * IDs are assigned as a contiguous block starting after the max existing ID,
+ * IDs are assigned as one durably reserved contiguous block,
  * in array order (leg 0 gets the lowest ID). Each leg's row position is
  * computed date-ordered against the sheet state as it stands after the
  * previous legs in this batch were inserted, so legs sharing a date land on
@@ -323,9 +323,7 @@ export function insertEntries(
     .map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId))
     .filter((id) => !isSeparatorRow(id))
     .map(Number);
-  let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-  const idSet = new Set(existingIds);
-  while (idSet.has(nextId)) nextId++;
+  let nextId = repo.reserveEntryIds(existingIds, payloads.length);
 
   const dates: (Date | null)[] = rows.map((r) => {
     const v = ioValue(r, SHEET_LAYOUT.io.columns.date);

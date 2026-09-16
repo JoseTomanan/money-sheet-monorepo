@@ -104,4 +104,22 @@ describe('mock entries — daysAgo local-date semantics', () => {
 
     expect(maxDate).toBe('2026-05-23');
   });
+
+  it('does not reuse the highest Entry ID after that Entry is deleted', async () => {
+    vi.resetModules();
+    const mock = await import('./mock');
+    const entries = await mock.mockGetEntries();
+    const previousMax = Math.max(...entries.map((entry) => entry.id));
+
+    await mock.mockDeleteEntry(previousMax);
+    const created = await mock.mockAddEntry({
+      date: '2026-09-16',
+      tag: 'FOOD',
+      description: 'allocator regression',
+      direction: 'I',
+      amount: 1,
+    }, 'allocator-regression');
+
+    expect(created.id).toBe(previousMax + 1);
+  });
 });

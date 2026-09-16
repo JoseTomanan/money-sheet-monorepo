@@ -102,10 +102,21 @@ const MOCK_SECRET = "mock-mode-dispatch-secret";
 
 /** In-memory IO-sheet adapter for the canonical repository operations. */
 class MockIoRepository implements IoRepository {
-  constructor(private readonly rows: IoRow[]) {}
+  private entryIdHighWater: number;
+
+  constructor(private readonly rows: IoRow[]) {
+    this.entryIdHighWater = rows.reduce((max, row) => Math.max(max, Number(row[6]) || 0), 0);
+  }
 
   readRows(): IoRow[] {
     return this.rows;
+  }
+
+  reserveEntryIds(existingIds: number[], count: number): number {
+    const currentMax = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const firstId = Math.max(this.entryIdHighWater, currentMax) + 1;
+    this.entryIdHighWater = firstId + count - 1;
+    return firstId;
   }
 
   writeEntryFields(sheetRow: number, fields: Partial<EntryFields>): void {

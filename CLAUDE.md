@@ -67,7 +67,7 @@ npx tsc --noEmit   # type-check locally
 
 The frontend renders derived metrics sourced from MASTER/STATS (`getStats`) — it does not compute them (ADR-0011). The old "per-subcategory breakdown is computed client-side" note is superseded: as of #133, no client-side subcategory-spend computation exists in the frontend (there was no live consumer left to migrate). A per-subcategory-level `getStats`/STATS breakdown, with a `getSubcategoryBreakdown`-equivalent action, remains a fast-follow to be added when a consumer needs it.
 
-`addEntry` writes `ENTRY ID` to col H as an auto-incrementing integer (max existing ID + 1). `addEntries` inserts an ordered array of entries atomically under one document lock (validate-then-write, no partial writes) — see ADR-0008.
+`addEntry` reserves and writes `ENTRY ID` from a spreadsheet-bound durable high-water mark, so deleted IDs are never reused. `addEntries` reserves one contiguous block and inserts the ordered array atomically under one document lock (validate-then-write, no partial writes) — see ADR-0008 and ADR-0016.
 
 **Auth**: shared secret passed as `body.secret` in POST requests. Stored in GAS Script Properties as `API_SECRET`. OAuth is deferred.
 
