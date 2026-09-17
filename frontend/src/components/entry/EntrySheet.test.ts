@@ -31,6 +31,28 @@ function makeEntry(overrides: Partial<Entry> = {}): Entry {
   };
 }
 
+describe("EntrySheet — body scroll lock", () => {
+  it("restores the existing body overflow after closing", async () => {
+    vi.useFakeTimers();
+    const initialBodyStyle = document.body.getAttribute("style");
+    document.body.style.overflow = "auto";
+
+    try {
+      const { rerender } = render(EntrySheet, baseProps());
+      expect(document.body).toHaveStyle({ overflow: "hidden" });
+
+      await rerender(baseProps({ open: false }));
+      await vi.runAllTimersAsync();
+
+      expect(document.body).toHaveStyle({ overflow: "auto" });
+    } finally {
+      vi.useRealTimers();
+      if (initialBodyStyle === null) document.body.removeAttribute("style");
+      else document.body.setAttribute("style", initialBodyStyle);
+    }
+  });
+});
+
 describe("EntrySheet — formula evaluation on blur", () => {
   it("resolves =10+5 to 15.00 on blur in the amount input", async () => {
     const { getByPlaceholderText } = render(
