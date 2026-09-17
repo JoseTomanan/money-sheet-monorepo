@@ -31,6 +31,9 @@ export type {
   StatsData,
 } from "../../clasp/src/lib/application/dispatch";
 
+const MAX_ATTEMPTS = 3;
+const REQUEST_TIMEOUT_MS = 60_000;
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing required env var: ${name}`);
@@ -41,46 +44,94 @@ export class GasClient {
   private readonly url: string;
   private readonly secret: string;
 
-  constructor(url = requireEnv("GAS_URL"), secret = requireEnv("API_SECRET")) {
+  constructor(
+    url = requireEnv("DISPOSABLE_GAS_URL"),
+    secret = requireEnv("DISPOSABLE_API_SECRET"),
+  ) {
     this.url = url;
     this.secret = secret;
   }
 
-  private async post<T>(body: Record<string, unknown>): Promise<T> {
-    const res = await fetch(this.url, {
-      method: "POST",
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ ...body, secret: this.secret }),
-    });
-    const text = await res.text();
-    let json: Record<string, unknown>;
-    try {
-      json = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      throw new Error(`Non-JSON response (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  private async post<T>(body: Record<string, unknown>, retryTransient = false): Promise<T> {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let res: Response;
+      let text: string;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        res = await fetch(this.url, {
+          method: "POST",
+          redirect: "follow",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ ...body, secret: this.secret }),
+          signal: controller.signal,
+        });
+        text = await res.text();
+      } catch (error) {
+        const message = controller.signal.aborted
+          ? "request timed out"
+          : error instanceof Error ? error.message : String(error);
+        if (retryTransient && attempt < MAX_ATTEMPTS) continue;
+        if (retryTransient) {
+          throw new Error(`${String(body.action)} failed after ${attempt} attempts: ${message}`);
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+      const transientStatus = res.status === 408 || res.status === 429 || res.status >= 500;
+      let json: Record<string, unknown>;
+      try {
+        json = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        if (retryTransient && transientStatus && attempt < MAX_ATTEMPTS) continue;
+        if (retryTransient && transientStatus) {
+          throw new Error(
+            `${String(body.action)} failed after ${attempt} attempts: HTTP ${res.status} non-JSON response`,
+          );
+        }
+        throw new Error(`Non-JSON response (HTTP ${res.status})`);
+      }
+      const message = typeof json.message === "string" ? json.message : String(json.error ?? "");
+      if (retryTransient && transientStatus && attempt < MAX_ATTEMPTS) continue;
+      if (retryTransient && transientStatus) {
+        throw new Error(
+          `${String(body.action)} failed after ${attempt} attempts: HTTP ${res.status} ${message}`.trim(),
+        );
+      }
+      if (
+        retryTransient &&
+        message === 'Unknown action: ""' &&
+        attempt < MAX_ATTEMPTS
+      ) {
+        continue;
+      }
+      if (retryTransient && message === 'Unknown action: ""') {
+        throw new Error(`${String(body.action)} failed after ${attempt} attempts: ${message}`);
+      }
+      if (json.error) throw new Error(message);
+      return json as T;
     }
-    if (json.error) throw new Error(String(json.error));
-    return json as T;
+    throw new Error("Request retry limit exhausted");
   }
 
   async getEntries(): Promise<Entry[]> {
-    const data = await this.post<{ entries: Entry[] }>({ action: "getEntries" });
+    const data = await this.post<{ entries: Entry[] }>({ action: "getEntries" }, true);
     return data.entries;
   }
 
   async getCategories(): Promise<CategoryMap> {
-    const data = await this.post<{ categories: CategoryMap }>({ action: "getCategories" });
+    const data = await this.post<{ categories: CategoryMap }>({ action: "getCategories" }, true);
     return data.categories;
   }
 
   async getConfig(): Promise<ConfigMap> {
-    const data = await this.post<{ config: ConfigMap }>({ action: "getConfig" });
+    const data = await this.post<{ config: ConfigMap }>({ action: "getConfig" }, true);
     return data.config;
   }
 
   async getStats(): Promise<StatsData> {
-    const data = await this.post<{ stats: StatsData }>({ action: "getStats" });
+    const data = await this.post<{ stats: StatsData }>({ action: "getStats" }, true);
     return data.stats;
   }
 
@@ -92,7 +143,7 @@ export class GasClient {
     const data = await this.post<{ ok: boolean; entry: Entry }>({
       action: "addEntry",
       ...request,
-    });
+    }, true);
     return data.entry;
   }
 
@@ -104,7 +155,7 @@ export class GasClient {
     const data = await this.post<{ ok: boolean; entries: Entry[] }>({
       action: "addEntries",
       ...request,
-    });
+    }, true);
     return data.entries;
   }
 

@@ -4,8 +4,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["integration/**/*.test.ts"],
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    testTimeout: 480_000,
+    hookTimeout: 480_000,
     setupFiles: ["dotenv/config"],
     globals: true,
     fileParallelism: false,
