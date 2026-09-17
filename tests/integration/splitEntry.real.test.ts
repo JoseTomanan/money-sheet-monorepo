@@ -35,12 +35,11 @@ afterAll(async () => {
     console.warn(`[tests] safety-net cleanup removed ${swept} orphan row(s)`);
   }
   const entries = await client.getEntries();
-  if (entries.length !== startCount) {
-    console.warn(
-      `[tests] entry count drifted: started=${startCount} ended=${entries.length}. ` +
-        `Inspect the sheet for leftover __TEST__${RUN}__ rows.`,
-    );
-  }
+  const remainingMarkedRows = entries.filter((entry) =>
+    entry.description.startsWith(`__TEST__${RUN}__`),
+  );
+  expect(remainingMarkedRows, "cleanup must remove every row created by this run").toHaveLength(0);
+  expect(entries.length, "cleanup must restore the exact starting Entry count").toBe(startCount);
 });
 
 describe("split outgoing entry — real GAS API", () => {
@@ -312,6 +311,7 @@ describe("split outgoing entry — real GAS API", () => {
 
       const allIds = [...batchEntries.map((e) => e.id), soloEntry.id];
       expect(new Set(allIds).size).toBe(allIds.length);
+      expect(batchEntries[1].id).toBe(batchEntries[0].id + 1);
 
       const ourRows = after.filter((e) => allIds.includes(e.id));
       expect(ourRows).toHaveLength(3);
