@@ -2,7 +2,7 @@
  * Live CRUD shakedown — hits the real GAS backend and the real spreadsheet.
  *
  * Run with:   npm run shakedown          (from frontend/)
- * Requires:   GAS_URL + API_SECRET in tests/.env (monorepo root)
+ * Requires:   DISPOSABLE_GAS_URL + DISPOSABLE_API_SECRET in tests/.env
  *             Dev server running in real mode (VITE_MOCK=false, port 1111)
  *
  * Every test row is prefixed with MARK and swept clean in afterAll, leaving
@@ -10,65 +10,83 @@
  */
 
 import { test, expect, type Page } from "@playwright/test";
+import {
+  openUsableEntries,
+  readDisposableConnection,
+  waitForUsableEntries,
+} from "./readiness";
+import {
+  SHAKEDOWN_MARK,
+  assertBaselineRestored,
+  sweepMarkedEntries,
+  type ShakedownEntry,
+} from "./cleanup";
+import { requestWithDeadline, warmRequiredReads } from "./setup";
 
-const GAS_URL = process.env.GAS_URL!;
-const API_SECRET = process.env.API_SECRET!;
-const MARK = `__GOLIVECHK__${Date.now()}`;
+const CONNECTION = readDisposableConnection(process.env);
+const GAS_URL = CONNECTION.gasUrl;
+const API_SECRET = CONNECTION.apiSecret;
+const MARK = `${SHAKEDOWN_MARK}${Date.now()}`;
 
 // ── API helpers (run in Node — no CORS) ─────────────────────────────────────
-
-interface Entry {
-  id: number;
-  date: string;
-  tag: string;
-  mainCategory: string;
-  description: string;
-  direction: "I" | "O";
-  amount: number;
-}
 
 // GAS cold starts return 500 for the first ~10–15s after a period of inactivity.
 // Exponential backoff: 2s → 4s → 8s → 16s (max ~30s total wait across 5 attempts).
 const GAS_RETRIES = 5;
 
-async function gasWithRetry(fetcher: () => Promise<Response>, label: string): Promise<Record<string, unknown>> {
-  let lastStatus = 0;
+async function gasWithRetry(
+  fetcher: (signal: AbortSignal) => Promise<Response>,
+  label: string,
+): Promise<Record<string, unknown>> {
+  let lastFailure = "unknown failure";
   for (let attempt = 0; attempt < GAS_RETRIES; attempt++) {
-    const r = await fetcher();
-    if (r.ok) return r.json() as Promise<Record<string, unknown>>;
-    lastStatus = r.status;
+    try {
+      const outcome = await requestWithDeadline(async (signal) => {
+        const response = await fetcher(signal);
+        if (!response.ok) return { ok: false as const, status: response.status };
+        return {
+          ok: true as const,
+          data: await response.json() as Record<string, unknown>,
+        };
+      });
+      if (outcome.ok) return outcome.data;
+      lastFailure = `HTTP ${outcome.status}`;
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error);
+    }
     if (attempt < GAS_RETRIES - 1) {
       const wait = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
-      console.log(`GAS ${label} → ${r.status} (cold start?), waiting ${wait / 1000}s…`);
+      console.log(`GAS ${label} failed (${lastFailure}), waiting ${wait / 1000}s…`);
       await new Promise((res) => setTimeout(res, wait));
     }
   }
-  throw new Error(`GAS ${label} → HTTP ${lastStatus} after ${GAS_RETRIES} attempts`);
+  throw new Error(`GAS ${label} failed after ${GAS_RETRIES} attempts: ${lastFailure}`);
 }
 
 async function gasGet(action: string): Promise<Record<string, unknown>> {
   return gasWithRetry(
-    () => fetch(`${GAS_URL}?action=${action}&t=${Date.now()}`, { redirect: "follow" }),
+    (signal) => fetch(`${GAS_URL}?action=${action}&t=${Date.now()}`, { redirect: "follow", signal }),
     `GET ${action}`
   );
 }
 
 async function gasPost(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   return gasWithRetry(
-    () =>
+    (signal) =>
       fetch(GAS_URL, {
         method: "POST",
         redirect: "follow",
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ ...body, secret: API_SECRET }),
+        signal,
       }),
     `POST ${body.action}`
   );
 }
 
-async function getEntries(): Promise<Entry[]> {
+async function getEntries(): Promise<ShakedownEntry[]> {
   const d = await gasGet("getEntries");
-  return (d.entries as Entry[]) ?? [];
+  return (d.entries as ShakedownEntry[]) ?? [];
 }
 
 async function deleteEntryApi(id: number): Promise<void> {
@@ -76,22 +94,6 @@ async function deleteEntryApi(id: number): Promise<void> {
 }
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
-
-async function waitForAppReady(page: Page) {
-  await page.locator(".app-shell").waitFor({ state: "visible" });
-  await page.locator(".loading-spinner").waitFor({ state: "detached" });
-  // The FAB is gated on !store.loading && !store.error; if GAS is down the
-  // error card appears instead. Fail immediately with a useful message.
-  const errorCard = page.locator(".error-card");
-  if (await errorCard.isVisible()) {
-    const msg = await errorCard.locator(".error-body").textContent().catch(() => "unknown");
-    throw new Error(`Store error (GAS down?): ${msg}`);
-  }
-}
-
-async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
-  await page.locator(".tab-bar-pill").getByRole("button", { name: label }).click();
-}
 
 async function openAddSheet(page: Page) {
   await page.getByRole("button", { name: "Add entry", exact: true }).click();
@@ -103,6 +105,7 @@ async function fillSheet(
   opts: {
     direction: "Incoming" | "Outgoing";
     tag: string;
+    parentTag?: string;
     amount: string;
     description: string;
   }
@@ -112,6 +115,9 @@ async function fillSheet(
   }
   await page.locator(".amount-input").fill(opts.amount);
   await page.locator(".field-input").first().fill(opts.description);
+  if (opts.direction === "Outgoing" && opts.parentTag) {
+    await page.locator(".tag-pill", { hasText: opts.parentTag }).first().click();
+  }
   const pill = page.locator(".tag-pill", { hasText: opts.tag }).first();
   await pill.scrollIntoViewIfNeeded();
   await pill.click();
@@ -127,7 +133,7 @@ async function saveSheet(page: Page) {
   await page.locator("button.header-btn.save").click();
   await gasPost;
   await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
-  await waitForAppReady(page);
+  await waitForUsableEntries(page);
 }
 
 async function openEditSheet(page: Page, description: string) {
@@ -147,7 +153,7 @@ async function deleteEntryUi(page: Page) {
   await page.locator(".delete-btn").dispatchEvent("click");
   await gasPost;
   await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
-  await waitForAppReady(page);
+  await waitForUsableEntries(page);
 }
 
 // ── Shakedown suite ───────────────────────────────────────────────────────────
@@ -155,56 +161,41 @@ async function deleteEntryUi(page: Page) {
 // whether individual tests fail and Playwright recycles the worker.
 
 test.describe("live CRUD shakedown", () => {
-  let baselineCount = 0;
+  // Match the live-integration budget from #192. UI readiness still terminates
+  // on the app's concrete terminal state instead of consuming this allowance.
+  test.describe.configure({ timeout: 480_000 });
+
+  let baseline: ShakedownEntry[] | null = null;
+  let outgoingCategory = "";
   let outgoingTag = "";
   let incomingTag = "";
 
   test.beforeAll(async () => {
-    if (!GAS_URL || !API_SECRET) {
-      throw new Error("GAS_URL and API_SECRET must be set in tests/.env");
-    }
-
-    // Record baseline so we can assert the sheet is clean afterward
-    const entries = await getEntries();
-    baselineCount = entries.length;
-    console.log(`Baseline: ${baselineCount} entries`);
+    // Clear interrupted-run leftovers, then record the exact disposable-sheet baseline.
+    baseline = await sweepMarkedEntries(getEntries, deleteEntryApi);
+    console.log(`Baseline: ${baseline.length} entries, zero marked rows`);
 
     // Pick valid tags dynamically from the live categories
     const d = await gasGet("getCategories");
     const cats = d.categories as Record<string, string[]>;
     incomingTag = Object.keys(cats)[0];      // e.g. "HOUSING"
+    outgoingCategory = incomingTag;
     outgoingTag = Object.values(cats)[0][0]; // e.g. "Rent"
     console.log(`Tags — Incoming: ${incomingTag}, Outgoing: ${outgoingTag}`);
+
+    // Establish one successful terminal read state before either browser worker.
+    await warmRequiredReads(gasGet);
   });
 
   test.beforeEach(async ({ page }) => {
-    // Inject the real connection via URL params so importFromUrl() seeds localStorage
-    // and SettingsGate is bypassed. Navigate directly to the Vite base path to avoid
-    // redirect stripping the query string.
-    const url = new URL("http://localhost:1111/money-sheet-monorepo/");
-    url.searchParams.set("gasUrl", GAS_URL);
-    url.searchParams.set("apiSecret", API_SECRET);
-    await page.goto(url.toString());
-    await waitForAppReady(page);
-    await switchTab(page, "Entries");
+    await openUsableEntries(page, CONNECTION);
   });
 
   test.afterAll(async () => {
-    // Sweep any straggler MARK rows (guards against mid-test failures)
-    const entries = await getEntries();
-    const stragglers = entries.filter((e) => e.description?.startsWith(MARK));
-    for (const e of stragglers) {
-      await deleteEntryApi(e.id);
-      console.log(`Swept straggler id=${e.id} desc="${e.description}"`);
-    }
-
-    const finalCount = (await getEntries()).length;
-    console.log(`Final count: ${finalCount} (expected ${baselineCount})`);
-    if (finalCount !== baselineCount) {
-      throw new Error(
-        `Sheet not clean after shakedown: expected ${baselineCount} entries, got ${finalCount}`
-      );
-    }
+    if (baseline == null) return;
+    const finalEntries = await sweepMarkedEntries(getEntries, deleteEntryApi);
+    assertBaselineRestored(baseline, finalEntries);
+    console.log(`Final count: ${finalEntries.length}; exact baseline restored, zero marked rows.`);
     console.log("Sheet is clean — ready for go-live.");
   });
 
@@ -219,6 +210,7 @@ test.describe("live CRUD shakedown", () => {
     await fillSheet(page, {
       direction: "Outgoing",
       tag: outgoingTag,
+      parentTag: outgoingCategory,
       amount: "120.50",
       description: desc,
     });
