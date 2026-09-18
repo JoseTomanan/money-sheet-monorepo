@@ -80,42 +80,30 @@ test.describe("desktop 1024px — responsive reflow", () => {
     expect(position).not.toBe("fixed");
   });
 
-  // AC: BudgetsView — onhand card stays full-width; category breakdown is 2-column grid
-  test("BudgetsView: category rows are in a 2-column grid", async ({ page }) => {
+  // AC: SummaryView — Category balances and spending pace form two columns
+  test("SummaryView: Category balances and Spending pace are side by side", async ({ page }) => {
     await switchTab(page, "Summary");
 
-    const rows = page.locator(".cat-list .cat-row");
-    await expect(rows.first()).toBeVisible();
-    const count = await rows.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+    const housing = await page.getByText("Housing", { exact: true }).boundingBox();
+    const spendingPace = await page.getByText("Spending pace", { exact: true }).boundingBox();
+    expect(housing).not.toBeNull();
+    expect(spendingPace).not.toBeNull();
 
-    const row0 = await rows.nth(0).boundingBox();
-    const row1 = await rows.nth(1).boundingBox();
-    expect(row0).not.toBeNull();
-    expect(row1).not.toBeNull();
-
-    // Row 0 and row 1 are side by side (same approximate y, different x)
-    expect(Math.abs(row1!.y - row0!.y)).toBeLessThan(20);
-    expect(row1!.x).toBeGreaterThan(row0!.x + row0!.width * 0.5);
+    expect(spendingPace!.x).toBeGreaterThan(housing!.x + housing!.width);
+    expect(Math.abs(spendingPace!.y - housing!.y)).toBeLessThan(40);
   });
 
-  // AC: BudgetsView — onhand card and dist bar stay full-width (not compressed into a column)
-  test("BudgetsView: onhand card and dist bar remain full-width", async ({ page }) => {
+  // AC: SummaryView — Category balances use the wider side of the 3:2 desktop grid
+  test("SummaryView: Category balances use the wider desktop column", async ({ page }) => {
     await switchTab(page, "Summary");
 
-    const shell = await page.locator(".app-shell").boundingBox();
-    const onhand = await page.locator(".onhand-card").boundingBox();
-    const dist = await page.locator(".dist-bar").boundingBox();
-    expect(shell).not.toBeNull();
-    expect(onhand).not.toBeNull();
-    expect(dist).not.toBeNull();
+    const categoryColumn = await page.locator(".summary-left").boundingBox();
+    const paceColumn = await page.locator(".summary-aside").boundingBox();
+    expect(categoryColumn).not.toBeNull();
+    expect(paceColumn).not.toBeNull();
 
-    // Each spans more than 70% of the container width
-    expect(onhand!.width).toBeGreaterThan(shell!.width * 0.7);
-    expect(dist!.width).toBeGreaterThan(shell!.width * 0.7);
-
-    // And they are stacked (dist starts below onhand)
-    expect(dist!.y).toBeGreaterThan(onhand!.y);
+    expect(categoryColumn!.width).toBeGreaterThan(paceColumn!.width);
+    expect(paceColumn!.x).toBeGreaterThanOrEqual(categoryColumn!.x + categoryColumn!.width - 2);
   });
 });
 
@@ -205,20 +193,21 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(carouselOverflowX).toBe("auto");
   });
 
-  // AC: mobile BudgetsView — category rows are stacked in a single column
-  test("BudgetsView: category rows are stacked vertically", async ({ page }) => {
+  // AC: mobile SummaryView — Spending pace follows the stacked Category balances
+  test("SummaryView: Funds health content is stacked and usable", async ({ page }) => {
     await switchTab(page, "Summary");
 
-    const rows = page.locator(".cat-list .cat-row");
-    await expect(rows.first()).toBeVisible();
+    const lastCategory = await page.getByText("Misc", { exact: true }).boundingBox();
+    const spendingPace = await page.getByText("Spending pace", { exact: true }).boundingBox();
+    const chart = await page
+      .getByRole("img", { name: "Cumulative spending, This month versus Usual" })
+      .boundingBox();
+    expect(lastCategory).not.toBeNull();
+    expect(spendingPace).not.toBeNull();
+    expect(chart).not.toBeNull();
 
-    const row0 = await rows.nth(0).boundingBox();
-    const row1 = await rows.nth(1).boundingBox();
-    expect(row0).not.toBeNull();
-    expect(row1).not.toBeNull();
-
-    // Row 1 is below row 0 (different y, similar x)
-    expect(row1!.y).toBeGreaterThan(row0!.y + row0!.height * 0.5);
-    expect(Math.abs(row1!.x - row0!.x)).toBeLessThan(20);
+    expect(spendingPace!.y).toBeGreaterThan(lastCategory!.y + lastCategory!.height);
+    expect(chart!.x).toBeGreaterThanOrEqual(0);
+    expect(chart!.x + chart!.width).toBeLessThanOrEqual(390);
   });
 });
