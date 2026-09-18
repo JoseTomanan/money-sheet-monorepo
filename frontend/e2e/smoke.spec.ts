@@ -62,11 +62,17 @@ test("app loads and displays entries from mock data", async ({ page }) => {
   await expect(page.locator(".entry-card").first()).toBeVisible();
 });
 
-// AC #6 — BudgetsView shows On Hand and per-Category budget rows
-test("Summary tab shows On Hand and category budget rows", async ({ page }) => {
+// AC #6 — Summary shows the current Funds health view and Category values
+test("Summary tab shows Funds health and Category values", async ({ page }) => {
   await switchTab(page, "Summary");
-  await expect(page.locator(".onhand-card")).toBeVisible();
-  await expect(page.locator(".cat-row").first()).toBeVisible();
+
+  await expect(page.getByText("Funds health", { exact: true })).toBeVisible();
+  for (const category of ["Housing", "Food", "Transit", "Health", "Finance", "Lifestyle", "Misc"]) {
+    await expect(page.getByText(category, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("₱2,351.00", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("₱4,290.00", { exact: true })).toBeVisible();
+  await expect(page.getByText("Spending pace", { exact: true })).toBeVisible();
 });
 
 // AC #3 — adding an entry via UI writes it and it appears in the list
