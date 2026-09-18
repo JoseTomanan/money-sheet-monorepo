@@ -95,8 +95,10 @@ test("filter-bar is visible on Entries tab", async ({ page }) => {
   expect(visible).toBe(true);
 });
 
-test("onhand card is visible on Summary tab", async ({ page }) => {
+test("Funds health and spending pace chart are visible on Summary tab", async ({ page }) => {
   await switchTab(page, "Summary");
-  const visible = await page.locator(".onhand-card").isVisible();
-  expect(visible).toBe(true);
+  await expect(page.getByText("Funds health", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Cumulative spending, This month versus Usual" })
+  ).toBeVisible();
 });
