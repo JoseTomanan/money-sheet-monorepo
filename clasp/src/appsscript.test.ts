@@ -7,4 +7,10 @@ describe("Apps Script manifest", () => {
       "https://www.googleapis.com/auth/script.container.ui"
     );
   });
+
+  it("authorizes installable-trigger management", () => {
+    expect(manifest.oauthScopes).toContain(
+      "https://www.googleapis.com/auth/script.scriptapp"
+    );
+  });
 });
