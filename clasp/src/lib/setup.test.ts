@@ -32,10 +32,20 @@ function makeMemoryProps(initial: Record<string, string> = {}) {
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   mockAlert.mockReset();
 });
 
 describe("bootstrapApiSecret", () => {
+  it("provisions a word-based secret through the shared default generator", () => {
+    const { props } = makeMemoryProps();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const secret = bootstrapApiSecret(props, "spreadsheet-copy");
+
+    expect(secret).toBe("AbleAbleAbleAcorn");
+  });
+
   it("provisions an API secret when a spreadsheet has no bootstrap properties", () => {
     const { props, values } = makeMemoryProps();
 
@@ -111,6 +121,19 @@ describe("bootstrapApiSecret", () => {
 });
 
 describe("rotateApiSecret", () => {
+  it("rotates to a word-based secret through the shared default generator", () => {
+    const { props } = makeMemoryProps({
+      API_SECRET: "existing-secret",
+      API_SECRET_SPREADSHEET_ID: "spreadsheet-copy",
+    });
+    mockAlert.mockReturnValueOnce(Button.YES);
+    vi.spyOn(Math, "random").mockReturnValue(0);
+
+    const secret = rotateApiSecret(props, makeUi(), "spreadsheet-copy");
+
+    expect(secret).toBe("AbleAbleAbleAcorn");
+  });
+
   it("deliberately replaces the secret while preserving its spreadsheet binding", () => {
     const { props, values } = makeMemoryProps({
       API_SECRET: "existing-secret",

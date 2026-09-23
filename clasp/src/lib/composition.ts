@@ -58,7 +58,6 @@ export function compositionOnOpen(event?: GoogleAppsScript.Events.SheetsOnOpen):
   bootstrapApiSecret(
     PropertiesService.getScriptProperties(),
     spreadsheet.getId(),
-    () => Utilities.getUuid(),
   );
   buildMenu(SpreadsheetApp.getUi());
 }
