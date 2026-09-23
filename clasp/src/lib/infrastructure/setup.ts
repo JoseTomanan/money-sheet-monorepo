@@ -1,3 +1,5 @@
+import { generatePascalSecret } from "../domain/wordlist";
+
 const API_SECRET_PROPERTY = "API_SECRET";
 const API_SECRET_SPREADSHEET_ID_PROPERTY = "API_SECRET_SPREADSHEET_ID";
 
@@ -15,7 +17,7 @@ function storeApiSecret(
 export function bootstrapApiSecret(
   props: GoogleAppsScript.Properties.Properties,
   spreadsheetId: string,
-  generateSecret: () => string
+  generateSecret: () => string = generatePascalSecret
 ): string {
   const existingSecret = props.getProperty(API_SECRET_PROPERTY);
   const existingSpreadsheetId = props.getProperty(
@@ -38,7 +40,7 @@ export function rotateApiSecret(
   props: GoogleAppsScript.Properties.Properties,
   ui: GoogleAppsScript.Base.Ui,
   spreadsheetId: string,
-  generateSecret: () => string
+  generateSecret: () => string = generatePascalSecret
 ): string | null {
   const response = ui.alert(
     "Rotate API secret? Existing app Connections will stop working.",
