@@ -15,8 +15,7 @@ export function showConnectionDetails(): void {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const secret = bootstrapApiSecret(
     PropertiesService.getScriptProperties(),
-    ss.getId(),
-    () => Utilities.getUuid()
+    ss.getId()
   );
   showSecretDialog(secret);
 }
@@ -26,8 +25,7 @@ export function rotateConnectionSecret(): void {
   const secret = rotateApiSecret(
     PropertiesService.getScriptProperties(),
     SpreadsheetApp.getUi(),
-    ss.getId(),
-    () => Utilities.getUuid()
+    ss.getId()
   );
   if (secret !== null) showSecretDialog(secret);
 }
