@@ -12,6 +12,8 @@ Expose GAS as a web app (`doGet` for reads, `doPost` for all mutations). Write o
 
 The bound script provisions this credential during `onOpen()`, using only services available to the simple trigger. Script Properties also store `API_SECRET_SPREADSHEET_ID`, binding the secret to the active spreadsheet identity. The same spreadsheet reuses its existing secret; a copied spreadsheet whose inherited binding names the source spreadsheet generates and stores a new secret. A legacy spreadsheet with `API_SECRET` but no identity property adopts that secret so existing frontend Connections continue to work.
 
+New credentials are generated from curated hardcoded wordlists as four PascalCase words in adjective/adjective/adjective/noun order. Ordinary pseudorandom selection with replacement is sufficient for this personal-use credential: memorability and transcription resistance are deliberately prioritized over UUID-level entropy. Provisioning and explicit rotation use the same generator. Existing credentials remain valid and unchanged until the identity rules require a new credential or the user rotates it.
+
 The credential is visible only through the editor-invoked **Connection → Show connection details** spreadsheet dialog. It is never returned by `doGet`, `getConfig`, or another unauthenticated endpoint. Rotation is an explicit **Connection → Rotate API secret** recovery action and is not required during onboarding.
 
 ## Consequences
@@ -21,6 +23,7 @@ The credential is visible only through the editor-invoked **Connection → Show 
 - Changing the secret requires updating Script Properties in GAS and re-entering the secret in the Settings screen.
 - Copying the template cannot intentionally share the source spreadsheet's effective credential; identity mismatch causes per-copy reprovisioning.
 - Reopening a spreadsheet is idempotent and does not invalidate saved Connections.
+- New and rotated credentials are easier to transcribe, with lower entropy than UUIDs as an accepted personal-use tradeoff.
 - The maintained template, rather than first-run GAS, owns the Config/STATS sheet structure and Mutation ID column.
 - Full OAuth / Google Sign-In is explicitly deferred; this decision should be revisited if stronger authentication is needed.
 
