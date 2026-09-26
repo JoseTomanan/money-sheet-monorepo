@@ -1,5 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 
+async function expectTouchTarget(locator: { boundingBox(): Promise<{ width: number; height: number } | null> }) {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+}
+
 async function waitForAppReady(page: Page) {
   await page.locator(".app-shell").waitFor({ state: "visible" });
   await page.locator(".loading-spinner").waitFor({ state: "detached" });
@@ -111,6 +118,52 @@ test.describe("desktop 1024px — responsive reflow", () => {
 
 test.describe("mobile 390px — layout unchanged", () => {
   test.use({ viewport: { width: 390, height: 800 } });
+
+  test('App and Entries chrome provide 44px touch targets', async ({ page }) => {
+    await expectTouchTarget(page.getByRole('button', { name: 'Exit' }));
+    await expectTouchTarget(page.getByRole('button', { name: 'Open settings' }));
+
+    await switchTab(page, 'Entries');
+
+    await expectTouchTarget(page.locator('[data-week-trigger]'));
+    await expectTouchTarget(page.getByRole('button', { name: 'Redistribute' }));
+    await expectTouchTarget(page.getByRole('button', { name: 'Enter bulk-select mode' }));
+  });
+
+  test('Entry filters and Summary actions provide 44px touch targets', async ({ page }) => {
+    await switchTab(page, 'Entries');
+
+    const filters = page.locator('[role="radiogroup"] button, .cat-chip-btn');
+    for (let index = 0; index < await filters.count(); index += 1) {
+      await expectTouchTarget(filters.nth(index));
+    }
+
+    await switchTab(page, 'Summary');
+    await expectTouchTarget(page.getByRole('button', { name: 'Deeper statistics' }));
+  });
+
+  test('Entry sheet actions and tag pills provide 44px touch targets', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+    const sheet = page.locator('.sheet[data-state="open"]');
+    await sheet.waitFor({ state: 'visible' });
+
+    await expectTouchTarget(sheet.getByRole('button', { name: 'Cancel' }));
+    await expectTouchTarget(sheet.getByRole('button', { name: 'Save', exact: true }));
+
+    const tagPills = sheet.locator('.tag-pill');
+    for (let index = 0; index < await tagPills.count(); index += 1) {
+      await expectTouchTarget(tagPills.nth(index));
+    }
+  });
+
+  test('Settings actions provide 44px touch targets', async ({ page }) => {
+    await page.getByRole('button', { name: 'Open settings' }).click();
+    const sheet = page.locator('.sheet[data-state="open"]');
+    await sheet.waitFor({ state: 'visible' });
+
+    await expectTouchTarget(sheet.getByRole('button', { name: 'Done' }));
+    await expectTouchTarget(sheet.getByRole('button', { name: 'Show' }));
+  });
 
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
