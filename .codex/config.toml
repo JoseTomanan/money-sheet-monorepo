@@ -4,4 +4,5 @@ args = [
     "@playwright/mcp@latest",
     "--browser",
     "msedge",
+    "--headless",
 ]
