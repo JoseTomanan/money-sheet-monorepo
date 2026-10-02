@@ -98,6 +98,64 @@ test.describe("desktop 1024px — responsive reflow", () => {
     expect(position).not.toBe("fixed");
   });
 
+  test("EntriesView: mobile touch targets collapse to desktop density", async ({ page }) => {
+    await switchTab(page, "Entries");
+
+    const controls = [
+      page.locator("[data-week-trigger]"),
+      page.getByRole("button", { name: "Redistribute" }),
+      page.getByRole("button", { name: "Enter bulk-select mode" }),
+      page.getByRole("radio", { name: "All", exact: true }),
+      page.locator(".cat-chip-btn").first(),
+    ];
+
+    for (const control of controls) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+  });
+
+  test("App and sheet chrome use desktop pointer density", async ({ page }) => {
+    const appControls = [
+      page.getByRole("button", { name: "Exit" }),
+      page.getByRole("button", { name: "Open settings" }),
+    ];
+    for (const control of appControls) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+
+    await page.getByRole("button", { name: "Open settings" }).click();
+    const settings = page.locator('.sheet[data-state="open"]');
+    for (const control of [
+      settings.getByRole("button", { name: "Done" }),
+      settings.getByRole("button", { name: "Show" }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+    await settings.getByRole("button", { name: "Done" }).click();
+
+    await switchTab(page, "Summary");
+    const deeperStatsBox = await page.getByRole("button", { name: "Deeper statistics" }).boundingBox();
+    expect(deeperStatsBox).not.toBeNull();
+    expect(deeperStatsBox!.height).toBeLessThan(44);
+
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    const entrySheet = page.locator('.sheet[data-state="open"]');
+    for (const control of [
+      entrySheet.getByRole("button", { name: "Cancel" }),
+      entrySheet.getByRole("button", { name: "Save", exact: true }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+  });
+
   // AC: SummaryView — Category balances and spending pace form two columns
   test("SummaryView: Category balances and Spending pace are side by side", async ({ page }) => {
     await switchTab(page, "Summary");
@@ -363,6 +421,15 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual(1280);
     expect(addLegBox!.x).toBeGreaterThanOrEqual(sheetBox!.x);
     expect(addLegBox!.x + addLegBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width);
+    expect(addLegBox!.height).toBeLessThan(44);
+
+    const firstLegBox = await sheet.locator('.leg-card').first().boundingBox();
+    expect(firstLegBox).not.toBeNull();
+    expect(firstLegBox!.width).toBeLessThan(sheetBox!.width * 0.75);
+
+    const firstTagBox = await sheet.locator('.tag-pill').first().boundingBox();
+    expect(firstTagBox).not.toBeNull();
+    expect(firstTagBox!.height).toBeLessThan(44);
   });
 
   test("Entries: final add-entry control scrolls fully above the tab bar", async ({ page }) => {
