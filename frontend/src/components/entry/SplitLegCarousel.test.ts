@@ -66,6 +66,14 @@ describe("SplitLegCarousel", () => {
     removes.forEach((btn) => expect(btn).not.toBeDisabled());
   });
 
+  it("shows each leg's position in the split", () => {
+    const split = addLeg(initSplitState());
+    const { getByText } = render(SplitLegCarousel, baseProps({ split }));
+
+    expect(getByText("Leg 1 of 2")).toBeInTheDocument();
+    expect(getByText("Leg 2 of 2")).toBeInTheDocument();
+  });
+
   it("calls onupdate with stripped numeric value when amount changes", async () => {
     const props = baseProps();
     const { getAllByPlaceholderText } = render(SplitLegCarousel, props);
