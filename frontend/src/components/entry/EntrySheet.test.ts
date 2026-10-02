@@ -287,18 +287,18 @@ describe("EntrySheet — always-carousel layout", () => {
     expect(queryByText(/^Off$/)).not.toBeInTheDocument();
   });
 
-  it("new entry: shows Leg 1 card and Add leg button", () => {
+  it("new entry: shows the leg position and Add leg button", () => {
     const { getByText } = render(EntrySheet, baseProps());
-    expect(getByText("Leg 1")).toBeInTheDocument();
+    expect(getByText("Leg 1 of 1")).toBeInTheDocument();
     expect(getByText("Add leg")).toBeInTheDocument();
   });
 
-  it("edit entry: shows Leg 1 card but no Add leg button", () => {
+  it("edit entry: shows the leg position but no Add leg button", () => {
     const { getByText, queryByText } = render(
       EntrySheet,
       baseProps({ entry: makeEntry() }),
     );
-    expect(getByText("Leg 1")).toBeInTheDocument();
+    expect(getByText("Leg 1 of 1")).toBeInTheDocument();
     expect(queryByText("Add leg")).not.toBeInTheDocument();
   });
 });
