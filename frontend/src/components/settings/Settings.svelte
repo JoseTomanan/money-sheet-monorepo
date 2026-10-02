@@ -86,7 +86,7 @@
     </div>
     <button
       type="button"
-      class="size-11 shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer p-0 text-muted-foreground font-sans text-[12px] font-medium"
+      class="size-11 shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer p-0 text-muted-foreground font-sans text-[12px] font-medium md:size-auto md:p-1"
       onclick={() => (showSecret = !showSecret)}
       aria-label={showSecret ? 'Hide' : 'Show'}
     >
