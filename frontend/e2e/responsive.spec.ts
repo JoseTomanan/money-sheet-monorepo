@@ -365,6 +365,23 @@ test.describe("mobile 390px — layout unchanged", () => {
   test("SummaryView: Funds health content is stacked and usable", async ({ page }) => {
     await switchTab(page, "Summary");
 
+    const rows = page.locator(".envelope-row");
+    await expect(rows).toHaveCount(7);
+    for (let index = 0; index < await rows.count(); index += 1) {
+      const row = rows.nth(index);
+      const category = row.locator(".cat-label");
+      const valueBlock = row.locator(".text-right");
+
+      await expect(row.locator(".direction-chip")).toContainText("This month");
+      expect(await category.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+
+      const rowBox = await row.boundingBox();
+      const valueBox = await valueBlock.boundingBox();
+      expect(rowBox).not.toBeNull();
+      expect(valueBox).not.toBeNull();
+      expect(valueBox!.x + valueBox!.width).toBeLessThanOrEqual(rowBox!.x + rowBox!.width);
+    }
+
     const lastCategory = await page.getByText("Misc", { exact: true }).boundingBox();
     const spendingPace = await page.getByText("Spending pace", { exact: true }).boundingBox();
     const chart = await page
