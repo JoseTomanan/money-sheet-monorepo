@@ -1,5 +1,6 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte';
+  import { peso } from '../lib/format';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
   import Money from '../components/ui/Money.svelte';
@@ -16,6 +17,13 @@
   // yet, so a flat peso threshold stands in until a future slice adds one.
   // Chosen to flag categories running thin without firing on every small dip.
   const LOW_BALANCE_THRESHOLD = 1000;
+
+  function monthChangeLabel(value: number): string {
+    const amount = peso(Math.abs(value), store.config.currency);
+    if (value > 0) return `This month: increase of ${amount}`;
+    if (value < 0) return `This month: decrease of ${amount}`;
+    return `This month: no change, ${amount}`;
+  }
 
   const envelopes = $derived(
     CATEGORY_ORDER.map((key) => {
@@ -124,7 +132,12 @@
             </div>
             <div class="text-right shrink-0">
               <Money value={e.balance} size={20} weight={700} />
-              <div class="direction-chip flex items-center justify-end gap-1 mt-[2px]">
+              <div
+                class="direction-chip flex items-center justify-end gap-1 mt-[2px]"
+                role="group"
+                aria-label={monthChangeLabel(e.netChange)}
+              >
+                <span class="font-sans text-[10px] text-muted-foreground" aria-hidden="true">This month</span>
                 {#if e.netChange > 0}
                   <span class="font-sans text-[10px] text-positive" aria-hidden="true">▲</span>
                 {:else if e.netChange < 0}
@@ -132,7 +145,7 @@
                 {:else}
                   <span class="font-sans text-[10px] text-muted-foreground" aria-hidden="true">–</span>
                 {/if}
-                <Money value={e.netChange} size={11} weight={500} />
+                <span aria-hidden="true"><Money value={e.netChange} size={11} weight={500} /></span>
               </div>
             </div>
           </div>
