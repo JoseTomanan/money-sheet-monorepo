@@ -98,6 +98,64 @@ test.describe("desktop 1024px — responsive reflow", () => {
     expect(position).not.toBe("fixed");
   });
 
+  test("EntriesView: mobile touch targets collapse to desktop density", async ({ page }) => {
+    await switchTab(page, "Entries");
+
+    const controls = [
+      page.locator("[data-week-trigger]"),
+      page.getByRole("button", { name: "Redistribute" }),
+      page.getByRole("button", { name: "Enter bulk-select mode" }),
+      page.getByRole("radio", { name: "All", exact: true }),
+      page.locator(".cat-chip-btn").first(),
+    ];
+
+    for (const control of controls) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+  });
+
+  test("App and sheet chrome use desktop pointer density", async ({ page }) => {
+    const appControls = [
+      page.getByRole("button", { name: "Exit" }),
+      page.getByRole("button", { name: "Open settings" }),
+    ];
+    for (const control of appControls) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+
+    await page.getByRole("button", { name: "Open settings" }).click();
+    const settings = page.locator('.sheet[data-state="open"]');
+    for (const control of [
+      settings.getByRole("button", { name: "Done" }),
+      settings.getByRole("button", { name: "Show" }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+    await settings.getByRole("button", { name: "Done" }).click();
+
+    await switchTab(page, "Summary");
+    const deeperStatsBox = await page.getByRole("button", { name: "Deeper statistics" }).boundingBox();
+    expect(deeperStatsBox).not.toBeNull();
+    expect(deeperStatsBox!.height).toBeLessThan(44);
+
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+    const entrySheet = page.locator('.sheet[data-state="open"]');
+    for (const control of [
+      entrySheet.getByRole("button", { name: "Cancel" }),
+      entrySheet.getByRole("button", { name: "Save", exact: true }),
+    ]) {
+      const box = await control.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThan(44);
+    }
+  });
+
   // AC: SummaryView — Category balances and spending pace form two columns
   test("SummaryView: Category balances and Spending pace are side by side", async ({ page }) => {
     await switchTab(page, "Summary");
@@ -165,6 +223,52 @@ test.describe("mobile 390px — layout unchanged", () => {
     for (let index = 0; index < await tagPills.count(); index += 1) {
       await expectTouchTarget(tagPills.nth(index));
     }
+  });
+
+  test('Entry sheet keeps the full Add leg action visible inside the sheet', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const addLeg = sheet.getByRole('button', { name: /Add leg/ });
+    await expect(addLeg).toBeVisible();
+
+    const sheetBox = await sheet.boundingBox();
+    const addLegBox = await addLeg.boundingBox();
+    expect(sheetBox).not.toBeNull();
+    expect(addLegBox).not.toBeNull();
+    expect(addLegBox!.x).toBeGreaterThanOrEqual(sheetBox!.x);
+    expect(addLegBox!.x + addLegBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width);
+    expect(addLegBox!.width).toBeGreaterThanOrEqual(44);
+    expect(addLegBox!.height).toBeGreaterThanOrEqual(44);
+  });
+
+  test('Split Entry keeps multiple legs snapping and reveals keyboard focus', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const addLeg = sheet.getByRole('button', { name: 'Add leg', exact: true });
+    await addLeg.click();
+    await addLeg.click();
+
+    const carousel = sheet.locator('.carousel');
+    const legCards = carousel.locator('.leg-card');
+    await expect(legCards).toHaveCount(3);
+    expect(await carousel.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+    expect(await carousel.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
+
+    const categoryTags = legCards.locator('.tag-pill');
+    expect(await categoryTags.evaluateAll((tags) => tags.every((tag) => (tag as HTMLElement).tabIndex >= 0))).toBe(true);
+
+    const lastLegTag = legCards.last().locator('.tag-pill').last();
+    await lastLegTag.evaluate((element) => (element as HTMLElement).focus({ preventScroll: true }));
+    await expect(lastLegTag).toBeFocused();
+
+    await expect.poll(async () => {
+      const carouselBox = await carousel.boundingBox();
+      const tagBox = await lastLegTag.boundingBox();
+      if (!carouselBox || !tagBox) return false;
+      return tagBox.x >= carouselBox.x && tagBox.x + tagBox.width <= carouselBox.x + carouselBox.width;
+    }).toBe(true);
   });
 
   test('Settings actions provide 44px touch targets', async ({ page }) => {
@@ -299,6 +403,34 @@ test.describe("mobile 390×844 — fixed tab bar clearance", () => {
 
 test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
   test.use({ viewport: { width: 1280, height: 752 } });
+
+  test('Entry sheet keeps the Add leg action and sheet inside the viewport', async ({ page }) => {
+    await page.goto('/');
+    await waitForAppReady(page);
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const addLeg = sheet.getByRole('button', { name: 'Add leg', exact: true });
+    await expect(addLeg).toBeVisible();
+
+    const sheetBox = await sheet.boundingBox();
+    const addLegBox = await addLeg.boundingBox();
+    expect(sheetBox).not.toBeNull();
+    expect(addLegBox).not.toBeNull();
+    expect(sheetBox!.x).toBeGreaterThanOrEqual(0);
+    expect(sheetBox!.x + sheetBox!.width).toBeLessThanOrEqual(1280);
+    expect(addLegBox!.x).toBeGreaterThanOrEqual(sheetBox!.x);
+    expect(addLegBox!.x + addLegBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width);
+    expect(addLegBox!.height).toBeLessThan(44);
+
+    const firstLegBox = await sheet.locator('.leg-card').first().boundingBox();
+    expect(firstLegBox).not.toBeNull();
+    expect(firstLegBox!.width).toBeLessThan(sheetBox!.width * 0.75);
+
+    const firstTagBox = await sheet.locator('.tag-pill').first().boundingBox();
+    expect(firstTagBox).not.toBeNull();
+    expect(firstTagBox!.height).toBeLessThan(44);
+  });
 
   test("Entries: final add-entry control scrolls fully above the tab bar", async ({ page }) => {
     await page.goto("/");

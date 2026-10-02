@@ -127,7 +127,7 @@
            row wraps onto its own line at md: via basis-full. -->
       <div class="header-actions ml-auto flex items-center gap-3 md:basis-full md:ml-0 md:justify-end md:mt-1">
         <button
-          class="redistribute-btn min-h-11 min-w-11 flex items-center justify-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
+          class="redistribute-btn min-h-11 min-w-11 flex items-center justify-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] md:min-h-0 md:min-w-0"
           onclick={() => (redistOpen = true)}
           aria-label="Redistribute"
         >
@@ -145,7 +145,7 @@
           >Cancel</button>
         {:else}
           <button
-            class="min-h-11 min-w-11 flex items-center justify-center font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center"
+            class="min-h-11 min-w-11 flex items-center justify-center font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center md:min-h-0 md:min-w-0"
             onclick={() => (selectMode = true)}
             aria-label="Enter bulk-select mode"
           >Select</button>
@@ -171,7 +171,7 @@
     <div class="segmented flex shrink-0 gap-[2px] overflow-x-auto min-w-0" role="radiogroup" aria-label="Direction">
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
-          class="min-h-11 min-w-11 py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150"
+          class="min-h-11 min-w-11 py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150 md:min-h-0 md:min-w-0"
           class:text-accent={filter.filterDir === val}
           class:text-muted-foreground={filter.filterDir !== val}
           role="radio"
@@ -185,7 +185,7 @@
       <div class="filter-sep hidden" aria-hidden="true"></div>
       <div class="cat-row flex gap-[6px] overflow-x-auto min-w-0 md:flex-col md:overflow-x-visible md:gap-[2px]">
         <button
-          class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:justify-start"
+          class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:min-h-0 md:min-w-0 md:justify-start"
           class:text-accent={filter.filterCat === ''}
           class:text-muted-foreground={filter.filterCat !== ''}
           onclick={() => filter.setCategory('')}
@@ -197,7 +197,7 @@
           {#if categoryNames.includes(key) && filter.catCounts[key] > 0}
             {@const c = CATEGORIES[key]}
             <button
-              class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:justify-start"
+              class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:min-h-0 md:min-w-0 md:justify-start"
               class:active={filter.filterCat === key}
               style={filter.filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
               onclick={() => filter.setCategory(filter.filterCat === key ? '' : key)}
