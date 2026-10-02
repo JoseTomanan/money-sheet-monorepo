@@ -133,7 +133,7 @@
     </button>
 
     <!-- Scrollable content area -->
-    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip" bind:this={scrollArea} onscroll={handleScroll}>
+    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip pb-[calc(60px+env(safe-area-inset-bottom,0px))]" bind:this={scrollArea} onscroll={handleScroll}>
       {#if store.error}
         <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[var(--destructive-tint-bg)] border border-[var(--destructive-tint-border)]">
           <p class="error-title font-sans text-[15px] font-semibold text-destructive mb-1">Could not load data</p>
