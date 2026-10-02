@@ -38,12 +38,12 @@
 
 <div class="split-rail min-w-0">
   {#if showAddCard}
-    <div class="flex items-center justify-between gap-3 px-4 pt-[10px]">
+    <div class="flex items-center justify-between gap-3 px-4 pt-[10px] md:max-w-[528px] md:px-6 md:pt-2">
       <span class="font-sans text-xs text-muted-foreground">
         {split.legs.length} {split.legs.length === 1 ? 'leg' : 'legs'}
       </span>
       <button
-        class="add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+        class="add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] md:min-h-9"
         onclick={onadd}
       >
         <span class="text-lg leading-none" aria-hidden="true">+</span>
@@ -53,12 +53,12 @@
   {/if}
 
   <div
-    class="carousel flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 gap-[10px] py-[10px]"
+    class="carousel flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 gap-[10px] py-[10px] md:scroll-pl-6 md:gap-3 md:py-2"
     aria-label="Entry legs"
     onfocusin={revealFocusedLeg}
   >
     {#each split.legs as leg, i}
-      <div class="leg-card shrink-0 {split.legs.length === 1 ? 'w-[calc(100%-32px)]' : 'w-[85%]'} snap-start bg-card border border-border rounded-[var(--radius-lg)] py-3 px-[14px] first:ml-4 last:mr-4">
+      <div class="leg-card shrink-0 {split.legs.length === 1 ? 'w-[calc(100%-32px)] md:w-[min(480px,calc(100%-48px))]' : 'w-[85%] md:w-[min(480px,calc(50%-30px))]'} snap-start bg-card border border-border rounded-[var(--radius-lg)] py-3 px-[14px] first:ml-4 last:mr-4 md:first:ml-6 md:last:mr-6">
         <div class="leg-head flex items-center justify-between mb-2">
           <span class="leg-label text-[10px] font-sans font-semibold tracking-[1px] uppercase text-muted-foreground">Leg {i + 1} of {split.legs.length}</span>
           <button
