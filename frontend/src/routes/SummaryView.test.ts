@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/svelte";
+import { render, within } from "@testing-library/svelte";
 import SummaryView from "./SummaryView.svelte";
 
 const mockStore = vi.hoisted(() => ({
@@ -77,6 +77,26 @@ describe("SummaryView envelope rows", () => {
     expect(housingRow?.textContent).toContain("₱5,000.00");
     const transitRow = getByText("Transit").closest(".envelope-row");
     expect(transitRow?.textContent).toContain("▼");
+  });
+  it("visibly identifies every secondary metric as this month's change", () => {
+    const { getByText } = render(SummaryView);
+
+    for (const label of ["Housing", "Food", "Transit", "Health", "Finance", "Lifestyle", "Misc"]) {
+      const row = getByText(label).closest(".envelope-row");
+      expect(row?.textContent).toContain("This month");
+    }
+  });
+
+  it("names the period, direction, and value for screen readers", () => {
+    const { getByText } = render(SummaryView);
+
+    const housingRow = getByText("Housing").closest(".envelope-row") as HTMLElement;
+    const transitRow = getByText("Transit").closest(".envelope-row") as HTMLElement;
+    const foodRow = getByText("Food").closest(".envelope-row") as HTMLElement;
+
+    expect(within(housingRow).getByRole("group", { name: "This month: increase of ₱5,000.00" })).toBeInTheDocument();
+    expect(within(transitRow).getByRole("group", { name: "This month: decrease of ₱300.00" })).toBeInTheDocument();
+    expect(within(foodRow).getByRole("group", { name: "This month: no change, ₱0.00" })).toBeInTheDocument();
   });
 });
 
