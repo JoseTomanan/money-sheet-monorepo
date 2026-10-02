@@ -16,6 +16,17 @@ async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
   await page.locator(".tab-bar-pill").getByRole("button", { name: label }).click();
 }
 
+async function expectClearOfTabBar(page: Page, contentSelector: string) {
+  const scrollArea = page.locator(".scroll-area");
+  await scrollArea.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+
+  const content = await page.locator(contentSelector).boundingBox();
+  const tabBar = await page.locator(".tab-bar-pill").boundingBox();
+  expect(content).not.toBeNull();
+  expect(tabBar).not.toBeNull();
+  expect(content!.y + content!.height).toBeLessThanOrEqual(tabBar!.y);
+}
+
 // ─── Desktop 1024×800 ────────────────────────────────────────────────────────
 
 test.describe("desktop 1024px — responsive reflow", () => {
@@ -262,5 +273,38 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(spendingPace!.y).toBeGreaterThan(lastCategory!.y + lastCategory!.height);
     expect(chart!.x).toBeGreaterThanOrEqual(0);
     expect(chart!.x + chart!.width).toBeLessThanOrEqual(390);
+  });
+});
+
+test.describe("mobile 390×844 — fixed tab bar clearance", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("Summary: spending pace legend scrolls fully above the tab bar", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await switchTab(page, "Summary");
+
+    await expectClearOfTabBar(page, ".pace-chart > div:last-child");
+  });
+
+  test("Deeper stats: final category row scrolls fully above the tab bar", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await switchTab(page, "Summary");
+    await page.getByRole("button", { name: "Deeper statistics" }).click();
+
+    await expectClearOfTabBar(page, ".cat-list .cat-row:last-child");
+  });
+});
+
+test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
+  test.use({ viewport: { width: 1280, height: 752 } });
+
+  test("Entries: final add-entry control scrolls fully above the tab bar", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await switchTab(page, "Entries");
+
+    await expectClearOfTabBar(page, ".entry-list .add-entry-card:last-child");
   });
 });
