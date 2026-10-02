@@ -144,10 +144,10 @@
   </div>
 
   <Sheet.Header>
-    <button class="header-btn cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
+    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground" onclick={onclose}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <button
-      class="header-btn save bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      class="header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
       onclick={handleSave}
       disabled={form.saveDisabled || saving}
     >{saving ? 'Saving…' : 'Save'}</button>

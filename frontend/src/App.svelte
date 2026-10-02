@@ -110,7 +110,7 @@
   {#if mockMode.current}
     <MockBanner onExit={exitMockMode} />
   {/if}
-  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent" class:pt-8={mockMode.current}>
+  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent" class:pt-11={mockMode.current}>
     {#if store.syncing}
       <span
         class="fixed {mockMode.current ? 'top-[46px]' : 'top-[14px]'} z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
@@ -122,7 +122,7 @@
          when Mock Mode is active — .app-shell's pt-8 only affects in-flow
          layout, not this fixed-positioned element. -->
     <button
-      class="gear-btn fixed {mockMode.current ? 'top-11' : 'top-3'} z-50 p-2 rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)]"
+      class="gear-btn fixed {mockMode.current ? 'top-11' : 'top-3'} z-50 size-11 flex items-center justify-center rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)]"
       onclick={() => (settingsOpen = true)}
       aria-label="Open settings"
     >
@@ -216,7 +216,7 @@
       <Sheet.Header>
         <Sheet.Title>Settings</Sheet.Title>
         <button
-          class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
+          class="min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
           onclick={() => (settingsOpen = false)}
         >Done</button>
       </Sheet.Header>

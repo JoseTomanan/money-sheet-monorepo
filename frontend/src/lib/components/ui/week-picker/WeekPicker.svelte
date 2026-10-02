@@ -28,7 +28,7 @@
 <Popover.Root bind:open>
   <Popover.Trigger
     data-week-trigger
-    class="flex items-center gap-[3px] cursor-pointer font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground bg-transparent border-0 p-0 outline-none"
+    class="min-h-11 min-w-11 flex items-center gap-[3px] cursor-pointer font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground bg-transparent border-0 p-0 outline-none"
   >
     {triggerLabel}
     <svg class="text-muted-foreground pointer-events-none shrink-0 opacity-70 ml-[1px]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

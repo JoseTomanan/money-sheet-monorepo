@@ -94,7 +94,7 @@
       <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
     </div>
     <button
-      class="deeper-stats-link bg-transparent border-0 cursor-pointer font-sans text-[13px] font-medium text-accent pb-1 flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
+      class="deeper-stats-link min-h-11 min-w-11 bg-transparent border-0 cursor-pointer font-sans text-[13px] font-medium text-accent flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)]"
       aria-label="Deeper statistics"
       onclick={ondeeper}
     >
