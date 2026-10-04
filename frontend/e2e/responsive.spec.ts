@@ -37,6 +37,32 @@ test.describe("desktop 1024px — responsive reflow", () => {
     await waitForAppReady(page);
   });
 
+  test("page headers keep the labeled Settings action in flow", async ({ page }) => {
+    const expectInFlowSettings = async () => {
+      const header = page.locator(".page-header");
+      const settings = header.getByRole("button", { name: "Open settings" });
+      await expect(settings).toContainText("Settings");
+      expect(await settings.evaluate((element) => getComputedStyle(element).position)).not.toBe("fixed");
+
+      const [headerBox, settingsBox] = await Promise.all([
+        header.boundingBox(),
+        settings.boundingBox(),
+      ]);
+      expect(headerBox).not.toBeNull();
+      expect(settingsBox).not.toBeNull();
+      expect(settingsBox!.x).toBeGreaterThanOrEqual(headerBox!.x);
+      expect(settingsBox!.x + settingsBox!.width).toBeLessThanOrEqual(headerBox!.x + headerBox!.width);
+    };
+
+    await expectInFlowSettings();
+    await switchTab(page, "Entries");
+    await expectInFlowSettings();
+    await switchTab(page, "Summary");
+    await expectInFlowSettings();
+    await page.getByRole("button", { name: "Deeper statistics" }).click();
+    await expectInFlowSettings();
+  });
+
   // AC: HomeScreen two-column — hero and category section are side by side
   test("HomeScreen: hero card and category section are side by side", async ({ page }) => {
     const hero = await page.locator(".hero-card").boundingBox();
@@ -184,6 +210,37 @@ test.describe("desktop 1024px — responsive reflow", () => {
 });
 
 // ─── Mobile 390×800 ──────────────────────────────────────────────────────────
+
+test.describe("tablet 900px — touch composition", () => {
+  test.use({ viewport: { width: 900, height: 800 } });
+
+  test("routes stay stacked and controls keep touch density below 1024px", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+
+    const hero = await page.locator(".hero-card").boundingBox();
+    const categories = await page.locator(".category-scroll-wrap").boundingBox();
+    expect(hero).not.toBeNull();
+    expect(categories).not.toBeNull();
+    expect(categories!.y).toBeGreaterThan(hero!.y + hero!.height);
+    await expectTouchTarget(page.getByRole("button", { name: "Open settings" }));
+
+    await switchTab(page, "Entries");
+    const filters = await page.locator(".filter-bar").boundingBox();
+    const entries = await page.locator(".entry-list").boundingBox();
+    expect(filters).not.toBeNull();
+    expect(entries).not.toBeNull();
+    expect(entries!.y).toBeGreaterThan(filters!.y);
+    await expectTouchTarget(page.getByRole("radio", { name: "All", exact: true }));
+
+    await switchTab(page, "Summary");
+    const funds = await page.locator(".summary-left").boundingBox();
+    const pace = await page.locator(".summary-aside").boundingBox();
+    expect(funds).not.toBeNull();
+    expect(pace).not.toBeNull();
+    expect(pace!.y).toBeGreaterThanOrEqual(funds!.y + funds!.height);
+  });
+});
 
 test.describe("mobile 390px — layout unchanged", () => {
   test.use({ viewport: { width: 390, height: 800 } });
@@ -420,6 +477,111 @@ test.describe("mobile 390×844 — fixed tab bar clearance", () => {
 
 test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
   test.use({ viewport: { width: 1280, height: 752 } });
+
+  test("Entry sheet uses a 3:2 grid and lets one leg fill the primary column", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await page.getByRole("button", { name: "Add entry", exact: true }).click();
+
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const primary = sheet.locator(".entry-sheet-primary");
+    const details = sheet.locator(".entry-sheet-details");
+    const leg = sheet.locator(".leg-card").first();
+    const [primaryBox, detailsBox, legBox] = await Promise.all([
+      primary.boundingBox(),
+      details.boundingBox(),
+      leg.boundingBox(),
+    ]);
+
+    expect(primaryBox).not.toBeNull();
+    expect(detailsBox).not.toBeNull();
+    expect(legBox).not.toBeNull();
+    expect(primaryBox!.width).toBeGreaterThan(detailsBox!.width);
+    expect(detailsBox!.x).toBeGreaterThan(primaryBox!.x + primaryBox!.width);
+    expect(Math.abs(primaryBox!.y - detailsBox!.y)).toBeLessThan(8);
+    expect(legBox!.width).toBeGreaterThan(primaryBox!.width * 0.9);
+  });
+
+  test("Deeper statistics keeps Flow beside the wider spending breakdown", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await switchTab(page, "Summary");
+    await page.getByRole("button", { name: "Deeper statistics" }).click();
+
+    const flow = await page.locator(".deeper-stats-aside").boundingBox();
+    const spending = await page.locator(".deeper-stats-main").boundingBox();
+    expect(flow).not.toBeNull();
+    expect(spending).not.toBeNull();
+    expect(spending!.x).toBeGreaterThan(flow!.x + flow!.width);
+    expect(spending!.width).toBeGreaterThan(flow!.width);
+    expect(Math.abs(flow!.y - spending!.y)).toBeLessThan(8);
+  });
+
+  test("Settings keeps Connection beside the narrower preferences column", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await page.getByRole("button", { name: "Open settings" }).click();
+
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const connection = await sheet.locator(".settings-connection").boundingBox();
+    const preferences = await sheet.locator(".settings-preferences").boundingBox();
+    expect(connection).not.toBeNull();
+    expect(preferences).not.toBeNull();
+    expect(connection!.width).toBeGreaterThan(preferences!.width);
+    expect(preferences!.x).toBeGreaterThan(connection!.x + connection!.width);
+    const [connectionTop, preferencesTop] = await Promise.all([
+      sheet.locator(".settings-connection").evaluate((element) => (element as HTMLElement).offsetTop),
+      sheet.locator(".settings-preferences").evaluate((element) => (element as HTMLElement).offsetTop),
+    ]);
+    expect(Math.abs(connectionTop - preferencesTop)).toBeLessThan(8);
+  });
+
+  test("Redistribution bounds Amount above equal From and To panels", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await switchTab(page, "Entries");
+    await page.getByRole("button", { name: "Redistribute" }).click();
+
+    const sheet = page.locator(".sheet-root .sheet");
+    const amount = await sheet.locator(".redistribution-amount").boundingBox();
+    const source = await sheet.locator(".redistribution-source").boundingBox();
+    const target = await sheet.locator(".redistribution-target").boundingBox();
+    expect(amount).not.toBeNull();
+    expect(source).not.toBeNull();
+    expect(target).not.toBeNull();
+    expect(amount!.y + amount!.height).toBeLessThanOrEqual(source!.y);
+    expect(target!.x).toBeGreaterThan(source!.x + source!.width);
+    expect(Math.abs(source!.width - target!.width)).toBeLessThan(4);
+    expect(amount!.width).toBeLessThan(source!.width + target!.width);
+  });
+
+  test("dark theme uses the approved graphite surface hierarchy", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppReady(page);
+    await page.getByRole("button", { name: "Open settings" }).click();
+    await page.getByRole("button", { name: "Dark", exact: true }).click();
+
+    const tokens = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        canvas: styles.getPropertyValue("--app-bg").trim().toLowerCase(),
+        surface: styles.getPropertyValue("--background").trim().toLowerCase(),
+        elevated: styles.getPropertyValue("--card").trim().toLowerCase(),
+        border: styles.getPropertyValue("--border").trim().toLowerCase(),
+        text: styles.getPropertyValue("--foreground").trim().toLowerCase(),
+        mutedText: styles.getPropertyValue("--muted-foreground").trim().toLowerCase(),
+      };
+    });
+
+    expect(tokens).toEqual({
+      canvas: "#0c0e10",
+      surface: "#15181b",
+      elevated: "#1c2024",
+      border: "#2c3237",
+      text: "#e4e7e9",
+      mutedText: "#9ca4aa",
+    });
+  });
 
   test('Entry sheet keeps the Add leg action and sheet inside the viewport', async ({ page }) => {
     await page.goto('/');

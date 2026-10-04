@@ -178,7 +178,7 @@ describe("SummaryView desktop layout (#responsive)", () => {
 
   it("declares the desktop reflow via a responsive grid class, not just structure", () => {
     const { container } = render(SummaryView);
-    expect(container.querySelector(".summary-cols")?.className).toContain("md:grid");
+    expect(container.querySelector(".summary-cols")?.className).toContain("lg:grid");
   });
 });
 
