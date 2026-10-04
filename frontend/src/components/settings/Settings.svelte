@@ -49,7 +49,9 @@
   }
 </script>
 
-<div class="settings-content px-4 pt-4 pb-8">
+<div class="settings-content px-4 pt-4 pb-8 lg:px-6">
+  <div class="settings-grid lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4">
+  <section class="settings-connection min-w-0">
   <h2 class="settings-title font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-5">Connection Settings</h2>
 
   <div class="field-card mt-0">
@@ -86,7 +88,7 @@
     </div>
     <button
       type="button"
-      class="size-11 shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer p-0 text-muted-foreground font-sans text-[12px] font-medium md:size-auto md:p-1"
+      class="size-11 shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer p-0 text-muted-foreground font-sans text-[12px] font-medium lg:size-8 lg:p-1"
       onclick={() => (showSecret = !showSecret)}
       aria-label={showSecret ? 'Hide' : 'Show'}
     >
@@ -106,7 +108,7 @@
   </div>
 
   <button
-    class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent text-white font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
+    class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent-fill text-white font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
     onclick={handleSave}
     disabled={saveDisabled}
   >{saving ? 'Checking…' : 'Save'}</button>
@@ -123,7 +125,10 @@
     >{copyLabel}</button>
   {/if}
 
-  <div class="appearance-section mt-8">
+  </section>
+  <div class="settings-preferences min-w-0">
+
+  <div class="appearance-section pt-8 lg:pt-0">
     <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-3">Appearance</h2>
     <div class="field-card">
       <p class="label-overline mb-3">Theme</p>
@@ -131,7 +136,7 @@
         {#each themeOptions as opt}
           <button
             type="button"
-            class="flex-1 py-[9px] rounded-[var(--radius-sm)] font-sans text-[13px] font-semibold border-0 cursor-pointer transition-colors duration-150 {darkMode.preference === opt.value ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}"
+            class="flex-1 py-[9px] rounded-[var(--radius-sm)] font-sans text-[13px] font-semibold border-0 cursor-pointer transition-colors duration-150 {darkMode.preference === opt.value ? 'bg-accent-fill text-white' : 'bg-muted text-muted-foreground'}"
             onclick={() => darkMode.setPreference(opt.value)}
           >{opt.label}</button>
         {/each}
@@ -151,5 +156,7 @@
       <p class="label-overline mb-1">Subcategories</p>
       <p class="font-sans text-[13px] text-muted-foreground leading-snug">Add or remove subcategories by editing the <strong class="text-foreground font-semibold">Categories</strong> sheet directly. Changes are picked up automatically.</p>
     </div>
+  </div>
+  </div>
   </div>
 </div>

@@ -110,27 +110,13 @@
   {#if mockMode.current}
     <MockBanner onExit={exitMockMode} />
   {/if}
-  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 md:pt-8' : ''}">
+  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 lg:pt-8' : ''}">
     {#if store.syncing}
       <span
-        class="fixed {mockMode.current ? 'top-[46px] md:top-[34px]' : 'top-[14px]'} z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
+        class="fixed {mockMode.current ? 'top-[46px] lg:top-[34px]' : 'top-[14px]'} z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
         aria-label="Syncing data"
       ></span>
     {/if}
-
-    <!-- Gear button: fixed top-right. Offset below the MockBanner (h-8, z-[600])
-         when Mock Mode is active — .app-shell's responsive top padding only
-         affects in-flow layout, not this fixed-positioned element. -->
-    <button
-      class="gear-btn fixed {mockMode.current ? 'top-11 md:top-8' : 'top-3'} z-50 size-11 flex items-center justify-center rounded-full bg-transparent border-0 cursor-pointer text-muted-foreground hover:text-foreground transition-colors duration-150 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+8px)] md:size-auto md:p-2"
-      onclick={() => (settingsOpen = true)}
-      aria-label="Open settings"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
 
     <!-- Scrollable content area -->
     <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip pb-[calc(60px+env(safe-area-inset-bottom,0px))]" bind:this={scrollArea} onscroll={handleScroll}>
@@ -148,7 +134,7 @@
       {:else}
         {#key router.key}
           {#if router.current.kind === 'home'}
-            <HomeScreen onnavigate={navigateTab} />
+            <HomeScreen onnavigate={navigateTab} onsettings={() => (settingsOpen = true)} />
           {:else if router.current.kind === 'entries'}
             <EntriesView
               onopenedit={openEdit}
@@ -158,11 +144,12 @@
               scrollEl={scrollArea}
               {scrollTop}
               bind:selectMode={entriesSelectMode}
+              onsettings={() => (settingsOpen = true)}
             />
           {:else if router.current.kind === 'statistics'}
-            <DeeperStatsView onback={() => navigate({ kind: 'summary' })} />
+            <DeeperStatsView onback={() => navigate({ kind: 'summary' })} onsettings={() => (settingsOpen = true)} />
           {:else}
-            <SummaryView ondeeper={() => navigate({ kind: 'statistics' })} />
+            <SummaryView ondeeper={() => navigate({ kind: 'statistics' })} onsettings={() => (settingsOpen = true)} />
           {/if}
         {/key}
       {/if}
@@ -216,7 +203,7 @@
       <Sheet.Header>
         <Sheet.Title>Settings</Sheet.Title>
         <button
-          class="min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground md:min-h-0 md:min-w-0"
+          class="min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0"
           onclick={() => (settingsOpen = false)}
         >Done</button>
       </Sheet.Header>

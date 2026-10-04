@@ -6,12 +6,14 @@
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import PaceChart from '../components/charts/PaceChart.svelte';
+  import PageHeader from '../components/ui/PageHeader.svelte';
 
   interface Props {
     ondeeper: () => void;
+    onsettings?: () => void;
   }
 
-  let { ondeeper }: Props = $props();
+  let { ondeeper, onsettings = () => {} }: Props = $props();
 
   // "Low" balance heuristic: categories here have no configurable goal/target
   // yet, so a flat peso threshold stands in until a future slice adds one.
@@ -69,12 +71,12 @@
 <div class="summary-view p-0 pb-[72px]">
 {#if store.loading}
   <!-- Skeleton -->
-  <div class="page-header px-5 pt-5 pb-1">
-    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
-  </div>
-  <div class="summary-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
-    <div class="summary-left card mx-4 mt-[14px] overflow-hidden">
+  <PageHeader {onsettings}>
+    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+  </PageHeader>
+  <div class="summary-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
+    <div class="summary-left card mx-4 mt-[14px] overflow-hidden lg:mx-0">
       {#each [0, 1, 2, 3, 4, 5, 6] as i (i)}
         <div class="py-4 px-4 border-b border-border last:border-0 flex items-center justify-between">
           <div class="flex items-center gap-[10px]">
@@ -85,36 +87,36 @@
         </div>
       {/each}
     </div>
-    <div class="summary-aside md:border-l md:border-border md:min-h-full">
+    <div class="summary-aside lg:min-h-full">
       <div class="px-5 pt-[14px] pb-2">
         <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-      <div class="card mx-4 p-4">
+      <div class="card mx-4 p-4 lg:mx-0">
         <div class="h-[110px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
     </div>
   </div>
 {:else}
   <!-- Page header -->
-  <div class="page-header px-5 pt-5 pb-1 flex items-end justify-between">
-    <div>
-      <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">Funds health</div>
-      <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Summary</div>
-    </div>
+  <PageHeader {onsettings}>
+    {#snippet context()}Funds health{/snippet}
+    {#snippet title()}Summary{/snippet}
+    {#snippet actions()}
     <button
-      class="deeper-stats-link min-h-11 min-w-11 bg-transparent border-0 cursor-pointer font-sans text-[13px] font-medium text-accent flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] md:min-h-0 md:min-w-0 md:pb-1"
+      class="deeper-stats-link min-h-11 min-w-11 bg-transparent border-0 cursor-pointer font-sans text-[13px] font-medium text-accent flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] lg:min-h-8 lg:min-w-0"
       aria-label="Deeper statistics"
       onclick={ondeeper}
     >
       Deeper stats
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
-  </div>
+    {/snippet}
+  </PageHeader>
 
-  <div class="summary-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+  <div class="summary-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <!-- Left: envelope rows, one per Category. Balance is the anchor number. -->
     <div class="summary-left">
-      <div class="envelope-list card mx-4 mt-[14px] overflow-hidden">
+      <div class="envelope-list card mx-4 mt-[14px] overflow-hidden lg:mx-0">
         {#each envelopes as e (e.key)}
           <div
             class="envelope-row flex items-center justify-between gap-3 py-4 px-4 border-b border-border last:border-b-0 relative"
@@ -154,7 +156,7 @@
     </div>
 
     <!-- Right: spending pace — this month's cumulative spend vs the trailing-months average. -->
-    <div class="summary-aside md:border-l md:border-border md:min-h-full">
+    <div class="summary-aside lg:min-h-full">
       <SectionHeader>
         Spending pace
         {#snippet right()}
@@ -166,7 +168,7 @@
           {/if}
         {/snippet}
       </SectionHeader>
-      <div class="card mx-4 px-4 pt-3 pb-3">
+      <div class="card mx-4 px-4 pt-3 pb-3 lg:mx-0">
         <PaceChart
           {current}
           previous={usual}

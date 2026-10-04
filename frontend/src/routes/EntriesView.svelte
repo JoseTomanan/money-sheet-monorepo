@@ -10,6 +10,7 @@
   import EntryRow from '../components/entry/EntryRow.svelte';
   import WeekPicker from '../lib/components/ui/week-picker/WeekPicker.svelte';
   import RedistributeSheet from '../components/category/RedistributeSheet.svelte';
+  import PageHeader from '../components/ui/PageHeader.svelte';
   import * as Sheet from '$lib/components/ui/sheet';
 
   interface Props {
@@ -20,9 +21,10 @@
     scrollEl: HTMLElement | null;
     scrollTop: number;
     selectMode?: boolean;
+    onsettings?: () => void;
   }
 
-  let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false) }: Props = $props();
+  let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false), onsettings = () => {} }: Props = $props();
 
   let redistOpen = $state(false);
 
@@ -84,10 +86,10 @@
 
 {#if store.loading}
   <!-- Skeleton -->
-  <div class="page-header px-5 pt-5 pb-1">
-    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-    <div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
-  </div>
+  <PageHeader {onsettings}>
+    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+  </PageHeader>
   <div class="flex gap-2 px-4 py-3">
     {#each [0, 1, 2] as _}
       <div class="h-[30px] w-[72px] rounded-[var(--radius-pill)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
@@ -106,72 +108,66 @@
     {/each}
   </div>
 {:else}
-  <div class="entries-body md:flex md:items-start">
-
-  <!-- Left column: page header + filters. Sticky on desktop. -->
-  <div class="left-col md:sticky md:top-0 md:h-dvh md:flex-[0_0_220px] md:shrink-0 md:flex md:flex-col md:overflow-y-auto md:border-r md:border-border md:pb-[72px]">
-
-  <!-- Page header -->
-  <div class="page-header px-5 pt-5 pb-1 md:px-4">
-    <WeekPicker
-      weeks={filter.selectableWeeks()}
-      currentWeekKey={currentWeekKey()}
-      value={selectedWeek}
-      onSelect={onweekchange}
-    />
-    <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px] flex flex-wrap items-baseline gap-[10px]">
-      Entries
-      <span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filter.filtered.length}</span>
-      <!-- On the desktop sidebar (fixed 220px) there isn't room for a labeled
-           Redistribute button beside Entries/count/Select on one line, so this
-           row wraps onto its own line at md: via basis-full. -->
-      <div class="header-actions ml-auto flex items-center gap-3 md:basis-full md:ml-0 md:justify-end md:mt-1">
+  <PageHeader {onsettings}>
+    {#snippet context()}
+      <WeekPicker
+        weeks={filter.selectableWeeks()}
+        currentWeekKey={currentWeekKey()}
+        value={selectedWeek}
+        onSelect={onweekchange}
+      />
+    {/snippet}
+    {#snippet title()}Entries{/snippet}
+    {#snippet meta()}<span class="entry-count font-mono text-[15px] text-muted-foreground font-normal tabular-nums">{filter.filtered.length}</span>{/snippet}
+    {#snippet actions()}
+      <button
+        class="redistribute-btn min-h-11 min-w-11 flex items-center justify-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer px-1 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] lg:min-h-8 lg:min-w-0"
+        onclick={() => (redistOpen = true)}
+        aria-label="Redistribute"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
+          <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+        </svg>
+        <span>Redistribute</span>
+      </button>
+      {#if selectMode}
         <button
-          class="redistribute-btn min-h-11 min-w-11 flex items-center justify-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] md:min-h-0 md:min-w-0"
-          onclick={() => (redistOpen = true)}
-          aria-label="Redistribute"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
-            <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
-          </svg>
-          <span class="hidden md:inline">Redistribute</span>
-        </button>
-        <!-- Select / Cancel toggle -->
-        {#if selectMode}
-          <button
-            class="font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center"
-            onclick={() => (selectMode = false)}
-          >Cancel</button>
-        {:else}
-          <button
-            class="min-h-11 min-w-11 flex items-center justify-center font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center md:min-h-0 md:min-w-0"
-            onclick={() => (selectMode = true)}
-            aria-label="Enter bulk-select mode"
-          >Select</button>
-        {/if}
-      </div>
+          class="min-h-11 min-w-11 font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
+          onclick={() => (selectMode = false)}
+        >Cancel</button>
+      {:else}
+        <button
+          class="min-h-11 min-w-11 flex items-center justify-center font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
+          onclick={() => (selectMode = true)}
+          aria-label="Enter bulk-select mode"
+        >Select</button>
+      {/if}
+    {/snippet}
+  </PageHeader>
+
+  {#if selectMode}
+    <div class="px-4 lg:px-6">
+      <button
+        class="font-sans text-[12px] font-semibold bg-transparent border-0 cursor-pointer p-0"
+        class:text-accent={!bulk.allSelected}
+        class:text-muted-foreground={bulk.allSelected}
+        onclick={() => bulk.allSelected ? bulk.clear() : bulk.selectAll()}
+      >{bulk.allSelected ? 'Clear all' : 'Select all'}</button>
     </div>
+  {/if}
 
-    <!-- Select-all / Clear controls shown only in select mode -->
-    {#if selectMode}
-      <div class="flex items-center gap-3 mt-[6px]">
-        <button
-          class="font-sans text-[12px] font-semibold bg-transparent border-0 cursor-pointer p-0"
-          class:text-accent={!bulk.allSelected}
-          class:text-muted-foreground={bulk.allSelected}
-          onclick={() => bulk.allSelected ? bulk.clear() : bulk.selectAll()}
-        >{bulk.allSelected ? 'Clear all' : 'Select all'}</button>
-      </div>
-    {/if}
-  </div>
+  <div class="entries-body lg:grid lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start lg:gap-4 lg:px-6">
+
+  <!-- Left column: persistent desktop filters. -->
+  <div class="left-col lg:sticky lg:top-0 lg:shrink-0 lg:flex lg:flex-col lg:overflow-y-auto lg:rounded-[var(--radius-lg)] lg:bg-card lg:shadow-[var(--shadow-card)]">
 
   <!-- Filter bar: sticky glass chrome on mobile, static in the desktop sidebar -->
-  <div class="filter-bar sticky top-0 z-[5] flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden filter-bar-glass md:border-b-0 md:flex-col md:gap-1 md:py-2 md:px-[10px] md:static md:overflow-visible md:flex-1 md:bg-transparent md:backdrop-blur-none">
+  <div class="filter-bar sticky top-0 z-[5] flex flex-col gap-[6px] px-4 py-[10px] border-b border-border overflow-hidden filter-bar-glass lg:border-b-0 lg:flex-col lg:gap-1 lg:py-3 lg:px-3 lg:static lg:overflow-visible lg:flex-1 lg:bg-transparent lg:backdrop-blur-none">
     <div class="segmented flex shrink-0 gap-[2px] overflow-x-auto min-w-0" role="radiogroup" aria-label="Direction">
       {#each ([['all', 'All'], ['O', 'Outgoing'], ['I', 'Incoming']] as const) as [val, label]}
         <button
-          class="min-h-11 min-w-11 py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150 md:min-h-0 md:min-w-0"
+          class="min-h-11 min-w-11 py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150 lg:min-h-8 lg:min-w-0"
           class:text-accent={filter.filterDir === val}
           class:text-muted-foreground={filter.filterDir !== val}
           role="radio"
@@ -183,9 +179,9 @@
 
     {#if categoryNames.length > 0}
       <div class="filter-sep hidden" aria-hidden="true"></div>
-      <div class="cat-row flex gap-[6px] overflow-x-auto min-w-0 md:flex-col md:overflow-x-visible md:gap-[2px]">
+      <div class="cat-row flex gap-[6px] overflow-x-auto min-w-0 lg:flex-col lg:overflow-x-visible lg:gap-[2px]">
         <button
-          class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:min-h-0 md:min-w-0 md:justify-start"
+          class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted lg:min-h-8 lg:min-w-0 lg:justify-start"
           class:text-accent={filter.filterCat === ''}
           class:text-muted-foreground={filter.filterCat !== ''}
           onclick={() => filter.setCategory('')}
@@ -197,7 +193,7 @@
           {#if categoryNames.includes(key) && filter.catCounts[key] > 0}
             {@const c = CATEGORIES[key]}
             <button
-              class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted md:min-h-0 md:min-w-0 md:justify-start"
+              class="cat-chip-btn min-h-11 min-w-11 shrink-0 flex items-center gap-[5px] py-1 px-2 rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[background,color] duration-150 hover:bg-muted lg:min-h-8 lg:min-w-0 lg:justify-start"
               class:active={filter.filterCat === key}
               style={filter.filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
               onclick={() => filter.setCategory(filter.filterCat === key ? '' : key)}
@@ -212,13 +208,13 @@
     {/if}
 
     {#if scrollTop > 0}
-      <div class="scroll-shadow absolute -bottom-5 left-0 right-0 h-5 bg-[linear-gradient(to_bottom,var(--border),transparent)] pointer-events-none z-[4] md:hidden" aria-hidden="true"></div>
+      <div class="scroll-shadow absolute -bottom-5 left-0 right-0 h-5 bg-[linear-gradient(to_bottom,var(--border),transparent)] pointer-events-none z-[4] lg:hidden" aria-hidden="true"></div>
     {/if}
   </div>
   </div>
 
   <!-- Entry list -->
-  <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 md:flex-1 md:ml-2 md:mt-4 md:min-w-0">
+  <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0">
     {#if filter.filtered.length === 0}
       {#if !selectMode}
         <button
@@ -270,7 +266,7 @@
                   {#if selectMode}
                     <div
                       class="checkbox-box shrink-0 size-[18px] rounded-[5px] border-2 flex items-center justify-center transition-[background,border-color] duration-150"
-                      class:bg-accent={checked}
+                      class:bg-accent-fill={checked}
                       class:border-accent={checked}
                       class:bg-transparent={!checked}
                       class:border-border={!checked}
@@ -346,7 +342,7 @@
 
   .segmented button:hover:not(.text-accent) { background: var(--muted); }
 
-  /* glass filter bar — only active on mobile (md: overrides to transparent/static) */
+  /* Glass filter bar is only active below the 1024px composition breakpoint. */
   .filter-bar-glass {
     background: color-mix(in srgb, var(--background) 82%, transparent);
     backdrop-filter: blur(12px);

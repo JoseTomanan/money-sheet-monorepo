@@ -9,13 +9,15 @@
   import { peso } from '../lib/format';
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import PageHeader from '../components/ui/PageHeader.svelte';
   import type { StatsWindow } from '../lib/types';
 
   interface Props {
     onback: () => void;
+    onsettings?: () => void;
   }
 
-  let { onback }: Props = $props();
+  let { onback, onsettings = () => {} }: Props = $props();
 
   const WINDOWS: readonly [StatsWindow, string][] = [
     ['30d', '30 days'],
@@ -52,22 +54,22 @@
 
 <div class="deeper-stats-view p-0 pb-[72px]">
   <!-- Page header with back affordance -->
-  <div class="page-header px-5 pt-5 pb-1 flex items-end justify-between">
-    <div>
+  <PageHeader {onsettings}>
+    {#snippet context()}
       <button
-        class="back-link bg-transparent border-0 cursor-pointer p-0 font-sans text-[13px] font-medium text-accent flex items-center gap-1 mb-1 rounded-[var(--radius-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        class="back-link bg-transparent border-0 cursor-pointer p-0 font-sans text-[13px] font-medium text-accent flex items-center gap-1 rounded-[var(--radius-sm)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent normal-case tracking-normal"
         aria-label="Back to Summary"
         onclick={onback}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
         Summary
       </button>
-      <div class="page-title font-display text-[28px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">Deeper stats</div>
-    </div>
-  </div>
+    {/snippet}
+    {#snippet title()}Deeper stats{/snippet}
+  </PageHeader>
 
   <!-- Window selector -->
-  <div class="segmented flex shrink-0 gap-[2px] mx-4 mt-3 mb-1" role="radiogroup" aria-label="Rolling window">
+  <div class="segmented flex shrink-0 gap-[2px] mx-4 mt-3 mb-1 lg:mx-6" role="radiogroup" aria-label="Rolling window">
     {#each WINDOWS as [val, label] (val)}
       <button
         class="flex-1 py-[6px] px-2 rounded-[var(--radius-sm)] border-0 bg-transparent font-sans text-xs font-medium cursor-pointer whitespace-nowrap transition-[color,background] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -81,9 +83,12 @@
     {/each}
   </div>
 
+  <div class="deeper-stats-grid lg:grid lg:grid-cols-[2fr_3fr] lg:items-start lg:gap-4 lg:px-6">
+  <div class="deeper-stats-aside min-w-0">
+
   <!-- Flow: incoming vs outgoing over the window -->
   <SectionHeader>Flow</SectionHeader>
-  <div class="card mx-4 px-4 pt-4 pb-4">
+  <div class="card mx-4 px-4 pt-4 pb-4 lg:mx-0">
     <div class="flow-readout flex items-end justify-center gap-8">
       <div class="flex flex-col items-center gap-2">
         <div class="h-[72px] w-[36px] flex items-end">
@@ -114,7 +119,7 @@
 
   <!-- Net verdict: did money grow or shrink over the window -->
   <div
-    class="net-verdict-card card mx-4 mt-[14px] px-4 py-4 flex items-center justify-between"
+    class="net-verdict-card card mx-4 mt-[14px] px-4 py-4 flex items-center justify-between lg:mx-0"
     class:bg-[var(--destructive-tint-bg)]={!grew}
   >
     <div>
@@ -129,9 +134,12 @@
     </div>
   </div>
 
+  </div>
+  <div class="deeper-stats-main min-w-0">
+
   <!-- Where it went: window-scoped category breakdown -->
   <SectionHeader>Where it went</SectionHeader>
-  <div class="cat-list card mx-4 overflow-hidden">
+  <div class="cat-list card mx-4 overflow-hidden lg:mx-0">
     <div class="px-4 pt-4 pb-1">
       {#if totalOutgoing > 0}
         <div class="dist-strip dist-bar flex h-[10px] rounded-full overflow-hidden gap-[2px]">
@@ -166,5 +174,7 @@
         </div>
       </div>
     {/each}
+  </div>
+  </div>
   </div>
 </div>
