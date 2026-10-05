@@ -6,13 +6,15 @@
   import { recentForDisplay, splitRunPositions } from '../lib/groupEntries';
   import { latestEntryDate } from '../lib/aggregations';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import PageHeader from '../components/ui/PageHeader.svelte';
   import EntryRow from '../components/entry/EntryRow.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
+    onsettings?: () => void;
   }
 
-  let { onnavigate }: Props = $props();
+  let { onnavigate, onsettings = () => {} }: Props = $props();
 
   const now = new Date();
   const monthLabel = now.toLocaleString('en-PH', { month: 'long', year: 'numeric' });
@@ -36,20 +38,20 @@
 <div class="home p-0 pb-[72px]">
 {#if store.loading}
   <!-- Skeleton -->
-  <div class="page-header px-5 pt-5 pb-1">
-    <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-    <div class="h-[36px] w-[200px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-[6px]"></div>
-  </div>
-  <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+  <PageHeader {onsettings}>
+    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet title()}<div class="h-[36px] w-[200px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+  </PageHeader>
+  <div class="home-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <div class="home-left">
-      <div class="hero-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px]">
+      <div class="hero-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px] lg:mx-0">
         <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
       </div>
       <div class="px-5 pt-5 pb-2">
         <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-      <div class="card mx-4 overflow-hidden">
+      <div class="card mx-4 overflow-hidden lg:mx-0">
         {#each [0, 1] as _}
           <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
             <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
@@ -59,7 +61,7 @@
         {/each}
       </div>
     </div>
-    <div class="home-right md:border-l md:border-border md:min-h-full">
+    <div class="home-right lg:min-h-full">
       <div class="px-5 pt-5 pb-2">
         <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
@@ -72,16 +74,16 @@
   </div>
 {:else}
   <!-- Month header -->
-  <div class="page-header px-5 pt-5 pb-1">
-    <div class="page-eyebrow font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">{monthLabel.toUpperCase()}</div>
-    <div class="page-title font-display text-[36px] font-bold text-foreground mt-[2px] tracking-[-0.5px]">{greeting}</div>
-  </div>
+  <PageHeader {onsettings}>
+    {#snippet context()}{monthLabel}{/snippet}
+    {#snippet title()}{greeting}{/snippet}
+  </PageHeader>
 
-  <div class="home-cols md:grid md:grid-cols-[3fr_2fr] md:items-start">
+  <div class="home-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <!-- Left: hero + latest -->
     <div class="home-left">
       <!-- On Hand hero card -->
-      <div class="hero-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden">
+      <div class="hero-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden lg:mx-0">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
@@ -101,7 +103,7 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section card bg-background mx-4 overflow-hidden space-y-0.5">
+        <div class="today-section card bg-background mx-4 overflow-hidden space-y-0.5 lg:mx-0">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
@@ -118,7 +120,7 @@
     </div>
 
     <!-- Right: category chips -->
-    <div class="home-right md:border-l md:border-border md:min-h-full">
+    <div class="home-right lg:min-h-full">
       <SectionHeader>
         {#snippet children()}By Category{/snippet}
         {#snippet right()}
@@ -126,12 +128,12 @@
         {/snippet}
       </SectionHeader>
 
-      <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] md:overflow-x-visible md:pb-2 md:mb-0">
-      <div class="category-scroll flex gap-2 py-[2px] pl-4 md:grid md:grid-cols-[repeat(auto-fill,minmax(112px,1fr))] md:px-4 md:py-[2px]">
+      <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] lg:overflow-x-visible lg:pb-2 lg:mb-0">
+      <div class="category-scroll flex gap-2 py-[2px] pl-4 lg:grid lg:grid-cols-2 lg:px-0 lg:py-[2px]">
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] md:shrink"
+          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] lg:shrink"
             style="background: {darkMode.current ? c.soft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
@@ -160,7 +162,7 @@
     flex-shrink: 0;
     width: 8px;
   }
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     .category-scroll::after { display: none; }
   }
 </style>

@@ -21,7 +21,7 @@
 <style>
   .fab {
     border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-    background: color-mix(in srgb, var(--accent) 60%, transparent);
+    background: color-mix(in srgb, var(--accent-fill) 82%, transparent);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), 0 1px 2px rgba(13, 148, 136, 0.08), 0 4px 12px rgba(13, 148, 136, 0.16);
   }
 </style>

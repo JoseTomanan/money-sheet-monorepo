@@ -62,8 +62,8 @@
   // Pill size classes (full vs compact)
   const catPillClass = $derived(
     compact
-      ? 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap md:min-h-0 md:min-w-0'
-      : 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap md:min-h-0 md:min-w-0'
+      ? 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap lg:min-h-8 lg:min-w-0'
+      : 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap lg:min-h-8 lg:min-w-0'
   );
   const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0' : 'size-[6px] rounded-full shrink-0');
 </script>
@@ -76,7 +76,7 @@
 {/if}
 
 <!-- Single row: drill-in on Outgoing, flat list on Incoming / uncollapsed -->
-<div class="picker-row flex gap-2 px-4 py-1 overflow-x-auto md:flex-wrap md:overflow-x-visible">
+<div class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible">
   {#if direction === 'O' && activeCategory}
     {@const s = resolveCategoryStyle(activeCategory)}
     {@const isBareCategoryActive = tag === activeCategory}

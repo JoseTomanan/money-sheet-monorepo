@@ -9,6 +9,7 @@
   --color-muted-foreground:  var(--muted-foreground);
   --color-border:            var(--border);
   --color-accent:            var(--accent);
+  --color-accent-fill:       var(--accent-fill);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive:       var(--destructive);
   --color-positive:          var(--positive);
@@ -65,6 +66,7 @@
   --muted-foreground:  #737373;
   --border:            #e5e5e5;
   --accent:            #0d9488;
+  --accent-fill:       #0d9488;
   --accent-foreground: #ffffff;
   --destructive:       #c14a32;
   --positive:          #1a8a3f;
@@ -118,14 +120,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light):not(.theme-dark) {
-    --background:        #09090b;
-    --foreground:        #fafafa;
-    --card:              #18181b;
-    --card-foreground:   #fafafa;
-    --muted:             #27272a;
-    --muted-foreground:  #a1a1aa;
-    --border:            #3f3f46;
-    --accent:            #0d9488;
+    --background:        #15181b;
+    --foreground:        #e4e7e9;
+    --card:              #1c2024;
+    --card-foreground:   #e4e7e9;
+    --muted:             #23282d;
+    --muted-foreground:  #9ca4aa;
+    --border:            #2c3237;
+    --accent:            #2dd4bf;
+    --accent-fill:       #0f766e;
     --accent-foreground: #ffffff;
     --destructive:       #d05540;
     --positive:          #22a84e;
@@ -144,21 +147,22 @@
     --shadow-tabbar: 0 -1px 0 var(--border);
     --shadow-hero:   0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
 
-    --gradient-hero: linear-gradient(160deg, #27272a 0%, #18181b 100%);
+    --gradient-hero: linear-gradient(160deg, #23282d 0%, #1c2024 100%);
     --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --app-bg:        #09090b;
+    --app-bg:        #0c0e10;
   }
 }
 
 :root.theme-dark {
-  --background:        #09090b;
-  --foreground:        #fafafa;
-  --card:              #18181b;
-  --card-foreground:   #fafafa;
-  --muted:             #27272a;
-  --muted-foreground:  #a1a1aa;
-  --border:            #3f3f46;
-  --accent:            #0d9488;
+  --background:        #15181b;
+  --foreground:        #e4e7e9;
+  --card:              #1c2024;
+  --card-foreground:   #e4e7e9;
+  --muted:             #23282d;
+  --muted-foreground:  #9ca4aa;
+  --border:            #2c3237;
+  --accent:            #2dd4bf;
+  --accent-fill:       #0f766e;
   --accent-foreground: #ffffff;
   --destructive:       #d05540;
   --positive:          #22a84e;
@@ -177,9 +181,9 @@
   --shadow-tabbar: 0 -1px 0 var(--border);
   --shadow-hero:   0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
 
-  --gradient-hero: linear-gradient(160deg, #27272a 0%, #18181b 100%);
+  --gradient-hero: linear-gradient(160deg, #23282d 0%, #1c2024 100%);
   --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --app-bg:        #09090b;
+  --app-bg:        #0c0e10;
 }
 
 @media (min-width: 768px)  { :root { --app-max-width: 720px;  } }

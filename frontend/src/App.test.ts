@@ -72,10 +72,12 @@ describe("App settings sheet", () => {
     expect(getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("keeps the gear button at its normal offset when Mock Mode is inactive", () => {
+  it("keeps the labeled Settings action inside the page header", () => {
     const { getByRole } = render(App);
-    const gear = getByRole("button", { name: /open settings/i });
-    expect(gear.className).toMatch(/\btop-3\b/);
+    const settings = getByRole("button", { name: /open settings/i });
+    expect(settings).toHaveTextContent("Settings");
+    expect(getByRole("banner")).toContainElement(settings);
+    expect(settings.className).not.toMatch(/\bfixed\b/);
   });
 
   it("settings dialog contains GAS URL and API Secret inputs", async () => {
@@ -121,15 +123,12 @@ describe("App — Mock Mode branch", () => {
     expect(mockExitMockMode).toHaveBeenCalledOnce();
   });
 
-  it("offsets the gear button below the Mock Mode banner so it isn't occluded", () => {
-    // The banner is `fixed top-0 h-8` (32px) at z-[600]; the gear button is
-    // `fixed` so .app-shell's pt-8 compensation (in-flow only) doesn't reach it.
-    // Uncompensated, the button sits at top-3 (12px) and its top ~20px hide
-    // under the banner, making it unclickable in a real browser.
+  it("keeps the Settings action in the padded page flow below MockBanner", () => {
     const { getByRole } = render(App);
-    const gear = getByRole("button", { name: /open settings/i });
-    expect(gear.className).not.toMatch(/\btop-3\b/);
-    expect(gear.className).toMatch(/\btop-11\b/);
+    const settings = getByRole("button", { name: /open settings/i });
+    expect(getByRole("banner")).toContainElement(settings);
+    expect(settings.className).not.toMatch(/\bfixed\b/);
+    expect(document.querySelector(".app-shell")?.className).toMatch(/\bpt-11\b/);
   });
 });
 

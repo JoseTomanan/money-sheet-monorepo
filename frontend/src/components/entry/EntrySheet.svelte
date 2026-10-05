@@ -144,10 +144,10 @@
   </div>
 
   <Sheet.Header>
-    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground md:min-h-0 md:min-w-0" onclick={onclose}>Cancel</button>
+    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={onclose}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <button
-      class="header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed md:min-h-0 md:min-w-0"
+      class="header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed lg:min-h-8 lg:min-w-0"
       onclick={handleSave}
       disabled={form.saveDisabled || saving}
     >{saving ? 'Saving…' : 'Save'}</button>
@@ -161,8 +161,10 @@
     </p>
   {/if}
 
+  <div class="entry-sheet-grid lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6 lg:pt-2">
+  <div class="entry-sheet-primary min-w-0">
   <!-- direction toggle -->
-  <div class="flex gap-2 px-4 pt-[10px] pb-1">
+  <div class="flex gap-2 px-4 pt-[10px] pb-1 lg:px-0 lg:pt-0">
     <button
       class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
       class:active-out={form.direction === 'O'}
@@ -187,8 +189,12 @@
     initialTags={entry ? [entry.tag] : undefined}
   />
 
+  </div>
+  <div class="entry-sheet-details min-w-0">
+  <div class="entry-details-surface card mx-4 mt-[10px] overflow-hidden lg:mx-0 lg:mt-0">
+
   <!-- description -->
-  <div class="mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+  <div class="py-3 px-[18px]">
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
     <input
       type="text"
@@ -199,12 +205,15 @@
   </div>
 
   <!-- date -->
-  <div class="mx-4 mt-[10px] py-3 px-[18px] rounded-[var(--radius-md)] bg-card shadow-[var(--shadow-card)]">
+  <div class="py-3 px-[18px] border-t border-border">
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Date</div>
     <div class="flex items-center justify-between">
       <span class="font-mono text-[15px] text-foreground tabular-nums">{fmtDate(form.date)} · {dayOfWeek(form.date)}</span>
       <input type="date" class="text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={form.date} />
     </div>
+  </div>
+  </div>
+  </div>
   </div>
 
   {#if entry && ondelete}

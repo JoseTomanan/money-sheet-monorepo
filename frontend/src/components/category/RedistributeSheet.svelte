@@ -99,8 +99,9 @@
         >Redistribute</button>
       </div>
 
+      <div class="redistribution-layout lg:px-6 lg:pb-6">
       <!-- Amount input -->
-      <div class="card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center">
+      <div class="redistribution-amount card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center lg:mx-auto lg:max-w-[420px]">
         <div class="label-overline mb-2">Amount to move</div>
         <div class="flex justify-center items-baseline gap-1">
           <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
@@ -126,27 +127,34 @@
         {/if}
       </div>
 
-      <!-- Source picker -->
-      <div class="label-overline px-5 pt-[14px] pb-[6px]">From (source)</div>
-      {#key open}
-        <CategoryTagPicker
-          direction="I"
-          {categories}
-          tag={source}
-          onselect={(t) => (source = t)}
-        />
-      {/key}
+      <div class="redistribution-pickers lg:grid lg:grid-cols-2 lg:gap-4 lg:mt-4">
+        <!-- Source picker -->
+        <section class="redistribution-source min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
+          <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">From (source)</div>
+          {#key open}
+            <CategoryTagPicker
+              direction="I"
+              {categories}
+              tag={source}
+              onselect={(t) => (source = t)}
+            />
+          {/key}
+        </section>
 
-      <!-- Target picker -->
-      <div class="label-overline px-5 pt-[14px] pb-[6px]">To (target)</div>
-      {#key open}
-        <CategoryTagPicker
-          direction="I"
-          {categories}
-          tag={target}
-          onselect={(t) => (target = t)}
-        />
-      {/key}
+        <!-- Target picker -->
+        <section class="redistribution-target min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
+          <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">To (target)</div>
+          {#key open}
+            <CategoryTagPicker
+              direction="I"
+              {categories}
+              tag={target}
+              onselect={(t) => (target = t)}
+            />
+          {/key}
+        </section>
+      </div>
+      </div>
     </div>
   </div>
 {/if}
