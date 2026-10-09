@@ -1,99 +1,92 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { cn } from '$lib/utils';
-
-  type Variant = 'default' | 'destructive';
-
-  interface Action {
-    label: string;
-    run: () => void;
-  }
+  import type { ToastPresentation, ToastPauseReason } from '$lib/toast.svelte';
 
   interface Props {
-    message: string;
-    variant?: Variant;
+    message: string | null;
+    variant?: 'default' | 'destructive';
+    presentation?: ToastPresentation | null;
     isConnection?: boolean;
-    action?: Action | null;
+    isError?: boolean;
+    action?: { label: string; run: () => void } | null;
     onSettings?: () => void;
     onDismiss: () => void;
+    onPause?: (reason: ToastPauseReason) => void;
+    onResume?: (reason: ToastPauseReason) => void;
     class?: string;
   }
 
   let {
-    message,
-    variant = 'default',
-    isConnection = false,
-    action = null,
-    onSettings,
-    onDismiss,
-    class: cls = '',
+    message, variant = 'default', presentation = null, isConnection = false, isError: errorNotification = false,
+    action = null, onSettings, onDismiss, onPause, onResume, class: cls = '',
   }: Props = $props();
 
-  const base =
-    'flex items-start gap-3 py-3 px-4 rounded-[var(--radius-md)] font-sans text-[13px] font-medium z-[300] animate-[toast-in_200ms_ease-out]';
+  const announcement = $derived(message ? [presentation?.heading, message].filter(Boolean).join(' ') : '');
+  const isError = $derived(errorNotification || variant === 'destructive' || isConnection);
+  const control = 'min-h-11 rounded-[var(--radius-sm)] px-3 font-sans text-[13px] font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground';
 
-  const variants: Record<Variant, string> = {
-    default:
-      'bg-foreground text-background shadow-[0_4px_24px_rgba(0,0,0,0.18)]',
-    destructive:
-      'bg-[rgba(193,74,50,0.07)] text-foreground border border-[rgba(193,74,50,0.22)] border-l-[3px] border-l-destructive shadow-[0_4px_24px_rgba(193,74,50,0.12)]',
-  };
+  // Removing a hovered/focused card releases its interaction pauses. A content
+  // replacement in the same card retains the current pause state.
+  $effect(() => {
+    if (message === null) {
+      onResume?.('hover');
+      onResume?.('focus');
+    }
+  });
+  onDestroy(() => {
+    onResume?.('hover');
+    onResume?.('focus');
+  });
 
-  const isDestructive = $derived(variant === 'destructive');
+  function handleFocusOut(event: FocusEvent) {
+    const target = event.currentTarget as HTMLElement;
+    if (!(event.relatedTarget instanceof Node) || !target.contains(event.relatedTarget)) onResume?.('focus');
+  }
 </script>
 
-<div
-  class={cn(base, variants[variant], cls)}
-  role="alert"
-  aria-live="assertive"
-  aria-atomic="true"
->
-  {#if isDestructive}
-    <!-- lock icon -->
-    <svg
-      class="shrink-0 mt-[1px] text-destructive"
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  {/if}
+<!-- Stable announcement channels: only one receives each message.
+     Visible copy and controls are outside the live regions. -->
+<div class="sr-only" role="alert" aria-atomic="true">{isError ? announcement : ''}</div>
+<div class="sr-only" role="status" aria-atomic="true">{isError ? '' : announcement}</div>
 
-  <span class="flex-1 leading-snug">{message}</span>
+{#if message !== null}
+  <section
+    aria-label="Notification"
+    class={cn('relative z-[300] pointer-events-auto rounded-[var(--radius-md)] border border-border bg-card p-4 text-foreground shadow-[var(--shadow-card)] font-sans motion-safe:animate-[toast-in_180ms_ease-out] motion-reduce:animate-none', cls)}
+    onpointerenter={() => onPause?.('hover')}
+    onpointerleave={() => onResume?.('hover')}
+    onfocusin={() => onPause?.('focus')}
+    onfocusout={handleFocusOut}
+  >
+    <div class="flex items-start gap-3 pr-8">
+      {#if isError}
+        <svg class="mt-0.5 shrink-0 text-destructive" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m10.3 3.9-8.5 14.7A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+          <path d="M12 9v4m0 4h.01" />
+        </svg>
+      {/if}
+      <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {#if presentation?.heading}
+          <h2 class="m-0 mb-1 font-display text-[14px] leading-[1.45] font-semibold">{presentation.heading}</h2>
+        {/if}
+        <p class="m-0 text-[13px] leading-[1.45]">{message}</p>
+      </div>
+    </div>
 
-  {#if isConnection && onSettings}
-    <button
-      class={cn(
-        'shrink-0 cursor-pointer border-0 p-0 text-[13px] font-semibold underline underline-offset-2 bg-transparent',
-        isDestructive ? 'text-destructive' : 'text-background',
-      )}
-      onclick={onSettings}
-    >Check Settings</button>
-  {/if}
+    {#if action || (isConnection && onSettings)}
+      <div class="mt-3 flex flex-wrap gap-2 {isError ? 'pl-[30px]' : ''}">
+        {#if action}
+          <button class={cn(control, 'border border-accent bg-accent/15 text-foreground hover:bg-accent/25')} onclick={action.run}>{action.label}</button>
+        {/if}
+        {#if isConnection && onSettings}
+          <button class={cn(control, 'border border-border bg-muted text-foreground hover:bg-border')} onclick={onSettings}>Check Settings</button>
+        {/if}
+      </div>
+    {/if}
 
-  {#if action}
-    <button
-      class={cn(
-        'shrink-0 cursor-pointer border-0 p-0 text-[13px] font-semibold underline underline-offset-2 bg-transparent',
-        isDestructive ? 'text-destructive' : 'text-background',
-      )}
-      onclick={action.run}
-    >{action.label}</button>
-  {/if}
-
-  <button
-    class={cn(
-      'shrink-0 cursor-pointer border-0 p-0 leading-none bg-transparent opacity-50 hover:opacity-80 transition-opacity duration-150',
-      isDestructive ? 'text-foreground' : 'text-background',
-    )}
-    aria-label="Dismiss"
-    onclick={onDismiss}
-  >×</button>
-</div>
+    <button class="absolute right-1 top-1 flex size-11 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent text-foreground cursor-pointer hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground" aria-label="Dismiss" onclick={onDismiss}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+    </button>
+  </section>
+{/if}

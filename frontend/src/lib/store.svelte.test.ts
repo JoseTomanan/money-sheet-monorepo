@@ -331,8 +331,50 @@ describe("store", () => {
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
-      expect(toast.msg).toBe("Couldn't refresh entries: Network error; balances: Network error; categories: Network error; settings: Network error; statistics: Network error");
+      expect(toast.msg).toBe("Not updated: entries, balances, categories, settings, statistics.");
+      expect(toast.presentation?.heading).toBe("Couldn't refresh your data");
+      expect(toast.isConnection).toBe(true);
+      expect(toast.variant).toBe("destructive");
       expect(toast.action?.label).toBe("Retry");
+    });
+
+    it("Retry dismisses first, refreshes once, and a failed retry gets a fresh lifetime without clearing store errors", async () => {
+      vi.useFakeTimers();
+      try {
+        const fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+        vi.stubGlobal("fetch", fetch);
+        await store.refreshAll();
+        const queued = localStorage.getItem("ms_queue");
+        await vi.advanceTimersByTimeAsync(7000);
+        toast.action!.run();
+        expect(toast.msg).toBeNull();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fetch).toHaveBeenCalledTimes(10); // Five reads per explicit refresh.
+        expect(toast.msg).toBe("Not updated: entries, balances, categories, settings, statistics.");
+        await vi.advanceTimersByTimeAsync(7999);
+        expect(toast.msg).not.toBeNull();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(toast.msg).toBeNull();
+        expect(store.error).toBe("Network error");
+        expect(localStorage.getItem("ms_queue")).toBe(queued);
+        expect(fetch).toHaveBeenCalledTimes(10);
+      } finally {
+        toast.dismiss();
+        vi.useRealTimers();
+      }
+    });
+
+    it("preserves recovery classification across mixed API and connection failures", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
+        if (url.includes('action=getEntries')) return Promise.resolve({ text: async () => JSON.stringify({ error: 'Bad entries' }) });
+        if (url.includes('action=getStats')) return Promise.reject(new Error('Network error'));
+        return Promise.resolve({ text: async () => JSON.stringify(gasGetBody(url)) });
+      }));
+      await store.refreshAll();
+      expect(toast.msg).toBe("Not updated: entries, statistics.");
+      expect(toast.isConnection).toBe(true);
+      expect(store.errorIsConnection).toBe(false);
+      expect(store.error).toBe('Bad entries');
     });
 
     it("dedupes entries with duplicate IDs, keeping first occurrence", async () => {
@@ -375,7 +417,7 @@ describe("store", () => {
       expect(store.entries).toEqual(previousEntries);
       expect(store.master).toEqual(previousMaster);
       expect(store.categories).toEqual(previousCategories);
-      expect(toast.msg).toBe("Couldn't refresh balances: net::ERR_NETWORK_CHANGED");
+      expect(toast.msg).toBe("Not updated: balances.");
       expect(toast.action?.label).toBe("Retry");
     });
 
@@ -393,7 +435,7 @@ describe("store", () => {
 
       await store.refreshAll(true);
 
-      expect(toast.msg).toBe("Couldn't refresh entries: getEntries failed; balances: getMaster failed");
+      expect(toast.msg).toBe("Not updated: entries, balances.");
     });
 
     it("reports optional failures alongside a failed MASTER read", async () => {
@@ -410,7 +452,7 @@ describe("store", () => {
 
       await store.refreshAll(true);
 
-      expect(toast.msg).toBe("Couldn't refresh balances: getMaster failed; statistics: getStats failed");
+      expect(toast.msg).toBe("Not updated: balances, statistics.");
     });
   });
 
@@ -1194,7 +1236,7 @@ describe("store — getStats graceful degradation", () => {
     await store.refreshAll(false);
     expect(store.error).toBeNull();
     expect(store.errorIsConnection).toBe(false);
-    expect(toast.msg).toBe("Couldn't refresh statistics: Network error");
+    expect(toast.msg).toBe("Not updated: statistics.");
     expect(toast.action?.label).toBe("Retry");
   });
 
@@ -1211,7 +1253,7 @@ describe("store — getStats graceful degradation", () => {
 
     await store.refreshAll(false);
 
-    expect(toast.msg).toBe("Couldn't refresh settings: Network error; statistics: Network error");
+    expect(toast.msg).toBe("Not updated: settings, statistics.");
   });
 
   it("still loads the core reads when getStats fails", async () => {

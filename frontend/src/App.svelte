@@ -98,7 +98,14 @@
   let settingsOpen = $state(false);
 
   onMount(() => {
+    const syncToastVisibility = () => document.hidden ? toast.pause('hidden') : toast.resume('hidden');
+    syncToastVisibility();
+    document.addEventListener('visibilitychange', syncToastVisibility);
     if (mockMode.current || connection.current) store.init();
+    return () => {
+      document.removeEventListener('visibilitychange', syncToastVisibility);
+      toast.resume('hidden');
+    };
   });
 </script>
 
@@ -172,17 +179,19 @@
       {/if}
     {/if}
 
-    {#if toast.msg}
-      <Toast
-        class="toast fixed bottom-[92px] left-1/2 -translate-x-1/2 max-w-[calc(var(--app-max-width)-32px)] w-[calc(100%-32px)]"
-        message={toast.msg}
-        variant={toast.variant}
-        isConnection={toast.isConnection}
-        action={toast.action}
-        onSettings={() => (settingsOpen = true)}
-        onDismiss={toast.dismiss}
-      />
-    {/if}
+    <Toast
+      class="toast fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] inset-x-0 mx-auto max-w-[420px] w-[calc(100%-32px)]"
+      message={toast.msg}
+      presentation={toast.presentation}
+      variant={toast.variant}
+      isConnection={toast.isConnection}
+      isError={toast.isError}
+      action={toast.action}
+      onSettings={() => (settingsOpen = true)}
+      onDismiss={toast.dismiss}
+      onPause={toast.pause}
+      onResume={toast.resume}
+    />
 
     <TabBar active={routeTab(router.current)} onchange={navigateTab} />
 
