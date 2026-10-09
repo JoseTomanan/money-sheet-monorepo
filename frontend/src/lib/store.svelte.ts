@@ -47,13 +47,16 @@ function isRejected<T>(result: PromiseSettledResult<T>): result is PromiseReject
 }
 
 function notifyRefreshFailures(failures: RefreshFailure[]): void {
-  const message = `Couldn't refresh ${failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ')}`;
+  const message = `Not updated: ${failures.map(({ label }) => label).join(', ')}.`;
   toast.show(message, {
     label: 'Retry',
     run: () => {
       toast.dismiss();
       void refreshAll();
     },
+  }, 'destructive', {
+    heading: "Couldn't refresh your data",
+    isConnection: failures.some(({ rejection }) => isQueueable(rejection.reason)),
   });
 }
 
