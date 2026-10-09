@@ -574,12 +574,12 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     });
 
     expect(tokens).toEqual({
-      canvas: "#0c0e10",
-      surface: "#15181b",
-      elevated: "#1c2024",
-      border: "#2c3237",
-      text: "#e4e7e9",
-      mutedText: "#9ca4aa",
+      canvas: "#161616",
+      surface: "#1c1c1c",
+      elevated: "#232323",
+      border: "#393939",
+      text: "#f1f1f1",
+      mutedText: "#a3a3a3",
     });
   });
 
