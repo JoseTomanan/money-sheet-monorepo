@@ -12,6 +12,7 @@
   --color-accent-fill:       var(--accent-fill);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive:       var(--destructive);
+  --color-destructive-fill:  var(--destructive-fill);
   --color-positive:          var(--positive);
   --color-local:             var(--local);
   --color-primary:           var(--primary);
@@ -68,9 +69,18 @@
   --accent:            #0d9488;
   --accent-fill:       #0d9488;
   --accent-foreground: #ffffff;
-  --destructive:       #c14a32;
-  --positive:          #1a8a3f;
-  --local:             #6366f1;
+  --destructive-rgb:   193 74 50;
+  --semantic-foreground-alpha: 1;
+  --destructive:       rgb(var(--destructive-rgb) / var(--semantic-foreground-alpha));
+  --destructive-fill:  rgb(var(--destructive-rgb));
+  --positive-rgb:      26 138 63;
+  --positive:          rgb(var(--positive-rgb) / var(--semantic-foreground-alpha));
+  --positive-surface-alpha: 0.12;
+  --positive-border-alpha: 0.25;
+  --positive-tint-bg:   rgb(var(--positive-rgb) / var(--positive-surface-alpha));
+  --positive-tint-border: rgb(var(--positive-rgb) / var(--positive-border-alpha));
+  --local-rgb:         99 102 241;
+  --local:             rgb(var(--local-rgb) / var(--semantic-foreground-alpha));
 
   /* shadcn-svelte token aliases — map onto our palette */
   --primary:              var(--accent);
@@ -106,84 +116,113 @@
   --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.90);
 
   /* destructive tint surfaces — used for error cards, delete buttons, selected rows */
-  --destructive-tint-bg:            rgba(193, 74, 50, 0.06);
-  --destructive-tint-border:        rgba(193, 74, 50, 0.20);
-  --destructive-tint-strong:        rgba(193, 74, 50, 0.08);
-  --destructive-tint-border-strong: rgba(193, 74, 50, 0.30);
-  --destructive-tint-select:        rgba(193, 74, 50, 0.04);
+  --destructive-tint-bg:            rgb(var(--destructive-rgb) / 0.06);
+  --destructive-border-alpha: 0.20;
+  --destructive-border-strong-alpha: 0.30;
+  --destructive-tint-border:        rgb(var(--destructive-rgb) / var(--destructive-border-alpha));
+  --destructive-tint-strong:        rgb(var(--destructive-rgb) / 0.08);
+  --destructive-tint-border-strong: rgb(var(--destructive-rgb) / var(--destructive-border-strong-alpha));
+  --destructive-tint-select:        rgb(var(--destructive-rgb) / 0.04);
 
   /* sheet/dialog overlay backdrop */
   --overlay-bg: rgba(26, 24, 20, 0.60);
+
+  /* Canonical dark sources. Both preference paths activate these values.
+     Muted text channels retain contrast; surfaces use independent alpha. */
+  --dark-background: #1c1c1c;
+  --dark-foreground: #f1f1f1;
+  --dark-card: #232323;
+  --dark-card-foreground: #f1f1f1;
+  --dark-muted: #2b2b2b;
+  --dark-muted-foreground: #a3a3a3;
+  --dark-border: #393939;
+  --dark-accent: #d4d4d8;
+  --dark-accent-fill: #52525b;
+  --dark-accent-foreground: #18181b;
+  --dark-destructive-rgb: 220 139 125;
+  --dark-destructive-fill: color-mix(in srgb, rgb(var(--destructive-rgb)) 65%, #000);
+  --dark-positive-rgb: 115 174 131;
+  --dark-local-rgb: 153 158 205;
+  --dark-overlay-bg: rgba(0, 0, 0, 0.75);
+  --dark-shadow-card: 0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
+  --dark-shadow-sheet: 0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
+  --dark-shadow-fab: 0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(212, 212, 216, 0.14);
+  --dark-shadow-tabbar: 0 -1px 0 var(--border);
+  --dark-shadow-hero: 0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
+  --dark-gradient-hero: linear-gradient(160deg, #2a2a2a 0%, #232323 100%);
+  --dark-ring-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --dark-app-bg: #161616;
+  --dark-semantic-foreground-alpha: 0.9;
+  --dark-destructive-border-alpha: 0.18;
+  --dark-destructive-border-strong-alpha: 0.26;
+  --dark-positive-surface-alpha: 0.06;
+  --dark-positive-border-alpha: 0.18;
 
   --app-max-width: 480px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light):not(.theme-dark) {
-    --background:        #1c1c1c;
-    --foreground:        #f1f1f1;
-    --card:              #232323;
-    --card-foreground:   #f1f1f1;
-    --muted:             #2b2b2b;
-    --muted-foreground:  #a3a3a3;
-    --border:            #393939;
-    --accent:            #d4d4d8;
-    --accent-fill:       #52525b;
-    --accent-foreground: #18181b;
-    --destructive:       #d05540;
-    --positive:          #22a84e;
-    --local:             #818cf8;
-
-    --destructive-tint-bg:            rgba(208, 85, 64, 0.12);
-    --destructive-tint-border:        rgba(208, 85, 64, 0.28);
-    --destructive-tint-strong:        rgba(208, 85, 64, 0.16);
-    --destructive-tint-border-strong: rgba(208, 85, 64, 0.40);
-    --destructive-tint-select:        rgba(208, 85, 64, 0.10);
-    --overlay-bg:                     rgba(0, 0, 0, 0.75);
-
-    --shadow-card:   0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
-    --shadow-sheet:  0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
-    --shadow-fab:    0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(212, 212, 216, 0.14);
-    --shadow-tabbar: 0 -1px 0 var(--border);
-    --shadow-hero:   0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
-
-    --gradient-hero: linear-gradient(160deg, #2a2a2a 0%, #232323 100%);
-    --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --app-bg:        #161616;
+    --background: var(--dark-background);
+    --foreground: var(--dark-foreground);
+    --card: var(--dark-card);
+    --card-foreground: var(--dark-card-foreground);
+    --muted: var(--dark-muted);
+    --muted-foreground: var(--dark-muted-foreground);
+    --border: var(--dark-border);
+    --accent: var(--dark-accent);
+    --accent-fill: var(--dark-accent-fill);
+    --accent-foreground: var(--dark-accent-foreground);
+    --destructive-rgb: var(--dark-destructive-rgb);
+    --destructive-fill: var(--dark-destructive-fill);
+    --positive-rgb: var(--dark-positive-rgb);
+    --local-rgb: var(--dark-local-rgb);
+    --overlay-bg: var(--dark-overlay-bg);
+    --shadow-card: var(--dark-shadow-card);
+    --shadow-sheet: var(--dark-shadow-sheet);
+    --shadow-fab: var(--dark-shadow-fab);
+    --shadow-tabbar: var(--dark-shadow-tabbar);
+    --shadow-hero: var(--dark-shadow-hero);
+    --gradient-hero: var(--dark-gradient-hero);
+    --ring-inset: var(--dark-ring-inset);
+    --app-bg: var(--dark-app-bg);
+    --semantic-foreground-alpha: var(--dark-semantic-foreground-alpha);
+    --destructive-border-alpha: var(--dark-destructive-border-alpha);
+    --destructive-border-strong-alpha: var(--dark-destructive-border-strong-alpha);
+    --positive-surface-alpha: var(--dark-positive-surface-alpha);
+    --positive-border-alpha: var(--dark-positive-border-alpha);
   }
 }
 
 :root.theme-dark {
-  --background:        #1c1c1c;
-  --foreground:        #f1f1f1;
-  --card:              #232323;
-  --card-foreground:   #f1f1f1;
-  --muted:             #2b2b2b;
-  --muted-foreground:  #a3a3a3;
-  --border:            #393939;
-  --accent:            #d4d4d8;
-  --accent-fill:       #52525b;
-  --accent-foreground: #18181b;
-  --destructive:       #d05540;
-  --positive:          #22a84e;
-  --local:             #818cf8;
-
-  --destructive-tint-bg:            rgba(208, 85, 64, 0.12);
-  --destructive-tint-border:        rgba(208, 85, 64, 0.28);
-  --destructive-tint-strong:        rgba(208, 85, 64, 0.16);
-  --destructive-tint-border-strong: rgba(208, 85, 64, 0.40);
-  --destructive-tint-select:        rgba(208, 85, 64, 0.10);
-  --overlay-bg:                     rgba(0, 0, 0, 0.75);
-
-  --shadow-card:   0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
-  --shadow-sheet:  0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
-  --shadow-fab:    0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(212, 212, 216, 0.14);
-  --shadow-tabbar: 0 -1px 0 var(--border);
-  --shadow-hero:   0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
-
-  --gradient-hero: linear-gradient(160deg, #2a2a2a 0%, #232323 100%);
-  --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --app-bg:        #161616;
+  --background: var(--dark-background);
+  --foreground: var(--dark-foreground);
+  --card: var(--dark-card);
+  --card-foreground: var(--dark-card-foreground);
+  --muted: var(--dark-muted);
+  --muted-foreground: var(--dark-muted-foreground);
+  --border: var(--dark-border);
+  --accent: var(--dark-accent);
+  --accent-fill: var(--dark-accent-fill);
+  --accent-foreground: var(--dark-accent-foreground);
+  --destructive-rgb: var(--dark-destructive-rgb);
+  --destructive-fill: var(--dark-destructive-fill);
+  --positive-rgb: var(--dark-positive-rgb);
+  --local-rgb: var(--dark-local-rgb);
+  --overlay-bg: var(--dark-overlay-bg);
+  --shadow-card: var(--dark-shadow-card);
+  --shadow-sheet: var(--dark-shadow-sheet);
+  --shadow-fab: var(--dark-shadow-fab);
+  --shadow-tabbar: var(--dark-shadow-tabbar);
+  --shadow-hero: var(--dark-shadow-hero);
+  --gradient-hero: var(--dark-gradient-hero);
+  --ring-inset: var(--dark-ring-inset);
+  --app-bg: var(--dark-app-bg);
+  --semantic-foreground-alpha: var(--dark-semantic-foreground-alpha);
+  --destructive-border-alpha: var(--dark-destructive-border-alpha);
+  --destructive-border-strong-alpha: var(--dark-destructive-border-strong-alpha);
+  --positive-surface-alpha: var(--dark-positive-surface-alpha);
+  --positive-border-alpha: var(--dark-positive-border-alpha);
 }
 
 @media (min-width: 768px)  { :root { --app-max-width: 720px;  } }

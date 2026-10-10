@@ -311,7 +311,7 @@
   </div>
   <div class="px-5 pb-6 flex flex-col gap-2 mt-2">
     <button
-      class="w-full py-3 rounded-[var(--radius-md)] border-0 bg-destructive text-white font-sans text-[15px] font-semibold cursor-pointer"
+      class="w-full py-3 rounded-[var(--radius-md)] border-0 bg-destructive-fill text-white font-sans text-[15px] font-semibold cursor-pointer"
       onclick={() => bulk.confirmDelete(() => { selectMode = false; })}
     >Delete {bulk.selectedIds.size === 1 ? 'entry' : `${bulk.selectedIds.size} entries`}</button>
     <button
