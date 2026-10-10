@@ -7,6 +7,7 @@ export interface CategoryStyle {
   dot: string;
   darkColor: string;
   darkDot: string;
+  darkSoft?: string;
   label: string;
   subcategories: string[];
 }
@@ -15,6 +16,9 @@ export interface CategoryStyle {
 export const CATEGORY_ORDER = ['HOUSING', 'FOOD', 'TRANSIT', 'HEALTH', 'FINANCE', 'LIFESTYLE', 'MISC'] as const;
 
 type Category = typeof CATEGORY_ORDER[number];
+
+// One muted yellow source for FINANCE's dark foreground, marker, and tint.
+const FINANCE_DARK_RGB = '201, 184, 94';
 
 export const CATEGORIES: Record<Category, CategoryStyle> = {
   HOUSING:   { color: '#2a5899', soft: 'rgba(58, 123, 200, 0.14)',  pastel: '#dce8f8', dot: '#2f78bc', darkColor: '#60a5fa', darkDot: 'rgba(147, 197, 253, 0.65)', label: 'Housing',
@@ -25,7 +29,7 @@ export const CATEGORIES: Record<Category, CategoryStyle> = {
                subcategories: ['Commute Fare', 'Auto Maintenance', 'Fuel', 'Parking'] },
   HEALTH:    { color: '#9a5c0a', soft: 'rgba(196, 120, 24, 0.14)',  pastel: '#fdecd0', dot: '#ae5206', darkColor: '#fb923c', darkDot: 'rgba(253, 186, 116, 0.65)', label: 'Health',
                subcategories: ['Consultation Fee', 'Pharmacy', 'Fitness', 'Insurance'] },
-  FINANCE:   { color: '#636b0e', soft: 'rgba(138, 150, 24, 0.14)',  pastel: '#eef0c8', dot: '#9e8200', darkColor: '#a3e635', darkDot: 'rgba(217, 249, 157, 0.65)', label: 'Finance',
+  FINANCE:   { color: '#636b0e', soft: 'rgba(138, 150, 24, 0.14)',  pastel: '#eef0c8', dot: '#9e8200', darkColor: `rgba(${FINANCE_DARK_RGB}, 0.9)`, darkDot: `rgba(${FINANCE_DARK_RGB}, 0.65)`, darkSoft: `rgba(${FINANCE_DARK_RGB}, 0.06)`, label: 'Finance',
                subcategories: ['Tax', 'Debt', 'Investment', 'Savings'] },
   LIFESTYLE: { color: '#4a4a4a', soft: 'rgba(120, 120, 120, 0.14)', pastel: '#e8e8e8', dot: '#5e5e5e', darkColor: '#d4d4d8', darkDot: 'rgba(228, 228, 231, 0.65)', label: 'Lifestyle',
                subcategories: ['Leisure', 'Entertainment', 'Subscription', 'Grooming', 'Clothing', 'Gifts'] },

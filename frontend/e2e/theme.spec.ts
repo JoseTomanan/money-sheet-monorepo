@@ -211,3 +211,28 @@ test('dark Summary semantic text stays readable', async ({ page }) => {
   await expect(bar).toHaveCSS('opacity', '0.85');
   expect((await paint(bar, 'background')).contrast).toBeGreaterThanOrEqual(3);
 });
+
+for (const preference of ['dark', 'system'] as const) {
+  test(`FINANCE stays muted yellow and readable with ${preference} preference`, async ({ page }) => {
+    await boot(page, preference, 'dark');
+    const chip = page.locator('.cat-chip', { hasText: 'Finance' });
+    await expect(chip).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.06)');
+    await expect(chip.locator('.cat-dot')).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.65)');
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+    await page.getByRole('button', { name: 'Incoming', exact: true }).click();
+    const tag = page.locator('.tag-pill', { hasText: 'FINANCE' }).first();
+    await expect(tag).toHaveCSS('color', 'rgba(201, 184, 94, 0.9)');
+    await page.locator('.amount-input').fill('365');
+    await page.locator('.field-input').first().fill('Finance yellow example');
+    await tag.click();
+    await page.locator('button.header-btn.save').click();
+    await page.locator('.sheet[data-state="open"]').waitFor({ state: 'detached' });
+    await page.locator('.tab-bar-pill').getByRole('button', { name: 'Entries' }).click();
+    const band = page.locator('.entry-card', { hasText: 'Finance yellow example' }).locator('.entry-desc-band');
+    await expect(band).toHaveCSS('color', 'rgba(201, 184, 94, 0.9)');
+    expect((await paint(band.locator('.entry-desc'))).contrast).toBeGreaterThanOrEqual(4.5);
+    await page.locator('.entry-card', { hasText: 'Finance yellow example' }).screenshot({ path: test.info().outputPath('finance-dark.png') });
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(band).toHaveCSS('color', preference === 'system' ? 'rgb(99, 107, 14)' : 'rgba(201, 184, 94, 0.9)');
+  });
+}

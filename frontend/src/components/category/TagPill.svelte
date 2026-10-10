@@ -20,5 +20,5 @@
 
 <Badge
   variant="secondary"
-  style="background: {catStyle.soft}; color: {darkMode.current ? catStyle.darkColor : catStyle.color}; font-size: {fontSize}px; padding: {padding};"
+  style="background: {darkMode.current ? (catStyle.darkSoft ?? catStyle.soft) : catStyle.soft}; color: {darkMode.current ? catStyle.darkColor : catStyle.color}; font-size: {fontSize}px; padding: {padding};"
 >{tag}</Badge>
