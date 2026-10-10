@@ -132,7 +132,7 @@
           <p class="error-title font-sans text-[15px] font-semibold text-destructive mb-1">Could not load data</p>
           <p class="error-body font-sans text-[13px] text-muted-foreground mb-[14px]">{store.error}</p>
           <div class="flex gap-2">
-            <button class="retry-btn py-2 px-[18px] rounded-[var(--radius-sm)] border-0 bg-destructive text-white font-sans text-[13px] font-semibold cursor-pointer" onclick={() => store.refreshAll()}>Retry</button>
+            <button class="retry-btn py-2 px-[18px] rounded-[var(--radius-sm)] border-0 bg-destructive-fill text-white font-sans text-[13px] font-semibold cursor-pointer" onclick={() => store.refreshAll()}>Retry</button>
             {#if store.errorIsConnection}
               <button class="settings-btn py-2 px-[18px] rounded-[var(--radius-sm)] border border-border bg-muted text-foreground font-sans text-[13px] font-semibold cursor-pointer" onclick={() => (settingsOpen = true)}>Check Settings</button>
             {/if}

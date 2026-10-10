@@ -234,9 +234,9 @@
     border-color: var(--destructive-tint-border);
   }
   .active-in {
-    background: color-mix(in srgb, var(--positive) 12%, transparent);
+    background: var(--positive-tint-bg);
     color: var(--positive);
-    border-color: color-mix(in srgb, var(--positive) 25%, transparent);
+    border-color: var(--positive-tint-border);
   }
   .delete-wrap {
     max-height: 0;
