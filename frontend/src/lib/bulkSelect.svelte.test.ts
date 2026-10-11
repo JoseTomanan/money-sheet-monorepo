@@ -74,11 +74,16 @@ describe("createBulkSelect — confirmDelete", () => {
     await promise;
   });
 
-  it("invokes onDone after the delete resolves", async () => {
-    const { bulk } = makeBulk([1]);
+  it("finishes selection while the accepted delete is unresolved", async () => {
+    let resolve!: () => void;
+    const deleteEntries = vi.fn(() => new Promise<void>(done => { resolve = done; }));
+    const bulk = createBulkSelect(() => [1], deleteEntries);
     bulk.toggle(1);
     const onDone = vi.fn();
-    await bulk.confirmDelete(onDone);
+    const completion = bulk.confirmDelete(onDone);
     expect(onDone).toHaveBeenCalledOnce();
+    expect(bulk.selectedIds.size).toBe(0);
+    resolve();
+    await completion;
   });
 });

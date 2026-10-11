@@ -2,7 +2,7 @@
   import { tick } from 'svelte';
   import * as Sheet from '$lib/components/ui/sheet';
   import { fmtDate, dayOfWeek } from '$lib/format';
-  import type { CategoryMap, Entry, Direction, EntryMutation } from '$lib/types';
+  import type { CategoryMap, Entry, Direction, EntryMutation, EntrySubmission } from '$lib/types';
   import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '$lib/dragGesture';
   import { createEntryForm } from '$lib/entryForm.svelte';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
@@ -12,7 +12,7 @@
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
-    onsave: (m: EntryMutation) => Promise<boolean>;
+    onsave: (m: EntryMutation) => Promise<boolean> | EntrySubmission;
     ondelete?: (id: number) => void;
     defaultDirection?: Direction;
   }
@@ -54,11 +54,16 @@
       onclose();
       return;
     }
-    try {
-      const saved = await onsave(mutation);
-      if (saved) onclose();
-    } finally {
-      saving = false;
+    const submission = onsave(mutation);
+    if ('accepted' in submission) {
+      if (submission.accepted) onclose();
+      else saving = false;
+    } else {
+      try {
+        if (await submission) onclose();
+      } finally {
+        saving = false;
+      }
     }
   }
 
