@@ -42,6 +42,12 @@ export type EntryMutation =
   | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
   | { type: 'edit'; id: number; patch: UpdateEntryPatch };
 
+/** Acceptance is synchronous; completion includes reconciliation and refresh. */
+export interface EntrySubmission {
+  accepted: boolean;
+  completion: Promise<boolean>;
+}
+
 export type ApiErrorEnvelope = Extract<ApiResponse, { ok: false }>;
 export type ApiErrorCode = ApiErrorEnvelope["code"];
 

@@ -40,6 +40,40 @@ async function holdMockAdds(page: Page) {
   });
 }
 
+async function holdMockChanges(page: Page, outcome: 'confirmed' | 'failed' | 'queued' = 'confirmed') {
+  await page.evaluate(async outcome => {
+    const apiPath = '/money-sheet-monorepo/src/lib/api.ts';
+    const api = await import(apiPath);
+    const base = api.gateway() as GatewayAdapter;
+    const wait = () => new Promise<void>(resolve => {
+      window.addEventListener('release-e2e-change', () => resolve(), { once: true });
+    });
+    const finish = async (run: () => Promise<void>) => {
+      await wait();
+      if (outcome === 'failed') throw new Error('The change was rejected');
+      if (outcome === 'queued') throw new api.ConnectionError('Offline');
+      await run();
+    };
+    api.setAdapter({
+      getEntries: () => base.getEntries(), getMaster: () => base.getMaster(),
+      getCategories: () => base.getCategories(), getConfig: () => base.getConfig(),
+      getStats: () => base.getStats(),
+      addEntry: (payload: AddEntryPayload, mutationId?: string) => base.addEntry(payload, mutationId),
+      addEntries: (payloads: AddEntryPayload[], mutationId?: string) => base.addEntries(payloads, mutationId),
+      updateEntry: (id: number, patch: UpdateEntryPatch) => finish(() => base.updateEntry(id, patch)),
+      deleteEntry: (id: number) => finish(() => base.deleteEntry(id)),
+      validateConnection: (url: string, secret: string) => base.validateConnection(url, secret),
+    });
+  }, outcome);
+}
+
+async function refreshEntries(page: Page) {
+  await page.evaluate(async () => {
+    const path = '/money-sheet-monorepo/src/lib/store.svelte.ts';
+    await (await import(path)).store.refreshAll(true);
+  });
+}
+
 async function addEntryViaUi(
   page: Page,
   opts: { description: string; amount: string; tag: string; direction?: "Outgoing" | "Incoming" }
@@ -72,6 +106,81 @@ async function addEntryViaUi(
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await waitForAppReady(page);
+});
+
+for (const outcome of ['confirmed', 'failed', 'queued'] as const) {
+  test(`Edit closes before confirmation and reconciles a ${outcome} outcome`, async ({ page }, testInfo) => {
+    const desc = `pending-edit-${outcome}`;
+    await addEntryViaUi(page, { description: desc, amount: '50', tag: 'Dining' });
+    const card = page.locator('.entry-card', { hasText: desc });
+    await expect(card).not.toHaveClass(/animate-\[shimmer/);
+    await holdMockChanges(page, outcome);
+    await card.locator('.entry-desc').click();
+    await page.locator('.amount-input').fill('999');
+    await page.locator('button.header-btn.save').click();
+    await expect(page.locator('.sheet')).toBeHidden();
+    await expect(card).toContainText('₱999.00');
+    await refreshEntries(page);
+    await expect(card).toContainText('₱999.00');
+    await page.evaluate(() => window.dispatchEvent(new Event('release-e2e-change')));
+    await expect(card).not.toHaveClass(/animate-\[shimmer/);
+    await expect(card).toContainText(outcome === 'failed' ? '₱50.00' : '₱999.00');
+    if (outcome === 'failed') {
+      await expect(page.getByRole('alert')).toContainText('The change was rejected');
+      await page.screenshot({ path: testInfo.outputPath('optimistic-edit-failure.png') });
+    }
+    if (outcome === 'queued') await expect(page.getByRole('button', { name: 'Sync now' })).toBeVisible();
+    await expect(page.locator('.sheet[data-state="open"]')).toBeHidden();
+  });
+
+  test(`Delete hides the entry before confirmation and reconciles a ${outcome} outcome`, async ({ page }) => {
+    const desc = `pending-delete-${outcome}`;
+    await addEntryViaUi(page, { description: desc, amount: '50', tag: 'Dining' });
+    const card = page.locator('.entry-card', { hasText: desc });
+    await expect(card).not.toHaveClass(/animate-\[shimmer/);
+    await holdMockChanges(page, outcome);
+    await card.locator('.entry-desc').click();
+    await page.locator('.delete-btn').dispatchEvent('click');
+    await expect(page.locator('.sheet')).toBeHidden();
+    await expect(card).toBeHidden();
+    await refreshEntries(page);
+    await expect(card).toBeHidden();
+    await page.evaluate(() => window.dispatchEvent(new Event('release-e2e-change')));
+    if (outcome === 'failed') {
+      await expect(card).toBeVisible();
+      await expect(page.getByRole('alert')).toContainText('The change was rejected');
+    } else {
+      await expect(card).toBeHidden();
+      if (outcome === 'queued') await expect(page.getByRole('button', { name: 'Sync now' })).toBeVisible();
+    }
+  });
+}
+
+test('bulk confirmation hides selected entries and finishes selection before requests settle', async ({ page }) => {
+  await switchTab(page, 'Entries');
+  await page.evaluate(async () => {
+    const path = '/money-sheet-monorepo/src/lib/store.svelte.ts';
+    const { store } = await import(path);
+    const today = new Date();
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    await store.addEntry(['Pending bulk 1', 'Pending bulk 2'].map(description => ({
+      date, tag: 'Dining', direction: 'O', amount: 50, description,
+    })));
+  });
+  await holdMockChanges(page, 'failed');
+  await page.getByRole('button', { name: 'Enter bulk-select mode' }).click();
+  await page.locator('.entry-card', { hasText: 'Pending bulk 1' }).click();
+  await page.locator('.entry-card', { hasText: 'Pending bulk 2' }).click();
+  await page.locator('.delete-sel-btn').click();
+  await page.getByRole('button', { name: 'Delete 2 entries', exact: true }).click();
+  await expect(page.locator('.sheet')).toBeHidden();
+  await expect(page.locator('.select-bar')).toBeHidden();
+  await expect(page.locator('.entry-card', { hasText: 'Pending bulk' })).toHaveCount(0);
+  await refreshEntries(page);
+  await expect(page.locator('.entry-card', { hasText: 'Pending bulk' })).toHaveCount(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('release-e2e-change')));
+  await expect(page.locator('.entry-card', { hasText: 'Pending bulk' })).toHaveCount(2);
+  await expect(page.getByRole('alert')).toContainText('Failed to delete 2 entries');
 });
 
 test("Add Entry closes while its optimistic row is still synchronizing", async ({ page }) => {

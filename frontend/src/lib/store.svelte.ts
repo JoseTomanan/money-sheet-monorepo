@@ -5,6 +5,7 @@ import { buildEntry, getMainCategory } from './domain';
 import { drain, getLocalEntryIds, isQueuedAddId, submitAdd, submitAddBatch, submitDelete, submitEdit } from './offlineMutation';
 import { createMutationId } from './mutationId';
 import { readQueue } from './queue';
+import { compareEntriesForDisplay } from './groupEntries';
 import type {
   Entry,
   MasterRow,
@@ -13,6 +14,7 @@ import type {
   StatsData,
   AddEntryPayload,
   UpdateEntryPatch,
+  EntrySubmission,
 } from './types';
 
 let entries = $state<Entry[]>([]);
@@ -30,8 +32,17 @@ let localIds = $state<Set<number>>(getLocalEntryIds());
 let draining = $state(false);
 let syncing = $state(false);
 let nextTemporaryId = -1;
+// Discard snapshots begun before an operation changed or settled. Pending
+// rows are overlaid on snapshots begun during the operation below.
+let mutationRevision = 0;
+let refreshSequence = 0;
+const confirmedEditIds = new Set<number>();
 
 const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
+
+function mutationInFlight(id: number): boolean {
+  return pendingIds.has(id) || deletePendingIds.has(id) || (draining && localIds.has(id));
+}
 
 interface RefreshFailure {
   label: string;
@@ -82,6 +93,8 @@ function removeDeletePending(id: number): void { deletePendingIds = new Set([...
 // a transient connection failure (e.g. net::ERR_NETWORK_CHANGED) on just one
 // of them. A single reject shouldn't discard the other 3 that succeeded.
 async function refreshAll(silent = false): Promise<void> {
+  const revision = mutationRevision;
+  const sequence = ++refreshSequence;
   if (!silent) {
     loading = true;
     error = null;
@@ -112,7 +125,15 @@ async function refreshAll(silent = false): Promise<void> {
     // The rejection checks above make this unreachable, while narrowing the
     // settled-result union for TypeScript before reading the values below.
     if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
+    if (sequence !== refreshSequence) return;
+    if (revision !== mutationRevision) {
+      // The latest refresh still owes a coherent snapshot after an overlapping
+      // operation settles. Read again rather than accepting its stale response.
+      await refreshAll(true);
+      return;
+    }
 
+    const pendingEntries = entries.filter(entry => pendingIds.has(entry.id) && !confirmedEditIds.has(entry.id));
     entries = e.value;
     master = m.value;
     categories = c.value;
@@ -122,6 +143,10 @@ async function refreshAll(silent = false): Promise<void> {
     if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
 
     injectQueue();
+    const optimisticById = new Map(pendingEntries.map(entry => [entry.id, entry]));
+    entries = entries.map(entry => optimisticById.get(entry.id) ?? entry);
+    entries = [...entries, ...pendingEntries.filter(entry => !entries.some(current => current.id === entry.id))]
+      .filter(entry => !deletePendingIds.has(entry.id));
     localIds = getLocalEntryIds();
     saveSnapshot({ entries, master, categories, config, stats });
   } finally {
@@ -208,6 +233,7 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<boolean
 }
 
 async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean> {
+  if (mutationInFlight(id)) return false;
   const previous = entries.find((entry) => entry.id === id);
   if (!previous) return false;
   if (isQueuedAddId(id)) {
@@ -220,34 +246,49 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
     mainCategory: patch.tag ? getMainCategory(patch.tag, categories) : previous.mainCategory,
   };
   replaceEntry(id, optimistic);
+  mutationRevision++;
   addPending(id);
   masterLoading = true;
   try {
     const outcome = await submitEdit(id, patch, () => gateway().updateEntry(id, patch));
     if (outcome.status === 'confirmed') {
+      confirmedEditIds.add(id);
+      mutationRevision++;
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
       if (isAuthError(outcome.error)) toast.show(outcome.error, undefined, 'destructive');
     } else {
       replaceEntry(id, previous);
-      toast.show(outcome.error);
+      toast.show(outcome.error, undefined, 'destructive');
       return false;
     }
     return true;
   } finally {
     removePending(id);
+    confirmedEditIds.delete(id);
+    mutationRevision++;
     masterLoading = false;
   }
 }
 
+function submitUpdateEntry(id: number, patch: UpdateEntryPatch): EntrySubmission {
+  const accepted = entries.some(entry => entry.id === id)
+    && !mutationInFlight(id) && !isQueuedAddId(id);
+  // updateEntry also reports the existing frozen-entry notification when blocked.
+  return { accepted, completion: updateEntry(id, patch) };
+}
+
 async function deleteEntry(id: number): Promise<boolean> {
-  if (!entries.some((entry) => entry.id === id)) return false;
+  if (mutationInFlight(id)) return false;
+  const previous = entries.find((entry) => entry.id === id);
+  if (!previous) return false;
   if (isQueuedAddId(id)) {
     toast.show(QUEUED_ADD_FROZEN_MESSAGE);
     return false;
   }
-  const wasLocal = getLocalEntryIds().has(id);
+  entries = entries.filter((entry) => entry.id !== id);
+  mutationRevision++;
   addDeletePending(id);
   masterLoading = true;
   try {
@@ -257,21 +298,23 @@ async function deleteEntry(id: number): Promise<boolean> {
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
-      if (wasLocal) entries = entries.filter((entry) => entry.id !== id);
       if (isAuthError(outcome.error)) toast.show(outcome.error, undefined, 'destructive');
     } else {
-      toast.show(outcome.error);
+      entries = [...entries.filter(entry => entry.id !== id), previous].sort(compareEntriesForDisplay);
+      toast.show(outcome.error, undefined, 'destructive');
       return false;
     }
     return true;
   } finally {
     removeDeletePending(id);
+    mutationRevision++;
     masterLoading = false;
   }
 }
 
 async function deleteEntries(ids: number[]): Promise<void> {
-  const present = ids.filter((id) => entries.some((entry) => entry.id === id));
+  const present = [...new Set(ids)].filter((id) => entries.some((entry) => entry.id === id)
+    && !mutationInFlight(id));
   if (present.length === 0) return;
 
   const frozen = present.filter((id) => isQueuedAddId(id));
@@ -279,40 +322,33 @@ async function deleteEntries(ids: number[]): Promise<void> {
   if (frozen.length > 0) toast.show(QUEUED_ADD_FROZEN_MESSAGE);
   if (deletable.length === 0) return;
 
-  const currentLocalIds = getLocalEntryIds();
-  const localToDelete = deletable.filter((id) => currentLocalIds.has(id));
-  for (const id of localToDelete) {
-    await submitDelete(id, () => Promise.resolve());
-    entries = entries.filter((entry) => entry.id !== id);
-  }
-  syncLocalIds();
-
-  const remote = deletable.filter((id) => !currentLocalIds.has(id));
-  if (remote.length === 0) return;
-
-  for (const id of remote) addDeletePending(id);
+  const previous = new Map(entries.filter(entry => deletable.includes(entry.id)).map(entry => [entry.id, entry]));
+  const retainedPendingIds = new Set(deletable);
+  entries = entries.filter(entry => !previous.has(entry.id));
+  for (const id of deletable) addDeletePending(id);
+  mutationRevision++;
   masterLoading = true;
   try {
-    const outcomes = await Promise.allSettled(remote.map((id) => submitDelete(id, () => gateway().deleteEntry(id))));
-    const removed: number[] = [];
     let failCount = 0;
-    for (let index = 0; index < outcomes.length; index++) {
-      const result = outcomes[index];
-      if (result.status !== 'fulfilled') continue;
-      if (result.value.status === 'confirmed') {
-        removed.push(remote[index]);
-      } else if (result.value.status === 'queued') {
-        if (isAuthError(result.value.error)) toast.show(result.value.error, undefined, 'destructive');
-      } else {
+    await Promise.all(deletable.map(async id => {
+      const outcome = await submitDelete(id, () => gateway().deleteEntry(id));
+      if (outcome.status === 'failed') {
+        entries = [...entries.filter(entry => entry.id !== id), previous.get(id)!].sort(compareEntriesForDisplay);
+        removeDeletePending(id);
+        retainedPendingIds.delete(id);
+        mutationRevision++;
         failCount++;
+      } else if (outcome.status === 'queued' && isAuthError(outcome.error)) {
+        toast.show(outcome.error, undefined, 'destructive');
       }
-    }
+      syncLocalIds();
+    }));
     syncLocalIds();
-    if (removed.length > 0) entries = entries.filter((entry) => !removed.includes(entry.id));
-    if (failCount > 0) toast.show(`Failed to delete ${failCount} entr${failCount === 1 ? 'y' : 'ies'}.`);
+    if (failCount > 0) toast.show(`Failed to delete ${failCount} entr${failCount === 1 ? 'y' : 'ies'}.`, undefined, 'destructive');
     await refreshAll(true);
   } finally {
-    for (const id of remote) removeDeletePending(id);
+    for (const id of retainedPendingIds) removeDeletePending(id);
+    mutationRevision++;
     masterLoading = false;
   }
 }
@@ -320,6 +356,7 @@ async function deleteEntries(ids: number[]): Promise<void> {
 async function drainQueue(): Promise<void> {
   if (draining || getLocalEntryIds().size === 0) return;
   draining = true;
+  mutationRevision++;
   try {
     const results = await drain({
       add: (payload, mutationId) => gateway().addEntry(payload, mutationId),
@@ -344,9 +381,11 @@ async function drainQueue(): Promise<void> {
       }
     }
     syncLocalIds();
+    mutationRevision++;
     if (results.length > 0 && results.every((result) => result.status === 'drained')) await refreshAll(true);
   } finally {
     draining = false;
+    mutationRevision++;
   }
 }
 
@@ -396,6 +435,8 @@ function injectQueue(): void {
           mainCategory: item.patch.tag ? getMainCategory(item.patch.tag, categories) : previous.mainCategory,
         });
       }
+    } else if (item.op === 'delete') {
+      entries = entries.filter(entry => entry.id !== item.id);
     }
   }
   reserveRehydratedTemporaryIds();
@@ -410,7 +451,7 @@ export const store = {
   get loading() { return loading; },
   get error() { return error; },
   get errorIsConnection() { return errorIsConnection; },
-  get masterLoading() { return masterLoading; },
+  get masterLoading() { return masterLoading || pendingIds.size > 0 || deletePendingIds.size > 0; },
   get pendingIds() { return pendingIds; },
   get deletePendingIds() { return deletePendingIds; },
   get localIds() { return localIds; },
@@ -420,6 +461,7 @@ export const store = {
   refreshAll,
   addEntry,
   updateEntry,
+  submitUpdateEntry,
   deleteEntry,
   deleteEntries,
   drainQueue,

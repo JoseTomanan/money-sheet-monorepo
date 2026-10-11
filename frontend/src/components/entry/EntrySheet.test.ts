@@ -206,14 +206,15 @@ describe("EntrySheet — in-flight save latch", () => {
     }
   });
 
-  it("shows Saving… and cannot submit a second in-flight save", async () => {
+  it("closes an accepted Edit immediately and cannot submit a second save", async () => {
     let resolveSave!: (saved: boolean) => void;
-    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onsave = vi.fn(() => ({ accepted: true, completion: new Promise<boolean>((resolve) => { resolveSave = resolve; }) }));
     const onclose = vi.fn();
     const { getByRole } = render(EntrySheet, baseProps({ onsave, onclose, entry: makeEntry() }));
     const save = getByRole("button", { name: "Save" });
 
     await fireEvent.click(save);
+    expect(onclose).toHaveBeenCalledOnce();
     expect(getByRole("button", { name: "Saving…" })).toBeDisabled();
     await fireEvent.click(getByRole("button", { name: "Saving…" }));
     expect(onsave).toHaveBeenCalledTimes(1);
@@ -222,9 +223,8 @@ describe("EntrySheet — in-flight save latch", () => {
     await waitFor(() => expect(onclose).toHaveBeenCalledOnce());
   });
 
-  it("keeps a failed Edit Entry open and ready to retry", async () => {
-    let resolveSave!: (saved: boolean) => void;
-    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+  it("keeps a blocked Edit Entry open and ready to retry", async () => {
+    const onsave = vi.fn(() => ({ accepted: false, completion: Promise.resolve(false) }));
     const onclose = vi.fn();
     const { getByRole } = render(EntrySheet, baseProps({ onsave, onclose, entry: makeEntry() }));
 
@@ -232,7 +232,6 @@ describe("EntrySheet — in-flight save latch", () => {
     await Promise.resolve();
     expect(onclose).not.toHaveBeenCalled();
 
-    resolveSave(false);
     await click;
     expect(onclose).not.toHaveBeenCalled();
     expect(getByRole("button", { name: "Save" })).not.toBeDisabled();

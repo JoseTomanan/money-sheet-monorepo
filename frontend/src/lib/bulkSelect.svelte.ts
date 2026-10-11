@@ -27,8 +27,10 @@ export function createBulkSelect(
 
   async function confirmDelete(onDone: () => void): Promise<void> {
     confirmOpen = false;
-    await deleteEntries([...selectedIds]);
+    const completion = deleteEntries([...selectedIds]);
+    clear();
     onDone();
+    await completion;
   }
 
   return {

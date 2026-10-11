@@ -83,15 +83,15 @@
     sheetOpen = true;
   }
 
-  async function handleSave(m: EntryMutation) {
-    const saved = m.type === 'add'
-      ? await store.addEntry(m.payload)
-      : await store.updateEntry(m.id, m.patch);
-    if (saved && m.type === 'add' && scrollArea) {
-      await tick();
-      scrollArea.scrollTop = scrollArea.scrollHeight;
-    }
-    return saved;
+  function handleSave(m: EntryMutation) {
+    if (m.type === 'edit') return store.submitUpdateEntry(m.id, m.patch);
+    return store.addEntry(m.payload).then(async saved => {
+      if (saved && scrollArea) {
+        await tick();
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }
+      return saved;
+    });
   }
 
   // Settings overlay state

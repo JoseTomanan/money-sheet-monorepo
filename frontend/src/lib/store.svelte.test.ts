@@ -187,7 +187,7 @@ describe("pendingIds", () => {
     expect(store.entries.find((e) => e.id === 1)?.description).toBe("fresh");
   });
 
-  it("deleteEntry: entry stays visible while pending; removed on success", async () => {
+  it("deleteEntry: entry disappears while pending; stays hidden on success", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
 
@@ -202,7 +202,7 @@ describe("pendingIds", () => {
       })
     );
     store.deleteEntry(1);
-    expect(store.entries.some((e) => e.id === 1)).toBe(true);
+    expect(store.entries.some((e) => e.id === 1)).toBe(false);
     expect(store.deletePendingIds.has(1)).toBe(true);
     resolvePost({ text: () => Promise.resolve(JSON.stringify({ ok: true })) });
     await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
@@ -753,7 +753,7 @@ describe("offline queue — addEntry connection failure", () => {
     vi.unstubAllGlobals();
   });
 
-  it("entry stays in list after connection failure", async () => {
+  it("entry stays hidden after connection failure", async () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.addEntry({ date: "2026-01-01", tag: "Groceries", description: "test", direction: "O", amount: 50 });
     await vi.waitFor(() => expect(store.pendingIds.size).toBe(0));
@@ -859,7 +859,7 @@ describe("offline queue — deleteEntry connection failure", () => {
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
     store.deleteEntry(1);
     await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
-    expect(store.entries.some(e => e.id === 1)).toBe(true);
+    expect(store.entries.some(e => e.id === 1)).toBe(false);
   });
 
   it("localIds gains the id after connection failure", async () => {
