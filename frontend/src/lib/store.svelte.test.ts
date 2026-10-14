@@ -327,42 +327,39 @@ describe("store", () => {
       expect(store.loading).toBe(false);
     });
 
-    it("silent mode reports a refresh failure with a retry toast", async () => {
+    it("silent mode delays a network failure notice and offers retry", async () => {
       vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
-      expect(toast.msg).toBe("Not updated: entries, balances, categories, settings, statistics.");
-      expect(toast.presentation?.heading).toBe("Couldn't refresh your data");
-      expect(toast.isConnection).toBe(true);
-      expect(toast.variant).toBe("destructive");
-      expect(toast.action?.label).toBe("Retry");
+      expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
+      expect(store.syncDelayed).toBe(false);
     });
 
-    it("Retry dismisses first, refreshes once, and a failed retry gets a fresh lifetime without clearing store errors", async () => {
+    it("Retry keeps one notification episode and requests one bounded cycle", async () => {
       vi.useFakeTimers();
       try {
-        const fetch = vi.fn().mockRejectedValue(new Error("Network error"));
-        vi.stubGlobal("fetch", fetch);
+        const fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+        vi.stubGlobal('fetch', fetch);
         await store.refreshAll();
         const queued = localStorage.getItem(scopedKey('ms_queue'));
-        await vi.advanceTimersByTimeAsync(7000);
+        expect(toast.msg).toBeNull();
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(toast.msg).toBe('Waiting to load your data.');
+        expect(toast.action?.label).toBe('Retry');
         toast.action!.run();
-        expect(toast.msg).toBeNull();
         await vi.advanceTimersByTimeAsync(0);
-        expect(fetch).toHaveBeenCalledTimes(10); // Five reads per explicit refresh.
-        expect(toast.msg).toBe("Not updated: entries, balances, categories, settings, statistics.");
-        await vi.advanceTimersByTimeAsync(7999);
-        expect(toast.msg).not.toBeNull();
-        await vi.advanceTimersByTimeAsync(1);
+        expect(fetch).toHaveBeenCalledTimes(10);
+        expect(toast.msg).toBe('Waiting to load your data.');
+        await vi.advanceTimersByTimeAsync(8_000);
         expect(toast.msg).toBeNull();
-        expect(store.error).toBe("Network error");
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(toast.msg).toBeNull();
+        expect(store.error).toBe('Network error');
         expect(localStorage.getItem(scopedKey('ms_queue'))).toBe(queued);
         expect(fetch).toHaveBeenCalledTimes(10);
-      } finally {
-        toast.dismiss();
-        vi.useRealTimers();
-      }
+      } finally { store.dispose(); toast.dismiss(); vi.useRealTimers(); }
     });
 
     it("preserves recovery classification across mixed API and connection failures", async () => {
@@ -418,8 +415,9 @@ describe("store", () => {
       expect(store.entries).toEqual(previousEntries);
       expect(store.master).toEqual(previousMaster);
       expect(store.categories).toEqual(previousCategories);
-      expect(toast.msg).toBe("Not updated: balances.");
-      expect(toast.action?.label).toBe("Retry");
+      expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
+      expect(toast.action).toBeNull();
     });
 
     it("reports every failed read when core reads fail", async () => {
@@ -436,7 +434,8 @@ describe("store", () => {
 
       await store.refreshAll(true);
 
-      expect(toast.msg).toBe("Not updated: entries, balances.");
+      expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
     });
 
     it("reports optional failures alongside a failed MASTER read", async () => {
@@ -453,7 +452,8 @@ describe("store", () => {
 
       await store.refreshAll(true);
 
-      expect(toast.msg).toBe("Not updated: balances, statistics.");
+      expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
     });
   });
 
@@ -1238,8 +1238,9 @@ describe("store — getStats graceful degradation", () => {
     await store.refreshAll(false);
     expect(store.error).toBeNull();
     expect(store.errorIsConnection).toBe(false);
-    expect(toast.msg).toBe("Not updated: statistics.");
-    expect(toast.action?.label).toBe("Retry");
+    expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
+    expect(toast.action).toBeNull();
   });
 
   it("reports every failed optional read in one toast", async () => {
@@ -1255,7 +1256,8 @@ describe("store — getStats graceful degradation", () => {
 
     await store.refreshAll(false);
 
-    expect(toast.msg).toBe("Not updated: settings, statistics.");
+    expect(toast.msg).toBeNull();
+      expect(store.syncWaiting).toBe(true);
   });
 
   it("still loads the core reads when getStats fails", async () => {

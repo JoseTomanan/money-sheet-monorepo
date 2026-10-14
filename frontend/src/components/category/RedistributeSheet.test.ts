@@ -14,10 +14,26 @@ function baseProps(overrides = {}) {
     open: true,
     categories: CATEGORIES,
     onclose: vi.fn(),
-    onsubmit: vi.fn(),
+    onsubmit: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
     ...overrides,
   };
 }
+
+it('retains the redistribution draft after refused admission and permits retry', async () => {
+  const onclose = vi.fn();
+  const onsubmit = vi.fn((_legs: AddEntryPayload[]) => ({ accepted: false, error: 'Storage is full', completion: Promise.resolve(false) }));
+  const { getAllByRole, getByPlaceholderText, getByRole, getByText } = render(RedistributeSheet, baseProps({ onsubmit, onclose }));
+  await fireEvent.click(getAllByRole('button', { name: /^HOUSING$/ })[0]);
+  await fireEvent.click(getAllByRole('button', { name: /^FINANCE$/ })[1]);
+  const amount = getByPlaceholderText('0.00');
+  await fireEvent.input(amount, { target: { value: '100' } });
+  await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
+  expect(onclose).not.toHaveBeenCalled();
+  expect(amount).toHaveValue('100');
+  expect(getByText('Storage is full')).toBeVisible();
+  await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
+  expect(onsubmit).toHaveBeenCalledTimes(2);
+});
 
 // --- Cycle 1: submit disabled initially ---
 
@@ -64,7 +80,7 @@ describe('RedistributeSheet — valid state', () => {
 
 describe('RedistributeSheet — submit payload', () => {
   it('calls onsubmit with two legs: negative drain + positive credit', async () => {
-    const onsubmit = vi.fn();
+    const onsubmit = vi.fn((_legs: AddEntryPayload[]) => ({ accepted: true, completion: Promise.resolve(true) }));
     const { getAllByRole, getByPlaceholderText, getByRole } = render(
       RedistributeSheet,
       baseProps({ onsubmit }),

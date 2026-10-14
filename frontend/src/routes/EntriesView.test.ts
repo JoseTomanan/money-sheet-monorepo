@@ -16,7 +16,10 @@ const mockStore = vi.hoisted(() => ({
   draining: false,
   drainQueue: vi.fn(),
   addEntry: vi.fn(),
-  deleteEntries: vi.fn(),
+  submitDeleteEntries: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
+  submitAddEntry: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
+  syncCount: 0,
+  syncWaiting: false,
 }));
 
 vi.mock("../lib/store.svelte", () => ({ store: mockStore }));
@@ -269,6 +272,7 @@ describe("EntriesView Sync Now button", () => {
     mockStore.pendingIds = new Set();
     mockStore.localIds = new Set();
     mockStore.draining = false;
+    mockStore.syncWaiting = false; mockStore.syncCount = 0;
     mockStore.drainQueue.mockReset();
   });
   afterEach(() => vi.useRealTimers());
@@ -280,10 +284,11 @@ describe("EntriesView Sync Now button", () => {
     expect(queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
   });
 
-  it("Sync Now button is present when localIds has entries", () => {
+  it("Sync Now button is present for waiting local work", () => {
     const entry = makeEntry(5, "2026-05-17", "Local");
     mockStore.entries = [entry];
     mockStore.localIds = new Set([5]);
+    mockStore.syncWaiting = true; mockStore.syncCount = 1;
     const { getByRole } = render(EntriesView, baseProps());
     expect(getByRole("button", { name: /sync now/i })).toBeInTheDocument();
   });
@@ -292,6 +297,7 @@ describe("EntriesView Sync Now button", () => {
     const entry = makeEntry(5, "2026-05-17", "Local");
     mockStore.entries = [entry];
     mockStore.localIds = new Set([5]);
+    mockStore.syncWaiting = true; mockStore.syncCount = 1;
     const { getByRole } = render(EntriesView, baseProps());
     await fireEvent.click(getByRole("button", { name: /sync now/i }));
     expect(mockStore.drainQueue).toHaveBeenCalledOnce();

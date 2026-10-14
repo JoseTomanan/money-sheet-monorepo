@@ -352,7 +352,7 @@ describe('offlineMutation — drain', () => {
       add: () => {
         callCount++;
         if (callCount === 1) return Promise.resolve(REAL_ENTRY);
-        return Promise.reject(new Error('Network error'));
+        return Promise.reject(new ConnectionError('Network error'));
       },
       addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),
@@ -373,7 +373,7 @@ describe('offlineMutation — drain', () => {
     await drain({
       add: (_payload, mutationId) => {
         firstAttemptId = mutationId;
-        return Promise.reject(new Error('timed out after commit'));
+        return Promise.reject(new ConnectionError('timed out after commit'));
       },
       addEntries: () => Promise.resolve([]),
       edit: () => Promise.resolve(),

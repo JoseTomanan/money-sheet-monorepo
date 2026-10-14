@@ -145,6 +145,7 @@ it('stops A replay at the in-flight item and retains A and new B work independen
   const pending = deferred<ReturnType<typeof response>>();
   vi.mocked(fetch).mockImplementationOnce(() => pending.promise as Promise<Response>);
   const oldReplay = store.drainQueue();
+  await vi.waitFor(() => expect(vi.mocked(fetch).mock.results.some(result => result.value === pending.promise)).toBe(true));
   setConnection(B);
   await store.init();
   await store.addEntry({ ...payload, description: 'B save' });

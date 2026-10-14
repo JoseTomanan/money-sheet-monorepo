@@ -160,7 +160,8 @@ describe('optimistic Entries reconciliation', () => {
     const oldSnapshot = deferred<Entry[]>();
     adapter.getEntries = () => oldSnapshot.promise;
     const refreshing = store.refreshAll();
-    expect(store.loading).toBe(true);
+    // Usable content stays visible during an ordinary refresh (#228).
+    expect(store.loading).toBe(false);
     adapter.getEntries = async () => server;
     adapter.updateEntry = async (id, patch) => {
       server = server.map(entry => entry.id === id ? { ...entry, ...patch } : entry);

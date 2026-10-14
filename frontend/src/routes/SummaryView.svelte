@@ -6,6 +6,7 @@
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import PaceChart from '../components/charts/PaceChart.svelte';
+  import BalanceStatus from '../components/ui/BalanceStatus.svelte';
   import PageHeader from '../components/ui/PageHeader.svelte';
 
   interface Props {
@@ -69,7 +70,7 @@
 </script>
 
 <div class="summary-view p-0 pb-[72px]">
-{#if store.loading}
+{#if store.loading || store.hasSnapshot === false}
   <!-- Skeleton -->
   <PageHeader {onsettings}>
     {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
@@ -113,6 +114,7 @@
     {/snippet}
   </PageHeader>
 
+  <BalanceStatus statistics />
   <div class="summary-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <!-- Left: envelope rows, one per Category. Balance is the anchor number. -->
     <div class="summary-left">
@@ -134,6 +136,7 @@
             </div>
             <div class="text-right shrink-0">
               <Money value={e.balance} size={20} weight={700} />
+              {#if store.hasStats !== false}
               <div
                 class="direction-chip flex items-center justify-end gap-1 mt-[2px]"
                 role="group"
@@ -149,6 +152,7 @@
                 {/if}
                 <span aria-hidden="true"><Money value={e.netChange} size={11} weight={500} /></span>
               </div>
+              {:else}<span class="text-xs text-muted-foreground">Awaiting statistics</span>{/if}
             </div>
           </div>
         {/each}
@@ -169,6 +173,7 @@
         {/snippet}
       </SectionHeader>
       <div class="card mx-4 px-4 pt-3 pb-3 lg:mx-0">
+        {#if store.hasStats === false}<p class="text-sm text-muted-foreground">Statistics are not available yet.</p>{:else}
         <PaceChart
           {current}
           previous={usual}
@@ -176,6 +181,7 @@
           curLabel="This month"
           prevLabel="Usual"
         />
+        {/if}
       </div>
     </div>
   </div>

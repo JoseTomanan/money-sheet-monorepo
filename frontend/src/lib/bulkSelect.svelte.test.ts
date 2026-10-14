@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createBulkSelect } from "./bulkSelect.svelte";
 
 function makeBulk(ids: number[]) {
-  const deleteEntries = vi.fn().mockResolvedValue(undefined);
+  const deleteEntries = vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) }));
   const bulk = createBulkSelect(() => ids, deleteEntries);
   return { bulk, deleteEntries };
 }
@@ -57,6 +57,16 @@ describe("createBulkSelect — allSelected", () => {
 });
 
 describe("createBulkSelect — confirmDelete", () => {
+  it('keeps the selected IDs and confirmation open when admission is refused', async () => {
+    const bulk = createBulkSelect(() => [1, 2], () => ({ accepted: false, completion: Promise.resolve(false) }));
+    bulk.selectAll();
+    bulk.confirmOpen = true;
+    const onDone = vi.fn();
+    await bulk.confirmDelete(onDone);
+    expect(bulk.selectedIds).toEqual(new Set([1, 2]));
+    expect(bulk.confirmOpen).toBe(true);
+    expect(onDone).not.toHaveBeenCalled();
+  });
   it("calls the injected deleteEntries with the selected ids", async () => {
     const { bulk, deleteEntries } = makeBulk([1, 2, 3]);
     bulk.toggle(1);
@@ -75,15 +85,15 @@ describe("createBulkSelect — confirmDelete", () => {
   });
 
   it("finishes selection while the accepted delete is unresolved", async () => {
-    let resolve!: () => void;
-    const deleteEntries = vi.fn(() => new Promise<void>(done => { resolve = done; }));
+    let resolve!: (saved: boolean) => void;
+    const deleteEntries = vi.fn(() => ({ accepted: true, completion: new Promise<boolean>(done => { resolve = () => done(true); }) }));
     const bulk = createBulkSelect(() => [1], deleteEntries);
     bulk.toggle(1);
     const onDone = vi.fn();
     const completion = bulk.confirmDelete(onDone);
     expect(onDone).toHaveBeenCalledOnce();
     expect(bulk.selectedIds.size).toBe(0);
-    resolve();
+    resolve(true);
     await completion;
   });
 });
