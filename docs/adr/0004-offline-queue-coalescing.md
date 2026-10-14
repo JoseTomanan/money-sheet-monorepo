@@ -27,3 +27,16 @@ A Split Entry / Fund Redistribution now submits as one atomic `addEntries` call 
 ## Amendment (issue #149): pending new saves are immutable
 
 A timed-out `addEntry` can have committed at GAS before the browser receives a response. Its queue item now retains the original payload and Mutation ID so replay can use the server's idempotency lookup. A queued single add is therefore frozen just like `addBatch`; edit/delete is blocked until it syncs. Coalescing remains available for operations on already-confirmed Entries.
+
+## Amendment (issue #220): the Offline Queue owns pending work
+
+`frontend/src/lib/queue.ts` owns persistence, submission, ordered replay, coalescing, and new-save immutability. `offlineMutation.ts` is a compatibility facade. The store owns optimistic presentation and notifications; its frozen-entry guards are convenience checks, not correctness enforcement.
+
+- Persist each submission before its first delivery. A failed initial write returns `failed` and makes no request. New saves wait behind existing work. Unrelated confirmed-entry operations retain independent initial delivery while earlier submissions are in flight; work behind an offline item or active replay remains queued.
+- One replay may be active in this browser module at a time. Overlapping replay calls return no results, and replay does not run while initial submissions are active. A later operation targeting an entry already being delivered remains queued. This coordinates callers in one tab; cross-tab synchronization remains outside this decision.
+- Never coalesce into an item awaiting delivery. Later confirmed-entry edits/deletes remain separate pending work and may coalesce with each other. Initial submissions remove only their unchanged request from the freshly read queue; ordered replay removes only its current head. Both retain everything enqueued during the await, including when unrelated initial submissions settle out of order.
+- Storage read/write errors are observable. Unreadable work is never treated as an empty queue. Failed removal retains the retry item and reports a storage error rather than successful draining; a submission whose removal fails reports `queued` because its original item was durably recorded.
+- Reject all negative-ID edit/delete submissions, including direct `enqueue` calls, and reject reuse of a pending temporary ID. Single adds and whole batches retain their payload and Mutation ID until confirmation. A legacy save receives a successfully persisted key before any replay attempt.
+- Raw writes are private. `restoreQueueForRecovery` explicitly replaces or discards pending work for administrative recovery and rejects use during delivery. It is not an ordinary mutation path.
+
+An ambiguous delivery or failed removal can cause another network attempt. New-save retries use the original Mutation ID and payload; this is not a promise of exactly-once network delivery. Destination identity and queue association remain the separate scope of issue #222.

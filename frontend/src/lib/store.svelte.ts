@@ -3,8 +3,8 @@ import { loadSnapshot, saveSnapshot } from './cacheSync';
 import { toast } from './toast.svelte';
 import { buildEntry, getMainCategory } from './domain';
 import { drain, getLocalEntryIds, isQueuedAddId, submitAdd, submitAddBatch, submitDelete, submitEdit } from './offlineMutation';
-import { createMutationId } from './mutationId';
-import { readQueue } from './queue';
+import { readQueue, QueuePersistenceError } from './queue';
+import type { QueueItem } from './queue';
 import { compareEntriesForDisplay } from './groupEntries';
 import type {
   Entry,
@@ -28,7 +28,7 @@ let errorIsConnection = $state(false);
 let masterLoading = $state(false);
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
-let localIds = $state<Set<number>>(getLocalEntryIds());
+let localIds = $state<Set<number>>(new Set());
 let draining = $state(false);
 let syncing = $state(false);
 let nextTemporaryId = -1;
@@ -39,6 +39,15 @@ let refreshSequence = 0;
 const confirmedEditIds = new Set<number>();
 
 const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
+
+function notifyQueuedError(error: unknown): void {
+  if (isAuthError(error) || error instanceof QueuePersistenceError) toast.show(error, undefined, 'destructive');
+}
+
+function queueReadable(): boolean {
+  try { readQueue(); return true; }
+  catch (error) { toast.show(error, undefined, 'destructive'); return false; }
+}
 
 function mutationInFlight(id: number): boolean {
   return pendingIds.has(id) || deletePendingIds.has(id) || (draining && localIds.has(id));
@@ -133,6 +142,8 @@ async function refreshAll(silent = false): Promise<void> {
       return;
     }
 
+    // An unreadable queue must not let a server refresh erase known pending UI.
+    const queue = readQueue();
     const pendingEntries = entries.filter(entry => pendingIds.has(entry.id) && !confirmedEditIds.has(entry.id));
     entries = e.value;
     master = m.value;
@@ -142,13 +153,16 @@ async function refreshAll(silent = false): Promise<void> {
 
     if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
 
-    injectQueue();
+    injectQueue(queue);
     const optimisticById = new Map(pendingEntries.map(entry => [entry.id, entry]));
     entries = entries.map(entry => optimisticById.get(entry.id) ?? entry);
     entries = [...entries, ...pendingEntries.filter(entry => !entries.some(current => current.id === entry.id))]
       .filter(entry => !deletePendingIds.has(entry.id));
-    localIds = getLocalEntryIds();
+    syncLocalIds();
     saveSnapshot({ entries, master, categories, config, stats });
+  } catch (cause) {
+    toast.show(cause, undefined, 'destructive');
+    if (!silent) { error = cause instanceof Error ? cause.message : String(cause); errorIsConnection = isQueueable(cause); }
   } finally {
     if (!silent) loading = false;
   }
@@ -159,7 +173,8 @@ function replaceEntry(id: number, next: Entry): void {
 }
 
 function syncLocalIds(): void {
-  localIds = getLocalEntryIds();
+  try { localIds = getLocalEntryIds(); }
+  catch (error) { toast.show(error, undefined, 'destructive'); }
 }
 
 function reserveRehydratedTemporaryIds(): void {
@@ -171,12 +186,11 @@ function reserveRehydratedTemporaryIds(): void {
 
 async function add(payload: AddEntryPayload): Promise<boolean> {
   const tempId = nextTemporaryId--;
-  const mutationId = createMutationId();
   entries = [...entries, buildEntry(tempId, payload, categories)];
   addPending(tempId);
   masterLoading = true;
   try {
-    const outcome = await submitAdd(tempId, payload, mutationId, () => gateway().addEntry(payload, mutationId));
+    const outcome = await submitAdd(tempId, payload, (saved, key) => gateway().addEntry(saved, key));
     removePending(tempId);
     if (outcome.status === 'confirmed') {
       replaceEntry(tempId, outcome.entry);
@@ -185,7 +199,7 @@ async function add(payload: AddEntryPayload): Promise<boolean> {
       removePending(outcome.entry.id);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
-      if (isAuthError(outcome.error)) toast.show(outcome.error, undefined, 'destructive');
+      notifyQueuedError(outcome.error);
     } else {
       entries = entries.filter((entry) => entry.id !== tempId);
       toast.show(outcome.error, undefined, 'destructive');
@@ -199,12 +213,11 @@ async function add(payload: AddEntryPayload): Promise<boolean> {
 
 async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
   const tempIds = legs.map(() => nextTemporaryId--);
-  const mutationId = createMutationId();
   entries = [...entries, ...legs.map((leg, index) => buildEntry(tempIds[index], leg, categories))];
   for (const id of tempIds) addPending(id);
   masterLoading = true;
   try {
-    const outcome = await submitAddBatch(tempIds, legs, mutationId, () => gateway().addEntries(legs, mutationId));
+    const outcome = await submitAddBatch(tempIds, legs, (saved, key) => gateway().addEntries(saved, key));
     for (const id of tempIds) removePending(id);
 
     if (outcome.status === 'confirmed') {
@@ -212,8 +225,8 @@ async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
     }
     syncLocalIds();
 
-    if (outcome.status === 'queued' && isAuthError(outcome.error)) {
-      toast.show(outcome.error, undefined, 'destructive');
+    if (outcome.status === 'queued') {
+      notifyQueuedError(outcome.error);
     } else if (outcome.status === 'confirmed') {
       toast.dismiss();
     } else if (outcome.status === 'failed') {
@@ -233,6 +246,7 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<boolean
 }
 
 async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean> {
+  if (!queueReadable()) return false;
   if (mutationInFlight(id)) return false;
   const previous = entries.find((entry) => entry.id === id);
   if (!previous) return false;
@@ -250,14 +264,14 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
   addPending(id);
   masterLoading = true;
   try {
-    const outcome = await submitEdit(id, patch, () => gateway().updateEntry(id, patch));
+    const outcome = await submitEdit(id, patch, (savedId, savedPatch) => gateway().updateEntry(savedId, savedPatch));
     if (outcome.status === 'confirmed') {
       confirmedEditIds.add(id);
       mutationRevision++;
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
-      if (isAuthError(outcome.error)) toast.show(outcome.error, undefined, 'destructive');
+      notifyQueuedError(outcome.error);
     } else {
       replaceEntry(id, previous);
       toast.show(outcome.error, undefined, 'destructive');
@@ -274,12 +288,13 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
 
 function submitUpdateEntry(id: number, patch: UpdateEntryPatch): EntrySubmission {
   const accepted = entries.some(entry => entry.id === id)
-    && !mutationInFlight(id) && !isQueuedAddId(id);
+    && queueReadable() && !mutationInFlight(id) && !isQueuedAddId(id);
   // updateEntry also reports the existing frozen-entry notification when blocked.
   return { accepted, completion: updateEntry(id, patch) };
 }
 
 async function deleteEntry(id: number): Promise<boolean> {
+  if (!queueReadable()) return false;
   if (mutationInFlight(id)) return false;
   const previous = entries.find((entry) => entry.id === id);
   if (!previous) return false;
@@ -292,13 +307,13 @@ async function deleteEntry(id: number): Promise<boolean> {
   addDeletePending(id);
   masterLoading = true;
   try {
-    const outcome = await submitDelete(id, () => gateway().deleteEntry(id));
+    const outcome = await submitDelete(id, savedId => gateway().deleteEntry(savedId));
     if (outcome.status === 'confirmed') {
       entries = entries.filter((entry) => entry.id !== id);
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
-      if (isAuthError(outcome.error)) toast.show(outcome.error, undefined, 'destructive');
+      notifyQueuedError(outcome.error);
     } else {
       entries = [...entries.filter(entry => entry.id !== id), previous].sort(compareEntriesForDisplay);
       toast.show(outcome.error, undefined, 'destructive');
@@ -313,6 +328,7 @@ async function deleteEntry(id: number): Promise<boolean> {
 }
 
 async function deleteEntries(ids: number[]): Promise<void> {
+  if (!queueReadable()) return;
   const present = [...new Set(ids)].filter((id) => entries.some((entry) => entry.id === id)
     && !mutationInFlight(id));
   if (present.length === 0) return;
@@ -331,15 +347,15 @@ async function deleteEntries(ids: number[]): Promise<void> {
   try {
     let failCount = 0;
     await Promise.all(deletable.map(async id => {
-      const outcome = await submitDelete(id, () => gateway().deleteEntry(id));
+      const outcome = await submitDelete(id, savedId => gateway().deleteEntry(savedId));
       if (outcome.status === 'failed') {
         entries = [...entries.filter(entry => entry.id !== id), previous.get(id)!].sort(compareEntriesForDisplay);
         removeDeletePending(id);
         retainedPendingIds.delete(id);
         mutationRevision++;
         failCount++;
-      } else if (outcome.status === 'queued' && isAuthError(outcome.error)) {
-        toast.show(outcome.error, undefined, 'destructive');
+      } else if (outcome.status === 'queued') {
+        notifyQueuedError(outcome.error);
       }
       syncLocalIds();
     }));
@@ -354,10 +370,11 @@ async function deleteEntries(ids: number[]): Promise<void> {
 }
 
 async function drainQueue(): Promise<void> {
-  if (draining || getLocalEntryIds().size === 0) return;
+  if (draining) return;
   draining = true;
   mutationRevision++;
   try {
+    if (getLocalEntryIds().size === 0) return;
     const results = await drain({
       add: (payload, mutationId) => gateway().addEntry(payload, mutationId),
       addEntries: (payloads, mutationId) => gateway().addEntries(payloads, mutationId),
@@ -376,13 +393,15 @@ async function drainQueue(): Promise<void> {
         } else if (item.op === 'delete') {
           entries = entries.filter((entry) => entry.id !== item.id);
         }
-      } else if (isAuthError(result.error)) {
+      } else if (isAuthError(result.error) || !isQueueable(result.error)) {
         toast.show(result.error, undefined, 'destructive');
       }
     }
     syncLocalIds();
     mutationRevision++;
     if (results.length > 0 && results.every((result) => result.status === 'drained')) await refreshAll(true);
+  } catch (error) {
+    toast.show(error, undefined, 'destructive');
   } finally {
     draining = false;
     mutationRevision++;
@@ -390,32 +409,36 @@ async function drainQueue(): Promise<void> {
 }
 
 async function init(): Promise<void> {
-  localIds = getLocalEntryIds();
-  const cache = loadSnapshot();
-  if (cache) {
-    entries = cache.entries;
-    master = cache.master;
-    categories = cache.categories;
-    if (cache.config) config = cache.config;
-    if (cache.stats) stats = cache.stats;
-    injectQueue();
+  try {
     localIds = getLocalEntryIds();
-    syncing = true;
-    masterLoading = true;
-    void refreshAll(true).finally(() => {
-      syncing = false;
-      masterLoading = false;
-    });
-  } else {
-    await refreshAll(false);
-    injectQueue();
-    localIds = getLocalEntryIds();
+    const cache = loadSnapshot();
+    if (cache) {
+      entries = cache.entries;
+      master = cache.master;
+      categories = cache.categories;
+      if (cache.config) config = cache.config;
+      if (cache.stats) stats = cache.stats;
+      injectQueue();
+      localIds = getLocalEntryIds();
+      syncing = true;
+      masterLoading = true;
+      void refreshAll(true).finally(() => {
+        syncing = false;
+        masterLoading = false;
+      });
+    } else {
+      await refreshAll(false);
+      injectQueue();
+      localIds = getLocalEntryIds();
+    }
+    window.addEventListener('online', () => void drainQueue());
+  } catch (error) {
+    toast.show(error, undefined, 'destructive');
   }
-  window.addEventListener('online', () => void drainQueue());
 }
 
-function injectQueue(): void {
-  for (const item of readQueue()) {
+function injectQueue(queue: QueueItem[] = readQueue()): void {
+  for (const item of queue) {
     if (item.op === 'add') {
       if (!entries.some((entry) => entry.id === item.tempId)) {
         entries = [...entries, buildEntry(item.tempId, item.payload, categories)];

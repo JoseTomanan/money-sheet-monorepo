@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { readQueue, writeQueue, enqueue, clearQueue } from "./queue";
+import { readQueue, restoreQueueForRecovery, enqueue } from "./queue";
 import type { QueueItem } from "./queue";
 
 const ADD_A: QueueItem = {
@@ -43,8 +43,8 @@ describe("queue", () => {
     expect(readQueue()).toEqual([]);
   });
 
-  it("writeQueue + readQueue round-trips the queue", () => {
-    writeQueue([ADD_A]);
+  it("restoreQueueForRecovery + readQueue round-trips the queue", () => {
+    restoreQueueForRecovery([ADD_A]);
     expect(readQueue()).toEqual([ADD_A]);
   });
 
@@ -53,23 +53,10 @@ describe("queue", () => {
     expect(readQueue()).toEqual([ADD_A]);
   });
 
-  it("enqueue add + edit(same tempId): merges into single add with updated payload", () => {
+  it.each([EDIT_A, DELETE_A])("rejects mutation of a frozen new save", item => {
     enqueue(ADD_A);
-    enqueue(EDIT_A);
-    const q = readQueue();
-    expect(q).toHaveLength(1);
-    expect(q[0].op).toBe("add");
-    if (q[0].op === "add") {
-      expect(q[0].tempId).toBe(-1001);
-      expect(q[0].payload.amount).toBe(75);
-      expect(q[0].payload.date).toBe("2026-01-01");
-    }
-  });
-
-  it("enqueue add + delete(same tempId): net zero — queue is empty", () => {
-    enqueue(ADD_A);
-    enqueue(DELETE_A);
-    expect(readQueue()).toEqual([]);
+    expect(() => enqueue(item)).toThrow('sync');
+    expect(readQueue()).toEqual([ADD_A]);
   });
 
   it("enqueue edit + edit(same id): merges patches, keeping latest values", () => {
@@ -125,16 +112,16 @@ describe("queue", () => {
     expect(q[1]).toEqual(ADD_A);
   });
 
-  it("clearQueue: empties the queue", () => {
+  it("administrative recovery: empties the queue", () => {
     enqueue(ADD_A);
     enqueue(EDIT_REAL);
-    clearQueue();
+    restoreQueueForRecovery([]);
     expect(readQueue()).toEqual([]);
   });
 
-  it("readQueue returns [] when localStorage has corrupted JSON", () => {
+  it("readQueue reports corrupted JSON without discarding it", () => {
     localStorage.setItem("ms_queue", "{invalid-json}");
-    expect(readQueue()).toEqual([]);
+    expect(() => readQueue()).toThrow('pending saves');
   });
 
   it("enqueue edit after delete on same id: appends as safety fallback", () => {

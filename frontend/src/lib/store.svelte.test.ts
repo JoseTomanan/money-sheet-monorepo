@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { writeCache } from "./cache";
-import { writeQueue } from "./queue";
+import { restoreQueueForRecovery } from "./queue";
 import type { CachePayload } from "./cache";
 import type { QueueItem } from "./queue";
 import type { Entry, AddEntryPayload, GatewayAdapter } from "./types";
@@ -1011,7 +1011,7 @@ describe("drainQueue", () => {
     // Pre-seed two queue items: first will succeed, second will fail
     const addPayload1 = { date: "2026-01-01", tag: "Groceries", description: "first", direction: "O" as const, amount: 10 };
     const addPayload2 = { date: "2026-01-02", tag: "Dining", description: "second", direction: "O" as const, amount: 20 };
-    writeQueue([
+    restoreQueueForRecovery([
       { op: "add", tempId: -1001, payload: addPayload1 },
       { op: "add", tempId: -1002, payload: addPayload2 },
     ]);
@@ -1090,7 +1090,7 @@ describe("init with existing queue", () => {
 
   it("init injects Local Entry from a queued add item on cache path", async () => {
     const payload = { date: "2026-01-01", tag: "Groceries", description: "queued", direction: "O" as const, amount: 50 };
-    writeQueue([{ op: "add", tempId: -9999, payload }]);
+    restoreQueueForRecovery([{ op: "add", tempId: -9999, payload }]);
     writeCache({
       entries: freshEntries,
       master: freshMaster,
@@ -1324,6 +1324,58 @@ describe("store mutation workflow regressions", () => {
     expect(replacementAdd).toHaveBeenCalledOnce();
   });
 
+  it("reports unreadable pending work during initialization without crashing or replacing it", async () => {
+    localStorage.setItem('ms_queue', '{broken');
+    vi.resetModules();
+    const restored = (await import('./store.svelte')).store;
+    const { toast } = await import('./toast.svelte');
+    await restored.init();
+    expect(toast.msg).toContain('pending saves');
+    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+    expect(restored.loading).toBe(false);
+  });
+
+  it("reports storage failure during manual sync without rejecting the store call", async () => {
+    const { toast } = await import('./toast.svelte');
+    localStorage.setItem('ms_queue', '{broken');
+    await store.drainQueue();
+    expect(toast.msg).toContain('pending saves');
+    expect(store.draining).toBe(false);
+    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+  });
+
+  it("retains and reports a save whose confirmation could not be removed from storage", async () => {
+    const { setAdapter } = await import('./api');
+    const { toast } = await import('./toast.svelte');
+    let storage: ReturnType<typeof vi.spyOn> | undefined;
+    setAdapter(makeGatewayAdapter({ addEntry: async payload => {
+      storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('disk full'); });
+      return { ...payload, id: 77, mainCategory: 'FOOD' };
+    } }));
+    try {
+      expect(await store.addEntry({ date: '2026-01-01', tag: 'Groceries', description: 'save', direction: 'O', amount: 1 })).toBe(true);
+      expect(store.localIds).toEqual(new Set([-1]));
+      expect(toast.msg).toContain('pending saves');
+      expect(store.pendingIds.size).toBe(0);
+    } finally {
+      storage?.mockRestore();
+    }
+  });
+
+  it.each(['edit', 'delete', 'bulk delete', 'refresh'] as const)("reports unreadable storage during %s and retains the last snapshot", async action => {
+    await store.refreshAll();
+    const previous = store.entries;
+    const { toast } = await import('./toast.svelte');
+    localStorage.setItem('ms_queue', '{broken');
+    if (action === 'edit') expect(await store.updateEntry(1, { amount: 99 })).toBe(false);
+    if (action === 'delete') expect(await store.deleteEntry(1)).toBe(false);
+    if (action === 'bulk delete') await store.deleteEntries([1]);
+    if (action === 'refresh') await store.refreshAll();
+    expect(store.entries).toEqual(previous);
+    expect(toast.msg).toContain('pending saves');
+    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+  });
+
   it("queues an unauthorized add and keeps its destructive recovery toast", async () => {
     const { setAdapter, UnauthorizedError } = await import("./api");
     const { toast } = await import("./toast.svelte");
@@ -1367,7 +1419,7 @@ describe("store mutation workflow regressions", () => {
 
   it("reserves IDs below rehydrated Local Entries before creating another queued add", async () => {
     const payload: AddEntryPayload = { date: "2026-01-01", tag: "Groceries", description: "restored", direction: "O", amount: 10 };
-    writeQueue([{ op: "add", tempId: -4, payload, mutationId: "restored-id" }]);
+    restoreQueueForRecovery([{ op: "add", tempId: -4, payload, mutationId: "restored-id" }]);
     writeCache({ entries: [], master: freshMaster, categories: freshCategories });
     vi.resetModules();
     vi.stubGlobal("fetch", makeConnectionErrorFetch());
@@ -1385,7 +1437,7 @@ describe("store mutation workflow regressions", () => {
       { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
       { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
     ];
-    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    restoreQueueForRecovery([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
     writeCache({ entries: [], master: freshMaster, categories: freshCategories });
     vi.resetModules();
     const addEntries = vi.fn();
@@ -1419,7 +1471,7 @@ describe("store mutation workflow regressions", () => {
       { date: "2026-01-01", tag: "Groceries", description: "main", direction: "O", amount: 40 },
       { date: "2026-01-01", tag: "Dining", description: "^^", direction: "O", amount: 60 },
     ];
-    writeQueue([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
+    restoreQueueForRecovery([{ op: "addBatch", tempIds: [-1, -2], payloads: legs, mutationId: "batch-id" }]);
     writeCache({ entries: [], master: freshMaster, categories: freshCategories });
     vi.resetModules();
     const fetchSpy = vi.fn().mockImplementation((url: string) =>
