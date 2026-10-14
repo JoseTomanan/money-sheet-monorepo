@@ -144,9 +144,10 @@ and IO-repository chain, never a GAS-global or network-bound module.
 - **Two week-start algorithms** — deliberate (packages share no code) but only
   `parity.test.ts` keeps them equal. Any change to one MUST change the other and the
   test.
-- **`deleteEntry` string-matching** — `dispatch.ts:413-414` maps errors by
-  `msg.toLowerCase().includes("not found")`. Rewording the repository's throw
-  message silently converts `not_found` into a 500-style `internal` error.
+- **Resolved in #221: missing Entry classification**: application mutation
+  results carry structured `not_found` through the live and Mock callers to the
+  dispatcher. Repository booleans represent absence; unrelated persistence
+  exceptions retain their actual failure instead of being matched by wording.
 - **`getConfig` double-masking** — clasp returns `{}` when the Config sheet is
   missing (`8_config.ts:1-10`, intentional legacy tolerance); frontend
   `adapter-real.ts:140-147` `catch`es EVERYTHING (auth, network, parse) and returns

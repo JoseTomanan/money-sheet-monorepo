@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { MockAdapter } from "./adapter-mock";
 import type { GatewayAdapter } from "./types";
+import { CATEGORY_MAP } from "./theme";
 
 // ── Cycle 5: MockAdapter satisfies GatewayAdapter ─────────────────────────
 
@@ -96,6 +97,22 @@ describe("MockAdapter — addEntry", () => {
       .rejects.toThrow("Mutation ID was already used with different entry content");
   });
 
+  it("rejects conflicting single/batch Mutation IDs and invalid batches without writes", async () => {
+    const adapter = new MockAdapter();
+    const first = { date: "2026-09-16", tag: "FOOD", description: "First", direction: "I" as const, amount: 100 };
+    const second = { ...first, date: "2026-09-17", description: "^^" };
+    await adapter.addEntry(first, "mock-single-conflict-221");
+    const batch = await adapter.addEntries([first, second], "mock-batch-conflict-221");
+    expect(batch[1].id).toBe(batch[0].id + 1);
+    expect(batch[0].row).toBeLessThan(batch[1].row!);
+    expect(await adapter.addEntries([first, second], "mock-batch-conflict-221")).toEqual(batch);
+    const before = await adapter.getEntries();
+    await expect(adapter.addEntries([first, second], "mock-single-conflict-221")).rejects.toThrow("Mutation ID was already used");
+    await expect(adapter.addEntry(first, "mock-batch-conflict-221")).rejects.toThrow("Mutation ID was already used");
+    await expect(adapter.addEntries([first, { ...second, tag: "Dining" }], "mock-invalid-batch-221")).rejects.toThrow("Incoming entries require a Category tag");
+    expect(await adapter.getEntries()).toEqual(before);
+  });
+
   it("uses date-ordered rows for adds and date-changing updates", async () => {
     const adapter = new MockAdapter();
     const before = await adapter.getEntries();
@@ -131,6 +148,23 @@ describe("MockAdapter — validateConnection", () => {
 // ── Cycle N: updateEntry and deleteEntry ──────────────────────────────────
 
 describe("MockAdapter — updateEntry", () => {
+  it("validates partial edits against current values and preserves orphaned-Tag recovery", async () => {
+    const adapter = new MockAdapter();
+    const entry = await adapter.addEntry({ date: "2026-09-15", tag: "FOOD", direction: "O", amount: 100, description: "Partial edits" }, "mock-partial-edits-221");
+    await adapter.updateEntry(entry.id, { direction: "I" });
+    await expect(adapter.updateEntry(entry.id, { tag: "Dining" })).rejects.toThrow("Incoming entries require a Category tag");
+    expect((await adapter.getEntries()).find((saved) => saved.id === entry.id)).toMatchObject({ tag: "FOOD", direction: "I", amount: 100, description: "Partial edits" });
+    await adapter.updateEntry(entry.id, { direction: "O", tag: "Dining" });
+    const original = CATEGORY_MAP.FOOD;
+    CATEGORY_MAP.FOOD = original.filter((tag) => tag !== "Dining");
+    try {
+      await expect(adapter.updateEntry(entry.id, { description: "Unrelated" })).rejects.toThrow();
+      await adapter.updateEntry(entry.id, { tag: "FOOD", description: "Recovered" });
+      expect((await adapter.getEntries()).find((saved) => saved.id === entry.id)).toMatchObject({ tag: "FOOD", direction: "O", amount: 100, description: "Recovered" });
+    } finally {
+      CATEGORY_MAP.FOOD = original;
+    }
+  });
   it("resolves to undefined for an existing entry", async () => {
     const adapter = new MockAdapter();
     const entries = await adapter.getEntries();

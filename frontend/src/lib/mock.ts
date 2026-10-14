@@ -17,23 +17,18 @@ import { today } from "./format";
 import { createMutationId } from "./mutationId";
 import {
   dispatch,
-  type AddEntriesPayload,
-  type AddEntryRequest,
   type ApiResponse,
   type DispatchDeps,
 } from "../../../clasp/src/lib/application/dispatch";
 import {
-  findEntriesByMutationId,
-  insertEntries,
-  insertEntry,
+  applicationEntryRepository,
   listEntries,
-  patchEntry,
-  payloadsMatch,
-  removeEntry,
   type EntryFields,
   type IoRepository,
   type IoRow,
 } from "../../../clasp/src/lib/infrastructure/entryRepository";
+
+import { createEntryApplication } from "../../../clasp/src/lib/application/entries";
 
 function daysAgo(n: number): string {
   const [y, m, d] = today().split('-').map(Number);
@@ -166,32 +161,19 @@ function readEntries(): Entry[] {
   return listEntries(repository, String);
 }
 
+const entryApplication = createEntryApplication({
+  repository: applicationEntryRepository(repository, String),
+  getCategories: () => CATEGORY_MAP,
+  transact: (work) => work(applicationEntryRepository(repository, String)),
+});
+
 const mockDeps: DispatchDeps = {
   secret: MOCK_SECRET,
   getCategories: () => CATEGORY_MAP,
-  getEntryById: (id) => readEntries().find((entry) => entry.id === id) ?? null,
-  addEntry: (request: AddEntryRequest) => {
-    const rows = repository.readRows();
-    const existing = findEntriesByMutationId(rows, request.mutationId, String);
-    if (existing.length > 0) {
-      return payloadsMatch(existing, [request])
-        ? { status: "duplicate", entry: existing[0] }
-        : { status: "mismatch" };
-    }
-    return { status: "created", entry: insertEntry(repository, request, request.mutationId, rows) };
-  },
-  addEntries: (request: AddEntriesPayload) => {
-    const rows = repository.readRows();
-    const existing = findEntriesByMutationId(rows, request.mutationId, String);
-    if (existing.length > 0) {
-      return payloadsMatch(existing, request.entries)
-        ? { status: "duplicate", entries: existing }
-        : { status: "mismatch" };
-    }
-    return { status: "created", entries: insertEntries(repository, request.entries, request.mutationId, rows) };
-  },
-  updateEntry: (id, patch) => patchEntry(repository, id, patch, String),
-  deleteEntry: (id) => removeEntry(repository, id),
+  addEntry: entryApplication.add,
+  addEntries: entryApplication.addMany,
+  updateEntry: entryApplication.update,
+  deleteEntry: entryApplication.remove,
 };
 
 function mutate(action: string, body: Record<string, unknown>): ApiResponse {

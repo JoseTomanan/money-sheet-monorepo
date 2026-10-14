@@ -27,7 +27,6 @@ function dispatchDeps(): DispatchDeps {
     getEntries,
     getConfig,
     getStats,
-    getEntryById: (id) => getEntries().find((entry) => entry.id === id) ?? null,
     addEntry,
     addEntries,
     updateEntry,
