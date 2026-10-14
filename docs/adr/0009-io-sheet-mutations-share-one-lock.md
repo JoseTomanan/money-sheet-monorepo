@@ -54,6 +54,16 @@ its full read-modify-write sequence. There is no reentrancy risk today — no
 entry mutation calls into the visibility/separator code, so the lock is never
 acquired twice on the same call stack.
 
+Issue #221 strengthens this boundary: `application/entries.ts` owns mutation
+validation and Mutation ID replay/mismatch orchestration. A partial edit reads
+the current Entry, validates the effective Tag/Direction, and writes within one
+`EntryTransaction`. The live adapter supplies the shared document lock; Mock
+Mode supplies in-memory persistence to the same pure application. The dispatcher
+owns decoding/coercion and authentication, and maps structured validation and
+`not_found` results into the existing response envelope. Persistence failures
+propagate as failures rather than being classified by exception wording. The
+orphaned-Tag rejection and bare-Category recovery policy remains unchanged.
+
 As a related hardening (the row-shift race was confirmed as the primary cause,
 but a second, independent failure mode was still worth closing in the same
 pass): `writeEntryFields`'s live adapter (`clasp/src/1_sheets.ts`) used to issue

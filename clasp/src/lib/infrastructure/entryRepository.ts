@@ -10,7 +10,7 @@
 import { findInsertionIndex } from "../domain/calendar";
 import { columnIndexWithinRange, SHEET_LAYOUT } from "./sheetLayout";
 import type { Direction, Entry as EntryData } from "../domain/entry";
-import type { AddEntryPayload, UpdateEntryPatch } from "../application/dispatch";
+import type { AddEntryPayload, UpdateEntryPatch, EntryRepository } from "../application/entries";
 
 // Coordinates live in SHEET_LAYOUT; this module derives returned-row positions.
 
@@ -193,19 +193,19 @@ export function patchEntry(
   id: number,
   patch: UpdateEntryPatch,
   formatDate: (raw: unknown) => string,
-): void {
+): boolean {
   const rows = repo.readRows();
   const targetRow = findRowByEntryId(
     rows.map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId)),
     id,
   );
-  if (targetRow === null) throw new Error(`Entry ${id} not found`);
+  if (targetRow === null) return false;
 
   const targetIndex = targetRow - SHEET_LAYOUT.io.rows.dataFirst;
   const target = rows[targetIndex];
   if (patch.date === undefined || patch.date === formatDate(ioValue(target, SHEET_LAYOUT.io.columns.date))) {
     repo.writeEntryFields(targetRow, patch);
-    return;
+    return true;
   }
 
   // Remove the source row from the snapshot before finding its destination:
@@ -241,6 +241,7 @@ export function patchEntry(
     : lastRowAfterDelete + 1;
   if (destinationRow <= lastRowAfterDelete) repo.insertRowBefore(destinationRow);
   repo.writeEntryFields(writeRow, fields);
+  return true;
 }
 
 /**
@@ -383,13 +384,31 @@ export function insertEntries(
   return entries;
 }
 
-/** Deletes the Entry matching `id`. Throws if not found. */
-export function removeEntry(repo: Pick<IoRepository, "readRows" | "deleteRow">, id: number): void {
+/** Deletes the Entry matching `id`; returns false when absent. */
+export function removeEntry(repo: Pick<IoRepository, "readRows" | "deleteRow">, id: number): boolean {
   const rows = repo.readRows();
   const targetRow = findRowByEntryId(
     rows.map((row) => ioValue(row, SHEET_LAYOUT.io.columns.entryId)),
     id,
   );
-  if (targetRow === null) throw new Error(`Entry ${id} not found`);
+  if (targetRow === null) return false;
   repo.deleteRow(targetRow);
+  return true;
+}
+
+/** A fresh adapter per transaction keeps its snapshot inside the lock window. */
+export function applicationEntryRepository(
+  io: IoRepository,
+  formatDate: (raw: unknown) => string,
+): EntryRepository {
+  let rows: IoRow[] | null = null;
+  const snapshot = (): IoRow[] => rows ??= io.readRows();
+  return {
+    list: () => listEntries(io, formatDate),
+    findByMutationId: (mutationId) => findEntriesByMutationId(snapshot(), mutationId, formatDate),
+    insert: (request) => insertEntry(io, request, request.mutationId, snapshot()),
+    insertMany: (request) => insertEntries(io, request.entries, request.mutationId, snapshot()),
+    update: (id, patch) => patchEntry(io, id, patch, formatDate),
+    remove: (id) => removeEntry(io, id),
+  };
 }

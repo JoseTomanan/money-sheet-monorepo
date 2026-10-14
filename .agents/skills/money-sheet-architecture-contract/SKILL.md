@@ -74,7 +74,6 @@ deleteEntry. (Root AGENTS.md's table drifts from this — trust dispatch.ts.)
 |---|---|
 | Hardcoded category list `["HOUSING","FOOD",…,"MISC"]` — new Categories sheet rows won't appear in MASTER parsing | `clasp/src/3_master.ts:19` |
 | Two week-start algorithms (clasp + frontend); only the parity test keeps them equal | `weeks.ts:12` / `groupEntries.ts:10` |
-| `deleteEntry` maps errors by string-matching `"not found"` in the thrown message | `clasp/src/lib/dispatch.ts:407-418` |
 | `getConfig` masks ALL failures: clasp returns `{}` if sheet missing; frontend `catch` swallows everything → defaults | `clasp/src/8_config.ts:1-10`; `frontend/src/lib/adapter-real.ts:140-147` |
 | Three `Asia/Manila` copies to keep in sync | `clasp/src/appsscript.json:2`, `2_entries.ts:1`, `5_visibility.ts:1` |
 | Dead config key: `week_start` documented in CONTEXT.md:79 but never seeded (`lib/config.ts:2` seeds only currency/nickname) nor read | `CONTEXT.md:79` |
@@ -121,3 +120,14 @@ ls docs/adr/                                                 # ADR inventory (10
 
 If any grep comes back empty or on a different line, update this skill and
 REFERENCE.md before relying on the claim.
+
+## Entry mutation ownership (#221)
+
+`clasp/src/lib/application/entries.ts` validates effective Tag/Direction inside
+`EntryTransaction`, after reading current state. Live and Mock callers share this
+application and its add replay/mismatch orchestration. The live transaction holds
+the shared document lock. Update/delete return structured `not_found`; the
+repository and dispatcher no longer interpret exception wording. Local evidence:
+`application/entryMutations.test.ts`, `infrastructure/entryMutations.test.ts`, and
+`frontend/src/lib/adapter-mock.test.ts`. The infrastructure tests use GAS boundary
+stand-ins; they are not live deployment verification.

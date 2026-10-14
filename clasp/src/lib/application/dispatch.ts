@@ -42,13 +42,13 @@
 // ──────────────────────────────────────────────────────────────
 import {
   amountInvariantViolation,
-  entryInvariantViolation,
   type Direction,
   type Entry as EntryData,
 } from "../domain/entry";
-import { checkTagDirection, type CategoryMap } from "../domain/category";
+import type { CategoryMap } from "../domain/category";
 import { isValidCalendarDate } from "../domain/calendar";
 import type {
+  EntryChangeResult,
   AddEntriesPayload,
   AddEntryPayload,
   AddEntryRequest,
@@ -176,12 +176,11 @@ export interface DispatchDeps {
   getEntries?: () => EntryData[];
   getConfig?: () => unknown;
   getStats?: () => StatsData;
-  getEntryById: (id: number) => EntryData | null;
   addEntry: (request: AddEntryRequest) => IdempotentAddEntryResult;
   /** Inserts all legs under one document-lock acquisition; returns entries in array order. */
   addEntries: (request: AddEntriesPayload) => IdempotentAddEntriesResult;
-  updateEntry: (id: number, patch: UpdateEntryPatch) => void;
-  deleteEntry: (id: number) => void;
+  updateEntry: (id: number, patch: UpdateEntryPatch) => EntryChangeResult;
+  deleteEntry: (id: number) => EntryChangeResult;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -196,25 +195,11 @@ function err(code: ErrorCode, message: string): ApiResponse {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Domain invariant used by the request-shape validators below
-// ──────────────────────────────────────────────────────────────
-
-/**
- * Returns a validation error message if the tag is invalid for the given
- * direction, or null if valid.
- *
- * Invariant:
- * - Incoming (I): tag must be a Category (top-level key in CategoryMap)
- * - Outgoing (O): tag must be a Subcategory (leaf value in CategoryMap), or
- *   its parent Category (top-level key) — Subcategory is optional (issue #123).
- */
-// ──────────────────────────────────────────────────────────────
 // Payload validators
 // ──────────────────────────────────────────────────────────────
 
 function validateAddPayload(
   body: Record<string, unknown>,
-  categories: CategoryMap
 ): { payload: AddEntryPayload } | { error: ApiResponse } {
   const date = body.date;
   const tag = body.tag;
@@ -236,10 +221,6 @@ function validateAddPayload(
   const amount = Number(amountRaw);
   const amountViolation = amountInvariantViolation(amount, amountRaw);
   if (amountViolation) return { error: err("validation", amountViolation) };
-  const invariantViolation = entryInvariantViolation({
-    date, tag: tag.trim(), direction, amount,
-  }, categories);
-  if (invariantViolation) return { error: err("validation", invariantViolation) };
 
   return {
     payload: {
@@ -264,23 +245,17 @@ function validateMutationId(
 
 function validateAddRequest(
   body: Record<string, unknown>,
-  categories: CategoryMap
 ): { request: AddEntryRequest } | { error: ApiResponse } {
   const mutation = validateMutationId(body);
   if ("error" in mutation) return mutation;
-  const add = validateAddPayload(body, categories);
+  const add = validateAddPayload(body);
   if ("error" in add) return add;
   return { request: { ...add.payload, mutationId: mutation.mutationId } };
 }
 
-/**
- * Validate-then-write: every leg is checked against the identical single-leg
- * rules (`validateAddPayload`) before any write happens. The first invalid
- * leg rejects the whole batch — no partial validation, no partial write.
- */
+/** Decode every leg before entering the canonical mutation application. */
 function validateAddBatchPayload(
   body: Record<string, unknown>,
-  categories: CategoryMap
 ): { request: AddEntriesPayload } | { error: ApiResponse } {
   const mutation = validateMutationId(body);
   if ("error" in mutation) return mutation;
@@ -294,7 +269,7 @@ function validateAddBatchPayload(
     if (typeof entry !== "object" || entry === null) {
       return { error: err("validation", "each entry in \"entries\" must be an object") };
     }
-    const result = validateAddPayload(entry as Record<string, unknown>, categories);
+    const result = validateAddPayload(entry as Record<string, unknown>);
     if ("error" in result) return result;
     payloads.push(result.payload);
   }
@@ -304,8 +279,6 @@ function validateAddBatchPayload(
 
 function validateUpdatePayload(
   body: Record<string, unknown>,
-  existingEntry: EntryData,
-  categories: CategoryMap
 ): { id: number; patch: UpdateEntryPatch } | { error: ApiResponse } {
   const id = Number(body.id);
   if (!isFinite(id) || id <= 0) {
@@ -339,12 +312,6 @@ function validateUpdatePayload(
     if (amountViolation) return { error: err("validation", amountViolation) };
     patch.amount = amount;
   }
-
-  // Determine effective tag and direction after the patch is applied
-  const effectiveDirection = patch.direction ?? existingEntry.direction;
-  const effectiveTag = patch.tag ?? existingEntry.tag;
-  const tagErr = checkTagDirection(effectiveTag, effectiveDirection, categories);
-  if (tagErr) return { error: err("validation", tagErr) };
 
   return { id, patch };
 }
@@ -420,10 +387,10 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
 
     // ── Write actions ─────────────────────────────────────────
     if (action === "addEntry") {
-      const categories = deps.getCategories();
-      const result = validateAddRequest(body, categories);
+      const result = validateAddRequest(body);
       if ("error" in result) return result.error;
       const addResult = deps.addEntry(result.request);
+      if (addResult.status === "validation") return err("validation", addResult.message);
       if (addResult.status === "mismatch") {
         return err("validation", "Mutation ID was already used with different entry content");
       }
@@ -431,10 +398,10 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
     }
 
     if (action === "addEntries") {
-      const categories = deps.getCategories();
-      const result = validateAddBatchPayload(body, categories);
+      const result = validateAddBatchPayload(body);
       if ("error" in result) return result.error;
       const addResult = deps.addEntries(result.request);
+      if (addResult.status === "validation") return err("validation", addResult.message);
       if (addResult.status === "mismatch") {
         return err("validation", "Mutation ID was already used with different entry content");
       }
@@ -443,28 +410,18 @@ export function dispatch(request: DispatchRequest, deps: DispatchDeps): ApiRespo
 
     if (action === "updateEntry") {
       const id = Number(body.id);
-      const existing = deps.getEntryById(id);
-      if (!existing) {
-        return err("not_found", `Entry with id ${id} not found`);
-      }
-      const categories = deps.getCategories();
-      const result = validateUpdatePayload(body, existing, categories);
+      const result = validateUpdatePayload(body);
       if ("error" in result) return result.error;
-      deps.updateEntry(result.id, result.patch);
+      const change = deps.updateEntry(result.id, result.patch);
+      if (change.status === "not_found") return err("not_found", `Entry with id ${id} not found`);
+      if (change.status === "validation") return err("validation", change.message);
       return { ok: true };
     }
 
     if (action === "deleteEntry") {
       const id = Number(body.id);
-      try {
-        deps.deleteEntry(id);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg.toLowerCase().includes("not found")) {
-          return err("not_found", `Entry with id ${id} not found`);
-        }
-        throw e;
-      }
+      const change = deps.deleteEntry(id);
+      if (change.status === "not_found") return err("not_found", `Entry with id ${id} not found`);
       return { ok: true };
     }
 

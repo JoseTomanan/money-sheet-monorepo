@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { dispatch, type DispatchDeps } from "./dispatch";
+import type { Entry } from "../domain/entry";
+import { createEntryApplication, type EntryRepository } from "./entries";
 
 // ──────────────────────────────────────────────────────────────
 // Fixture helpers
@@ -22,23 +24,23 @@ const STORED_ENTRY = {
   amount: 100,
 };
 
-function makeDeps(overrides: Partial<DispatchDeps> = {}): DispatchDeps {
+function makeDeps(overrides: Partial<DispatchDeps> = {}, stored: Entry | null = STORED_ENTRY): DispatchDeps {
+  const repository: EntryRepository = {
+    list: () => stored ? [stored] : [],
+    findByMutationId: () => [],
+    insert: ({ mutationId: _mutationId, ...payload }) => ({ id: 99, mainCategory: "FOOD", ...payload }),
+    insertMany: ({ entries }) => entries.map((payload, i) => ({ id: 100 + i, mainCategory: "FOOD", ...payload })),
+    update: () => true,
+    remove: (id) => id === 1,
+  };
+  const app = createEntryApplication({ repository, transact: (work) => work(repository), getCategories: overrides.getCategories ?? (() => CATEGORY_MAP) });
   return {
     secret: "correct-secret",
     getCategories: () => CATEGORY_MAP,
-    addEntry: ({ mutationId: _mutationId, ...payload }) => ({
-      status: "created",
-      entry: { id: 99, mainCategory: "FOOD", ...payload },
-    }),
-    addEntries: ({ entries }) => ({
-      status: "created",
-      entries: entries.map((payload, i) => ({ id: 100 + i, mainCategory: "FOOD", ...payload })),
-    }),
-    updateEntry: (_id, _patch) => {},
-    deleteEntry: (id) => {
-      if (id !== 1) throw new Error(`Entry ${id} not found`);
-    },
-    getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
+    addEntry: app.add,
+    addEntries: app.addMany,
+    updateEntry: app.update,
+    deleteEntry: app.remove,
     ...overrides,
   };
 }
@@ -352,10 +354,7 @@ describe("addEntry — required fields", () => {
 
 describe("updateEntry — tag/direction validation", () => {
   it("accepts patching tag to a bare Category while direction stays Outgoing", () => {
-    const deps = makeDeps({
-      // STORED_ENTRY has direction: O
-      getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
-    });
+    const deps = makeDeps();
     // Patching tag to a Category while direction remains O — now valid (#123)
     const res = dispatch(
       {
@@ -373,9 +372,7 @@ describe("updateEntry — tag/direction validation", () => {
 
   it("accepts patching direction to Outgoing when existing tag is a bare Category", () => {
     const incomingEntry = { ...STORED_ENTRY, direction: "I" as const, tag: "FOOD" };
-    const deps = makeDeps({
-      getEntryById: (id) => (id === 1 ? incomingEntry : null),
-    });
+    const deps = makeDeps({}, incomingEntry);
     // Changing direction to O while existing tag is still a Category — now valid (#123)
     const res = dispatch(
       {
@@ -395,9 +392,7 @@ describe("updateEntry — tag/direction validation", () => {
     // Existing entry has a Subcategory tag ("Dining") and Outgoing direction.
     // Patching direction to Incoming must still be rejected — Incoming requires
     // a Category tag, and the Outgoing relaxation does not extend to Incoming.
-    const deps = makeDeps({
-      getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
-    });
+    const deps = makeDeps();
     const res = dispatch(
       {
         action: "updateEntry",
@@ -414,9 +409,7 @@ describe("updateEntry — tag/direction validation", () => {
   });
 
   it("accepts negative and zero amount patches on Outgoing entries (ADR-0012)", () => {
-    const deps = makeDeps({
-      getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
-    });
+    const deps = makeDeps();
     const negative = dispatch(
       {
         action: "updateEntry",
@@ -444,9 +437,7 @@ describe("updateEntry — tag/direction validation", () => {
   });
 
   it("accepts valid patch", () => {
-    const deps = makeDeps({
-      getEntryById: (id) => (id === 1 ? STORED_ENTRY : null),
-    });
+    const deps = makeDeps();
     const res = dispatch(
       {
         action: "updateEntry",
@@ -469,11 +460,7 @@ describe("updateEntry — tag/direction validation", () => {
 
 describe("deleteEntry", () => {
   it("returns not_found when entry does not exist", () => {
-    const deps = makeDeps({
-      deleteEntry: (id) => {
-        if (id !== 1) throw new Error(`Entry ${id} not found`);
-      },
-    });
+    const deps = makeDeps();
     const res = dispatch(
       {
         action: "deleteEntry",
@@ -583,9 +570,7 @@ describe("success response shapes", () => {
   });
 
   it("updateEntry not-found propagated correctly", () => {
-    const deps = makeDeps({
-      getEntryById: (_id) => null, // entry not in store
-    });
+    const deps = makeDeps({}, null);
     const res = dispatch(
       {
         action: "updateEntry",

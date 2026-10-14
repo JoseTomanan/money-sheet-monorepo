@@ -1,4 +1,4 @@
-import { createEntryApplication, type EntryRepository } from "../application/entries";
+import { createEntryApplication, type EntryChangeResult } from "../application/entries";
 import type {
   AddEntriesPayload,
   AddEntryRequest,
@@ -7,16 +7,8 @@ import type {
   UpdateEntryPatch,
 } from "../application/dispatch";
 import type { Entry } from "../domain/entry";
-import {
-  findEntriesByMutationId,
-  insertEntries,
-  insertEntry,
-  listEntries,
-  patchEntry,
-  removeEntry,
-  type IoRepository,
-  type IoRow,
-} from "./entryRepository";
+import { applicationEntryRepository } from "./entryRepository";
+import { getCategories } from "./categories";
 import { runExclusive } from "./locking";
 import { liveIoRepository } from "./sheets";
 
@@ -44,62 +36,23 @@ export function addEntries(request: AddEntriesPayload): IdempotentAddEntriesResu
   return entryApplication().addMany(request);
 }
 
-export function updateEntry(id: number, patch: UpdateEntryPatch): void {
-  const result = entryApplication().update(id, patch);
-  if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
+export function updateEntry(id: number, patch: UpdateEntryPatch): EntryChangeResult {
+  return entryApplication().update(id, patch);
 }
 
-export function deleteEntry(id: number): void {
-  const result = entryApplication().remove(id);
-  if (result.status === "not_found") throw new Error(`Entry ${id} not found`);
-}
-
-function applicationEntryRepository(io: IoRepository): EntryRepository {
-  let rows: IoRow[] | null = null;
-  const snapshot = (): IoRow[] => rows ??= io.readRows();
-  return {
-    list: () => listEntries(io, formatEntryDate),
-    findByMutationId: (mutationId) => findEntriesByMutationId(
-      snapshot(),
-      mutationId,
-      formatEntryDate,
-    ).map((entry) => ({ ...entry, mutationId })),
-    insert: (request) => insertEntry(io, request, request.mutationId, snapshot()),
-    insertMany: (request) => insertEntries(
-      io,
-      request.entries,
-      request.mutationId,
-      snapshot(),
-    ),
-    update: (id, patch) => {
-      try {
-        patchEntry(io, id, patch, formatEntryDate);
-        return true;
-      } catch (error) {
-        if (String(error).toLowerCase().includes("not found")) return false;
-        throw error;
-      }
-    },
-    remove: (id) => {
-      try {
-        removeEntry(io, id);
-        return true;
-      } catch (error) {
-        if (String(error).toLowerCase().includes("not found")) return false;
-        throw error;
-      }
-    },
-  };
+export function deleteEntry(id: number): EntryChangeResult {
+  return entryApplication().remove(id);
 }
 
 function entryApplication(): ReturnType<typeof createEntryApplication> {
   const io = liveIoRepository();
   return createEntryApplication({
-    repository: applicationEntryRepository(io),
+    getCategories,
+    repository: applicationEntryRepository(io, formatEntryDate),
     transact: (work) => runExclusive(
       LockService.getDocumentLock(),
       10_000,
-      () => work(applicationEntryRepository(io)),
+      () => work(applicationEntryRepository(io, formatEntryDate)),
     ),
   });
 }

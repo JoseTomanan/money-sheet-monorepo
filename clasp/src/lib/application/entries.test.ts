@@ -20,6 +20,19 @@ function entry(id: number, mutationId: string): Entry & { mutationId: string } {
 }
 
 describe("Entry application", () => {
+  it("rejects invalid batch legs before inserting any Entry", () => {
+    let writes = 0;
+    const repository: EntryRepository = {
+      list: () => [], findByMutationId: () => [],
+      insert: () => { writes++; return entry(1, "batch"); },
+      insertMany: () => { writes++; return []; },
+      update: () => false, remove: () => false,
+    };
+    const app = createEntryApplication({ getCategories: () => ({ FOOD: ["Dining"] }), repository, transact: (work) => work(repository) });
+    const valid = { date: "2026-09-15", tag: "FOOD", description: "Lunch", direction: "I" as const, amount: 100 };
+    expect(app.addMany({ mutationId: "batch", entries: [valid, { ...valid, tag: "Dining" }] })).toMatchObject({ status: "validation" });
+    expect(writes).toBe(0);
+  });
   it("runs the insert repository, including ID reservation, inside the transaction", () => {
     const created = entry(8, "serialized-add");
     let transactionActive = false;
@@ -35,6 +48,7 @@ describe("Entry application", () => {
       remove: () => { throw new Error("not used"); },
     };
     const app = createEntryApplication({
+      getCategories: () => ({ FOOD: ["Dining"] }),
       repository,
       transact: (work) => {
         transactionActive = true;
@@ -69,6 +83,7 @@ describe("Entry application", () => {
       remove: () => { throw new Error("not used"); },
     };
     const app = createEntryApplication({
+      getCategories: () => ({ FOOD: ["Dining"] }),
       repository,
       transact: (work) => work(repository),
     });
@@ -95,7 +110,7 @@ describe("Entry application", () => {
       update: () => { throw new Error("not used"); },
       remove: () => { throw new Error("not used"); },
     };
-    const app = createEntryApplication({ repository, transact: (work) => work(repository) });
+    const app = createEntryApplication({ getCategories: () => ({ FOOD: ["Dining"] }), repository, transact: (work) => work(repository) });
 
     expect(app.addMany({
       mutationId: "retry-batch",
@@ -115,7 +130,7 @@ describe("Entry application", () => {
       update: () => false,
       remove: () => false,
     };
-    const app = createEntryApplication({ repository, transact: (work) => work(repository) });
+    const app = createEntryApplication({ getCategories: () => ({ FOOD: ["Dining"] }), repository, transact: (work) => work(repository) });
 
     expect(app.remove(404)).toEqual({ status: "not_found", id: 404 });
   });
@@ -130,7 +145,7 @@ describe("Entry application", () => {
       update: () => true,
       remove: () => true,
     };
-    const app = createEntryApplication({ repository, transact: (work) => work(repository) });
+    const app = createEntryApplication({ getCategories: () => ({ FOOD: ["Dining"] }), repository, transact: (work) => work(repository) });
 
     expect(app.add({
       mutationId: "conflict-1",

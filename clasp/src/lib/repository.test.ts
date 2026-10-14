@@ -158,7 +158,7 @@ describe("patchEntry", () => {
 
   it("throws when the Entry ID does not exist", () => {
     const repo = { readRows: () => [], writeEntryFields: vi.fn(), deleteRow: vi.fn(), insertRowBefore: vi.fn() };
-    expect(() => patchEntry(repo, 99, { amount: 1 }, String)).toThrow("Entry 99 not found");
+    expect(patchEntry(repo, 99, { amount: 1 }, String)).toBe(false);
   });
 });
 
@@ -178,7 +178,7 @@ describe("removeEntry", () => {
 
   it("throws when the Entry ID does not exist", () => {
     const repo = { readRows: () => [], deleteRow: vi.fn() };
-    expect(() => removeEntry(repo, 99)).toThrow("Entry 99 not found");
+    expect(removeEntry(repo, 99)).toBe(false);
   });
 });
 

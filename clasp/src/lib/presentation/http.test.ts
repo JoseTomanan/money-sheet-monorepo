@@ -10,7 +10,6 @@ function deps(overrides: Partial<DispatchDeps> = {}): DispatchDeps {
     getEntries: vi.fn(() => []),
     getConfig: vi.fn(),
     getStats: vi.fn(),
-    getEntryById: vi.fn(),
     addEntry: vi.fn(),
     addEntries: vi.fn(),
     updateEntry: vi.fn(),
