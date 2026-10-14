@@ -17,6 +17,6 @@ Entry ID remains the server-owned stable identity. The browser must never predic
 ## Consequences
 
 - `addEntry` and `addEntries` are safe to retry after an ambiguous timeout without duplicating rows.
-- A queued new add is immutable until it syncs: changing its payload after a possibly committed request would make a retry ambiguous. The UI blocks edit/delete for such Local Entries.
+- A queued new add is immutable until it syncs: changing its payload after a possibly committed request would make a retry ambiguous. The Offline Queue enforces this for direct callers as well as UI actions (issue #220).
 - No historical backfill is needed. Blank Mutation IDs are expected and remain readable/editable.
 - Setup writes the column-I header for migrated sheets; it does not modify old rows.
