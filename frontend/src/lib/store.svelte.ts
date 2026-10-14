@@ -26,6 +26,7 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 let errorIsConnection = $state(false);
 let masterLoading = $state(false);
+let activeOperations = $state(0);
 let pendingIds = $state(new Set<number>());
 let deletePendingIds = $state(new Set<number>());
 let localIds = $state<Set<number>>(new Set());
@@ -36,7 +37,7 @@ let nextTemporaryId = -1;
 // rows are overlaid on snapshots begun during the operation below.
 let mutationRevision = 0;
 let refreshSequence = 0;
-const confirmedEditIds = new Set<number>();
+const confirmedIds = new Set<number>();
 
 let lifetime = 0;
 let initialized = false;
@@ -57,7 +58,7 @@ function activate() {
   config = { currency: '\u20b1' };
   stats = { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
   pendingIds = new Set(); deletePendingIds = new Set(); localIds = new Set();
-  confirmedEditIds.clear();
+  confirmedIds.clear(); activeOperations = 0;
   loading = false; error = null; errorIsConnection = false;
   masterLoading = false; draining = false; syncing = false; nextTemporaryId = -1;
   toast.dismiss();
@@ -124,19 +125,93 @@ function removePending(id: number): void { pendingIds = new Set([...pendingIds].
 function addDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds, id]); }
 function removeDeletePending(id: number): void { deletePendingIds = new Set([...deletePendingIds].filter((p) => p !== id)); }
 
+// One operation owns its pending rows through delivery and reconciliation.
+// Confirmed rows accept sheet positions; unresolved rows remain overlays.
+// Closures belong to a Connection lifetime, so old completions cannot release
+// pending state or balance work in a newly activated Connection.
+function beginOperation(ids: number[] = [], deletion = false) {
+  const generation = lifetime;
+  const tracked = new Set(ids);
+  const mark = deletion ? addDeletePending : addPending;
+  const unmark = deletion ? removeDeletePending : removePending;
+  for (const id of tracked) mark(id);
+  activeOperations++;
+  mutationRevision++;
+  let finished = false;
+  const release = (id: number) => {
+    unmark(id);
+    confirmedIds.delete(id);
+    tracked.delete(id);
+  };
+  return {
+    confirm(replacements?: Entry[]) {
+      if (generation !== lifetime) return;
+      if (replacements) {
+        const temporaryIds = [...tracked];
+        replacements.forEach((entry, index) => {
+          replaceEntry(temporaryIds[index], entry);
+          release(temporaryIds[index]);
+        });
+        for (const entry of replacements) { tracked.add(entry.id); mark(entry.id); }
+      }
+      for (const id of tracked) confirmedIds.add(id);
+      mutationRevision++;
+    },
+    rollback(previous: Entry) {
+      if (generation !== lifetime) return;
+      entries = [...entries.filter(entry => entry.id !== previous.id), previous].sort(compareEntriesForDisplay);
+      release(previous.id);
+      mutationRevision++;
+    },
+    finish() {
+      if (generation !== lifetime || finished) return;
+      finished = true;
+      for (const id of tracked) release(id);
+      activeOperations--;
+      mutationRevision++;
+    },
+  };
+}
+
+function beginSnapshot(silent: boolean) {
+  const owner = session();
+  const revision = mutationRevision;
+  const sequence = ++refreshSequence;
+  if (!silent) { loading = true; error = null; errorIsConnection = false; }
+  return {
+    owner,
+    current: () => owner.current() && sequence === refreshSequence,
+    changed: () => revision !== mutationRevision,
+    finish() {
+      // The newest read inherits foreground loading, including silent retries
+      // and mutation reconciliation that supersede a visible refresh.
+      if (owner.current() && sequence === refreshSequence) loading = false;
+    },
+  };
+}
+
+function acceptSnapshot(snapshot: { entries: Entry[]; master: MasterRow; categories: CategoryMap; config: Config; stats: StatsData }, scope: string | null): void {
+  // Read before publishing any part of the coherent financial snapshot.
+  const queue = readQueue();
+  const unresolved = entries.filter(entry => pendingIds.has(entry.id) && !confirmedIds.has(entry.id));
+  entries = snapshot.entries; master = snapshot.master; categories = snapshot.categories;
+  config = snapshot.config; stats = snapshot.stats;
+  injectQueue(queue);
+  const optimisticById = new Map(unresolved.map(entry => [entry.id, entry]));
+  entries = entries.map(entry => optimisticById.get(entry.id) ?? entry);
+  entries = [...entries, ...unresolved.filter(entry => !entries.some(current => current.id === entry.id))]
+    .filter(entry => !deletePendingIds.has(entry.id));
+  syncLocalIds();
+  saveSnapshot({ entries, master, categories, config, stats }, scope);
+}
+
 // Requests race independently rather than via Promise.all: the 4 endpoints
 // share one GAS deployment, and firing them concurrently occasionally trips
 // a transient connection failure (e.g. net::ERR_NETWORK_CHANGED) on just one
 // of them. A single reject shouldn't discard the other 3 that succeeded.
 async function refreshAll(silent = false): Promise<void> {
-  const owner = session();
-  const revision = mutationRevision;
-  const sequence = ++refreshSequence;
-  if (!silent) {
-    loading = true;
-    error = null;
-    errorIsConnection = false;
-  }
+  const snapshot = beginSnapshot(silent);
+  const { owner } = snapshot;
   try {
     const [e, m, c, cfg, st] = await Promise.allSettled([
       owner.api.getEntries(),
@@ -145,7 +220,7 @@ async function refreshAll(silent = false): Promise<void> {
       owner.api.getConfig(),
       owner.api.getStats(),
     ]);
-    if (!owner.current() || sequence !== refreshSequence) return;
+    if (!snapshot.current()) return;
     // Entries, MASTER, and Categories form one financial snapshot. Never
     // combine a fresh subset with a previous MASTER value: that can make an
     // entry list and its displayed balances contradict each other.
@@ -163,38 +238,23 @@ async function refreshAll(silent = false): Promise<void> {
     // The rejection checks above make this unreachable, while narrowing the
     // settled-result union for TypeScript before reading the values below.
     if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
-    if (sequence !== refreshSequence) return;
-    if (revision !== mutationRevision) {
+    if (snapshot.changed()) {
       // The latest refresh still owes a coherent snapshot after an overlapping
       // operation settles. Read again rather than accepting its stale response.
       await refreshAll(true);
       return;
     }
 
-    // An unreadable queue must not let a server refresh erase known pending UI.
-    const queue = readQueue();
-    const pendingEntries = entries.filter(entry => pendingIds.has(entry.id) && !confirmedEditIds.has(entry.id));
-    entries = e.value;
-    master = m.value;
-    categories = c.value;
-    if (cfg.status === 'fulfilled') config = cfg.value;
-    if (st.status === 'fulfilled') stats = st.value;
-
+    acceptSnapshot({ entries: e.value, master: m.value, categories: c.value,
+      config: cfg.status === 'fulfilled' ? cfg.value : config,
+      stats: st.status === 'fulfilled' ? st.value : stats }, owner.scope);
     if (optionalFailures.length > 0) notifyRefreshFailures(optionalFailures);
-
-    injectQueue(queue);
-    const optimisticById = new Map(pendingEntries.map(entry => [entry.id, entry]));
-    entries = entries.map(entry => optimisticById.get(entry.id) ?? entry);
-    entries = [...entries, ...pendingEntries.filter(entry => !entries.some(current => current.id === entry.id))]
-      .filter(entry => !deletePendingIds.has(entry.id));
-    syncLocalIds();
-    saveSnapshot({ entries, master, categories, config, stats }, owner.scope);
   } catch (cause) {
-    if (!owner.current()) return;
+    if (!snapshot.current()) return;
     toast.show(cause, undefined, 'destructive');
     if (!silent) { error = cause instanceof Error ? cause.message : String(cause); errorIsConnection = isQueueable(cause); }
   } finally {
-    if (owner.current() && sequence === refreshSequence && !silent) loading = false;
+    snapshot.finish();
   }
 }
 
@@ -218,18 +278,14 @@ async function add(payload: AddEntryPayload): Promise<boolean> {
   const owner = session();
   const tempId = nextTemporaryId--;
   entries = [...entries, buildEntry(tempId, payload, categories)];
-  addPending(tempId);
-  masterLoading = true;
+  const operation = beginOperation([tempId]);
   try {
     const outcome = await owner.queue.submitAdd(tempId, payload, (saved, key) => owner.api.addEntry(saved, key));
     if (!owner.current()) return false;
-    removePending(tempId);
     if (outcome.status === 'confirmed') {
-      replaceEntry(tempId, outcome.entry);
-      addPending(outcome.entry.id);
+      operation.confirm([outcome.entry]);
       await refreshAll(true);
       if (!owner.current()) return false;
-      removePending(outcome.entry.id);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
       notifyQueuedError(outcome.error);
@@ -240,9 +296,7 @@ async function add(payload: AddEntryPayload): Promise<boolean> {
     }
     return true;
   } finally {
-    if (owner.current()) {
-      masterLoading = false;
-    }
+    operation.finish();
   }
 }
 
@@ -250,15 +304,12 @@ async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
   const owner = session();
   const tempIds = legs.map(() => nextTemporaryId--);
   entries = [...entries, ...legs.map((leg, index) => buildEntry(tempIds[index], leg, categories))];
-  for (const id of tempIds) addPending(id);
-  masterLoading = true;
+  const operation = beginOperation(tempIds);
   try {
     const outcome = await owner.queue.submitAddBatch(tempIds, legs, (saved, key) => owner.api.addEntries(saved, key));
     if (!owner.current()) return false;
-    for (const id of tempIds) removePending(id);
-
     if (outcome.status === 'confirmed') {
-      for (let index = 0; index < tempIds.length; index++) replaceEntry(tempIds[index], outcome.entries[index]);
+      operation.confirm(outcome.entries);
     }
     syncLocalIds();
 
@@ -274,9 +325,7 @@ async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
     await refreshAll(true);
     return true;
   } finally {
-    if (owner.current()) {
-      masterLoading = false;
-    }
+    operation.finish();
   }
 }
 
@@ -300,32 +349,24 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
     mainCategory: patch.tag ? getMainCategory(patch.tag, categories) : previous.mainCategory,
   };
   replaceEntry(id, optimistic);
-  mutationRevision++;
-  addPending(id);
-  masterLoading = true;
+  const operation = beginOperation([id]);
   try {
     const outcome = await owner.queue.submitEdit(id, patch, (savedId, savedPatch) => owner.api.updateEntry(savedId, savedPatch));
     if (!owner.current()) return false;
     if (outcome.status === 'confirmed') {
-      confirmedEditIds.add(id);
-      mutationRevision++;
+      operation.confirm();
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
       notifyQueuedError(outcome.error);
     } else {
-      replaceEntry(id, previous);
+      operation.rollback(previous);
       toast.show(outcome.error, undefined, 'destructive');
       return false;
     }
     return true;
   } finally {
-    if (owner.current()) {
-      removePending(id);
-      confirmedEditIds.delete(id);
-      mutationRevision++;
-      masterLoading = false;
-    }
+    operation.finish();
   }
 }
 
@@ -347,30 +388,25 @@ async function deleteEntry(id: number): Promise<boolean> {
     return false;
   }
   entries = entries.filter((entry) => entry.id !== id);
-  mutationRevision++;
-  addDeletePending(id);
-  masterLoading = true;
+  const operation = beginOperation([id], true);
   try {
     const outcome = await owner.queue.submitDelete(id, savedId => owner.api.deleteEntry(savedId));
     if (!owner.current()) return false;
     if (outcome.status === 'confirmed') {
       entries = entries.filter((entry) => entry.id !== id);
+      operation.confirm();
       await refreshAll(true);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
       notifyQueuedError(outcome.error);
     } else {
-      entries = [...entries.filter(entry => entry.id !== id), previous].sort(compareEntriesForDisplay);
+      operation.rollback(previous);
       toast.show(outcome.error, undefined, 'destructive');
       return false;
     }
     return true;
   } finally {
-    if (owner.current()) {
-      removeDeletePending(id);
-      mutationRevision++;
-      masterLoading = false;
-    }
+    operation.finish();
   }
 }
 
@@ -387,21 +423,15 @@ async function deleteEntries(ids: number[]): Promise<void> {
   if (deletable.length === 0) return;
 
   const previous = new Map(entries.filter(entry => deletable.includes(entry.id)).map(entry => [entry.id, entry]));
-  const retainedPendingIds = new Set(deletable);
   entries = entries.filter(entry => !previous.has(entry.id));
-  for (const id of deletable) addDeletePending(id);
-  mutationRevision++;
-  masterLoading = true;
+  const operation = beginOperation(deletable, true);
   try {
     let failCount = 0;
     await Promise.all(deletable.map(async id => {
       const outcome = await owner.queue.submitDelete(id, savedId => owner.api.deleteEntry(savedId));
       if (!owner.current()) return false;
       if (outcome.status === 'failed') {
-        entries = [...entries.filter(entry => entry.id !== id), previous.get(id)!].sort(compareEntriesForDisplay);
-        removeDeletePending(id);
-        retainedPendingIds.delete(id);
-        mutationRevision++;
+        operation.rollback(previous.get(id)!);
         failCount++;
       } else if (outcome.status === 'queued') {
         notifyQueuedError(outcome.error);
@@ -411,13 +441,10 @@ async function deleteEntries(ids: number[]): Promise<void> {
     if (!owner.current()) return;
     syncLocalIds();
     if (failCount > 0) toast.show(`Failed to delete ${failCount} entr${failCount === 1 ? 'y' : 'ies'}.`, undefined, 'destructive');
+    operation.confirm();
     await refreshAll(true);
   } finally {
-    if (owner.current()) {
-      for (const id of retainedPendingIds) removeDeletePending(id);
-      mutationRevision++;
-      masterLoading = false;
-    }
+    operation.finish();
   }
 }
 
@@ -425,7 +452,7 @@ async function drainQueue(): Promise<void> {
   const owner = session();
   if (draining) return;
   draining = true;
-  mutationRevision++;
+  const operation = beginOperation();
   try {
     if (getLocalEntryIds().size === 0) return;
     const results = await owner.queue.drain({
@@ -453,7 +480,7 @@ async function drainQueue(): Promise<void> {
       }
     }
     syncLocalIds();
-    mutationRevision++;
+    operation.confirm();
     if (results.length > 0 && results.every((result) => result.status === 'drained')) await refreshAll(true);
   } catch (error) {
     if (!owner.current()) return;
@@ -461,8 +488,8 @@ async function drainQueue(): Promise<void> {
   } finally {
     if (owner.current()) {
       draining = false;
-      mutationRevision++;
     }
+    operation.finish();
   }
 }
 
@@ -559,7 +586,7 @@ export const store = {
   get loading() { return loading; },
   get error() { return error; },
   get errorIsConnection() { return errorIsConnection; },
-  get masterLoading() { return masterLoading || pendingIds.size > 0 || deletePendingIds.size > 0; },
+  get masterLoading() { return masterLoading || activeOperations > 0; },
   get pendingIds() { return pendingIds; },
   get deletePendingIds() { return deletePendingIds; },
   get localIds() { return localIds; },

@@ -141,6 +141,73 @@ describe('optimistic Entries reconciliation', () => {
     expect(store.entries.find(entry => entry.id === 1)?.row).toBe(9);
   });
 
+  it('accepts the sheet row from reconciliation after a new save is confirmed', async () => {
+    const payload = { date: '2026-10-11', tag: 'Dining', description: 'New', direction: 'O' as const, amount: 5 };
+    adapter.addEntry = async () => {
+      const confirmed = { ...payload, id: 4, row: 6, mainCategory: 'FOOD' };
+      server = [...server, { ...confirmed, row: 8 }];
+      return confirmed;
+    };
+
+    expect(await store.addEntry(payload)).toBe(true);
+
+    expect(store.entries.find(entry => entry.id === 4)?.row).toBe(8);
+    expect(store.pendingIds.size).toBe(0);
+    expect(store.masterLoading).toBe(false);
+  });
+
+  it('clears foreground loading when a silent reconciliation supersedes its snapshot', async () => {
+    const oldSnapshot = deferred<Entry[]>();
+    adapter.getEntries = () => oldSnapshot.promise;
+    const refreshing = store.refreshAll();
+    expect(store.loading).toBe(true);
+    adapter.getEntries = async () => server;
+    adapter.updateEntry = async (id, patch) => {
+      server = server.map(entry => entry.id === id ? { ...entry, ...patch } : entry);
+    };
+
+    await store.updateEntry(1, { amount: 45 });
+    oldSnapshot.resolve([]);
+    await refreshing;
+
+    expect(store.entries.find(entry => entry.id === 1)?.amount).toBe(45);
+    expect(store.loading).toBe(false);
+  });
+
+  it('keeps balances loading through batch reconciliation when an overlapping edit fails', async () => {
+    const edit = deferred();
+    const snapshot = deferred<Entry[]>();
+    const legs = [
+      { date: '2026-10-11', tag: 'Dining', description: 'Split', direction: 'O' as const, amount: 5 },
+      { date: '2026-10-11', tag: 'Dining', description: '^^', direction: 'O' as const, amount: 7 },
+    ];
+    adapter.updateEntry = () => edit.promise;
+    adapter.addEntries = async payloads => {
+      const confirmed = payloads.map((payload, index) => ({ ...payload, id: 4 + index, row: 6 + index, mainCategory: 'FOOD' }));
+      server = [...server, ...confirmed];
+      return confirmed;
+    };
+    adapter.getEntries = vi.fn().mockImplementationOnce(() => snapshot.promise)
+      .mockImplementation(async () => server);
+    adapter.getMaster = async () => ({ onHand: 88, budgets: { FOOD: 88 } });
+    const adding = store.addEntry(legs);
+    await vi.waitFor(() => expect(adapter.getEntries).toHaveBeenCalledOnce());
+    const editing = store.updateEntry(1, { amount: 99 });
+
+    edit.reject(new Error('Rejected'));
+    expect(await editing).toBe(false);
+    expect(store.masterLoading).toBe(true);
+    expect(store.pendingIds).toEqual(new Set([4, 5]));
+    expect(store.master.onHand).toBe(100);
+    snapshot.resolve(server);
+    expect(await adding).toBe(true);
+
+    expect(store.entries.map(entry => [entry.id, entry.amount])).toEqual([[1, 10], [2, 20], [3, 30], [4, 5], [5, 7]]);
+    expect(store.master.onHand).toBe(88);
+    expect(store.pendingIds.size).toBe(0);
+    expect(store.masterLoading).toBe(false);
+  });
+
   it('blocks a new edit while the same queued edit is draining', async () => {
     adapter.updateEntry = async () => { throw new api.ConnectionError('Offline'); };
     await store.updateEntry(1, { description: 'Queued' });
@@ -155,6 +222,30 @@ describe('optimistic Entries reconciliation', () => {
     syncing.resolve();
     await drain;
     expect(store.entries.find(entry => entry.id === 1)?.description).toBe('Queued');
+  });
+
+  it('keeps balances loading after queue delivery until the sheet snapshot arrives', async () => {
+    adapter.updateEntry = async () => { throw new api.ConnectionError('Offline'); };
+    await store.updateEntry(1, { amount: 50 });
+    const snapshot = deferred<Entry[]>();
+    adapter.updateEntry = async (id, patch) => {
+      server = server.map(entry => entry.id === id ? { ...entry, ...patch } : entry);
+    };
+    adapter.getEntries = vi.fn(() => snapshot.promise);
+    adapter.getMaster = async () => ({ onHand: 60, budgets: { FOOD: 60 } });
+
+    const draining = store.drainQueue();
+    await vi.waitFor(() => expect(adapter.getEntries).toHaveBeenCalledOnce());
+    expect(store.localIds.size).toBe(0);
+    expect(store.masterLoading).toBe(true);
+    expect(store.master.onHand).toBe(100);
+    snapshot.resolve(server);
+    await draining;
+
+    expect(store.entries.find(entry => entry.id === 1)?.amount).toBe(50);
+    expect(store.master.onHand).toBe(60);
+    expect(store.masterLoading).toBe(false);
+    expect(store.draining).toBe(false);
   });
 
   it('finishes the sheet balance refresh when another mutation rolls back during it', async () => {
