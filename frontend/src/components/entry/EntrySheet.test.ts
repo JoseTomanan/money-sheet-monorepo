@@ -13,7 +13,7 @@ function baseProps(overrides = {}) {
     open: true,
     categories: CATEGORIES,
     onclose: vi.fn(),
-    onsave: vi.fn().mockResolvedValue(true),
+    onsave: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
     ...overrides,
   };
 }
@@ -51,6 +51,32 @@ describe("EntrySheet — body scroll lock", () => {
       else document.body.setAttribute("style", initialBodyStyle);
     }
   });
+});
+
+it('retains an Add draft and allows another Save after admission is refused', async () => {
+  const onclose = vi.fn();
+  const onsave = vi.fn(() => ({ accepted: false, completion: Promise.resolve(false) }));
+  const { getByPlaceholderText, getByRole } = render(EntrySheet, baseProps({ onsave, onclose }));
+  await fireEvent.click(getByRole("button", { name: /^Food$/ }));
+  await fireEvent.click(getByRole("button", { name: /^Dining$/ }));
+  const amount = getByPlaceholderText('0.00');
+  await fireEvent.input(amount, { target: { value: '42' } });
+  await fireEvent.click(getByRole('button', { name: 'Save' }));
+  expect(onclose).not.toHaveBeenCalled();
+  expect(amount).toHaveValue('42');
+  await fireEvent.click(getByRole('button', { name: 'Save' }));
+  expect(onsave).toHaveBeenCalledTimes(2);
+});
+
+it('keeps Edit open when a Delete cannot be durably admitted', async () => {
+  const onclose = vi.fn();
+  const ondelete = vi.fn(() => ({ accepted: false, error: 'Storage is full', completion: Promise.resolve(false) }));
+  const { getByRole, getByText } = render(EntrySheet, baseProps({ entry: makeEntry(), onclose, ondelete }));
+  await fireEvent.click(getByRole('button', { name: 'Delete entry' }));
+  expect(onclose).not.toHaveBeenCalled();
+  expect(getByText('Storage is full')).toBeVisible();
+  await fireEvent.click(getByRole('button', { name: 'Delete entry' }));
+  expect(ondelete).toHaveBeenCalledTimes(2);
 });
 
 describe("EntrySheet — formula evaluation on blur", () => {
@@ -147,7 +173,7 @@ describe("EntrySheet — formula evaluation on blur", () => {
 describe("EntrySheet — in-flight save latch", () => {
   it("closes a new Entry as soon as its unresolved add is accepted", async () => {
     let resolveSave!: (saved: boolean) => void;
-    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onsave = vi.fn(() => ({ accepted: true, completion: new Promise<boolean>((resolve) => { resolveSave = resolve; }) }));
     const onclose = vi.fn();
     const { getByRole, getByPlaceholderText } = render(
       EntrySheet,
@@ -173,7 +199,7 @@ describe("EntrySheet — in-flight save latch", () => {
 
   it("closes a new Split Entry while its unresolved batch add continues", async () => {
     let resolveSave!: (saved: boolean) => void;
-    const onsave = vi.fn(() => new Promise<boolean>((resolve) => { resolveSave = resolve; }));
+    const onsave = vi.fn(() => ({ accepted: true, completion: new Promise<boolean>((resolve) => { resolveSave = resolve; }) }));
     const onclose = vi.fn();
     const { getAllByRole, getByRole, getAllByPlaceholderText, getByText } = render(
       EntrySheet,

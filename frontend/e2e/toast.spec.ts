@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const body = 'Not updated: entries, balances, categories, settings, statistics.';
 
 async function failRefresh(page: Page) {
-  await page.route('https://toast-api.example/**', route => route.abort('failed'));
+  await page.route('https://toast-api.example/**', route => route.fulfill({ json: { error: 'unauthorized' } }));
   await page.goto('/');
   await expect(page.locator('.app-shell')).toBeVisible();
   await expect(page.locator('.loading-spinner')).toHaveCount(0);
@@ -22,7 +22,7 @@ async function failRefresh(page: Page) {
 
 for (const width of [320, 390, 768, 1280]) {
   for (const theme of ['light', 'dark'] as const) {
-    test(`five-resource failure fits ${width}px in ${theme} theme`, async ({ page }, testInfo) => {
+    test(`actionable five-resource failure fits ${width}px in ${theme} theme`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(theme => localStorage.setItem('theme-preference', theme), theme);
       await failRefresh(page);
@@ -74,7 +74,7 @@ for (const width of [320, 390, 768, 1280]) {
       }
       await testInfo.attach(`failure-${theme}-${width}`, { body: await page.screenshot(), contentType: 'image/png' });
       if (width === 390 || width === 1280) {
-        await page.screenshot({ path: `../docs/pr/213/failure-${theme}-${width}.png` });
+        await page.screenshot({ path: testInfo.outputPath(`failure-${theme}-${width}.png`) });
       }
     });
   }

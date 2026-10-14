@@ -35,9 +35,9 @@
   const bulk = createBulkSelect(
     () =>
       filter.filtered
-        .filter(e => !store.pendingIds.has(e.id) && !store.deletePendingIds.has(e.id))
+        .filter(e => e.id >= 0 && !(store.busyIds ?? store.pendingIds).has(e.id) && !store.deletePendingIds.has(e.id))
         .map(e => e.id),
-    store.deleteEntries
+    store.submitDeleteEntries
   );
 
   // Clear selection whenever select mode exits.
@@ -47,20 +47,6 @@
 
 
 <div class="entries-view p-0">
-{#if store.localIds.size > 0 && !selectMode}
-  <div class="sync-bar fixed bottom-[72px] inset-x-0 z-10 flex justify-center pb-2 pointer-events-none">
-    <button
-      class="sync-now-btn pointer-events-auto flex items-center gap-[6px] py-[6px] px-4 rounded-[var(--radius-pill)] bg-card border border-border shadow-[var(--shadow-card)] font-sans text-[13px] font-medium text-accent transition-opacity duration-150"
-      class:opacity-50={store.draining}
-      disabled={store.draining}
-      onclick={() => void store.drainQueue()}
-    >
-      <span class="text-[12px]">↑</span>
-      Sync now
-    </button>
-  </div>
-{/if}
-
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
 {#if selectMode}
   <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
@@ -84,7 +70,7 @@
   </div>
 {/if}
 
-{#if store.loading}
+{#if store.loading || store.hasSnapshot === false}
   <!-- Skeleton -->
   <PageHeader {onsettings}>
     {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
@@ -232,16 +218,14 @@
             {@const splitPos = splitRunPositions(dateGroup)}
             <div class="date-group rounded-[var(--radius-md)] shadow-[var(--shadow-card)] overflow-hidden space-y-0.5">
               {#each dateGroup as entry, j (entry.id)}
-                {@const pending = store.pendingIds.has(entry.id)}
-                {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const local = store.localIds.has(entry.id)}
+                {@const pending = (store.busyIds ?? store.pendingIds).has(entry.id) || (local && entry.id < 0)}
+                {@const deletePending = store.deletePendingIds.has(entry.id)}
                 {@const selectable = selectMode && !pending && !deletePending}
                 {@const checked = bulk.selectedIds.has(entry.id)}
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
                   class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
-                  class:animate-[shimmer_1s_ease-in-out_infinite]={pending && !deletePending}
-                  class:opacity-50={deletePending}
                   class:pointer-events-none={pending || deletePending}
                   class:cursor-default={pending || deletePending}
                   class:border-border={j > 0}
@@ -255,6 +239,8 @@
                   }}
                   role={selectMode ? 'checkbox' : 'button'}
                   aria-checked={selectMode ? checked : undefined}
+                  aria-disabled={pending || deletePending || (local && entry.id < 0)}
+                  title={local && entry.id < 0 ? 'This Local Entry must sync before it can be edited or deleted.' : pending || deletePending ? 'This entry is being saved. Other entries remain available.' : undefined}
                   tabindex="0"
                   onkeydown={(e) => {
                     const intent = rowIntent(selectMode, selectable, pending, deletePending);
@@ -325,7 +311,7 @@
   open={redistOpen}
   categories={store.categories}
   onclose={() => (redistOpen = false)}
-  onsubmit={(legs: AddEntryPayload[]) => { store.addEntry(legs); redistOpen = false; }}
+  onsubmit={(legs: AddEntryPayload[]) => store.submitAddEntry(legs)}
 />
 
 <style>

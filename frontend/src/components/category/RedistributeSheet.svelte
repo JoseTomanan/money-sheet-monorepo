@@ -8,19 +8,21 @@
   import { redistributionAmount } from '../../lib/amountField';
   import { store } from '../../lib/store.svelte';
   import { today as todayStr } from '../../lib/format';
-  import type { CategoryMap, AddEntryPayload } from '../../lib/types';
+  import type { CategoryMap, AddEntryPayload, EntrySubmission } from '../../lib/types';
 
   interface Props {
     open: boolean;
     categories: CategoryMap;
     onclose: () => void;
-    onsubmit: (legs: AddEntryPayload[]) => void;
+    onsubmit: (legs: AddEntryPayload[]) => EntrySubmission;
   }
 
   let { open, categories, onclose, onsubmit }: Props = $props();
 
   const today = todayStr();
 
+  let saving = $state(false);
+  let admissionError = $state('');
   let source      = $state('');
   let target      = $state('');
   let amount      = $state('');
@@ -30,6 +32,7 @@
 
   $effect(() => {
     if (open) {
+      saving = false; admissionError = '';
       source      = '';
       target      = '';
       amount      = '';
@@ -52,13 +55,15 @@
   );
 
   function handleSubmit() {
-    if (submitDisabled) return;
+    if (saving || submitDisabled) return;
+    saving = true;
     const legs: AddEntryPayload[] = [
       { date: today, tag: source, description: '[REDISTRIBUTE]', direction: 'I', amount: -parsedAmount },
       { date: today, tag: target, description: '[REDISTRIBUTE]', direction: 'I', amount: parsedAmount },
     ];
-    onsubmit(legs);
-    onclose();
+    const submission = onsubmit(legs);
+    if (submission.accepted) onclose();
+    else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
   }
 </script>
 
@@ -80,6 +85,7 @@
       class="sheet sheet-modal"
       style="transform: {animOpen ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(100%)'}; transition: transform 320ms cubic-bezier(.2,.7,.2,1);"
     >
+      {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
       <!-- handle -->
       <div class="flex justify-center pt-[14px] pb-[10px]">
         <div class="w-9 h-1 rounded-[2px] bg-border"></div>
@@ -95,7 +101,7 @@
         <button
           class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
           onclick={handleSubmit}
-          disabled={submitDisabled}
+          disabled={saving || submitDisabled}
         >Redistribute</button>
       </div>
 

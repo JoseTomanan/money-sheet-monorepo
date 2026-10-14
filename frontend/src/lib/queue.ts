@@ -1,4 +1,4 @@
-import { isQueueable } from './api';
+import { isQueueable, isAuthError } from './api';
 import { createMutationId } from './mutationId';
 import type { AddEntryPayload, Entry, UpdateEntryPatch } from './types';
 
@@ -31,7 +31,8 @@ export type MutateOutcome =
 
 export type DrainItemResult =
   | { item: QueueItem; status: 'drained'; entry?: Entry; entries?: Entry[] }
-  | { item: QueueItem; status: 'stopped'; error: unknown };
+  | { item: QueueItem; status: 'stopped'; error: unknown }
+  | { item: QueueItem; status: 'rejected'; error: unknown };
 
 export class QueuePersistenceError extends Error {
   constructor(action: 'read' | 'write', cause: unknown) {
@@ -60,7 +61,10 @@ function createQueue(scope: string | null) {
   const storage = scope === null ? { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => { memory.set(key, value); } } : localStorage;
 
 
+  let staged: QueueItem[] | null = null;
   let replaying = false;
+  let blocked = false;
+  const idleWaiters = new Set<() => void>();
   const activeSubmissions = new Set<string>();
 
   // Queue snapshots are detached JSON values. Match only the first occurrence
@@ -78,6 +82,7 @@ function createQueue(scope: string | null) {
   }
 
   function readQueue(): QueueItem[] {
+    if (staged !== null) return staged;
     try {
       const raw = storage.getItem(KEY);
       const association = scope === null ? null : readLegacyAssociation();
@@ -92,6 +97,7 @@ function createQueue(scope: string | null) {
   }
 
   function writeQueue(q: QueueItem[]): void {
+    if (staged !== null) { staged = q; return; }
     try {
       storage.setItem(KEY, JSON.stringify(q));
     } catch (cause) {
@@ -177,10 +183,10 @@ function createQueue(scope: string | null) {
 
   // Persist before delivery. Unrelated confirmed-entry operations can retain
   // their independent online lifecycle; work behind an offline/replay item waits.
-  async function submit<T>(item: QueueItem, deliver: (saved: QueueItem) => Promise<T>): Promise<Submission<T>> {
+  function admitItem<T>(item: QueueItem, deliver: (saved: QueueItem) => Promise<T>, persisted = false, group: Set<string> = new Set()): { accepted: boolean; error?: unknown; completion: Promise<Submission<T>> } {
     let saved: QueueItem;
     try {
-      const queue = readQueue();
+      const queue = persisted ? readQueue().filter(pending => !group.has(JSON.stringify(pending))) : readQueue();
       const active = activeIndices(queue);
       const independent = (item.op === 'edit' || item.op === 'delete')
         && queue.every((pending, index) => active.has(index)
@@ -188,31 +194,68 @@ function createQueue(scope: string | null) {
       const hasPending = queue.length > 0 && !independent;
       // Delivery receives a detached snapshot, never a caller-owned mutable object.
       saved = JSON.parse(JSON.stringify(item)) as QueueItem;
-      enqueue(saved);
-      if (hasPending || replaying) return { status: 'queued' };
+      if (!persisted) enqueue(saved);
+      if (hasPending || replaying) return { accepted: true, completion: Promise.resolve({ status: 'queued' }) };
     } catch (error) {
-      return { status: 'failed', error };
+      return { accepted: false, error, completion: Promise.resolve({ status: 'failed', error }) };
     }
     const key = JSON.stringify(saved);
     activeSubmissions.add(key);
-    try {
-      let value: T;
+    const completion = (async (): Promise<Submission<T>> => {
       try {
-        value = await deliver(saved);
-      } catch (error) {
-        if (isQueueable(error)) return { status: 'queued', error };
-        // Definitive validation failures need not be retried. A failed removal
-        // still leaves durable pending work, so never report that it disappeared.
+        let value: T;
+        try {
+          value = await deliver(saved);
+        } catch (error) {
+          if (isQueueable(error)) { blocked = true; return { status: 'queued', error }; }
+          // Definitive validation failures need not be retried. A failed removal
+          // still leaves durable pending work, so never report that it disappeared.
+          try { removeDelivered(saved); }
+          catch (error) { blocked = true; return { status: 'queued', error }; }
+          return { status: 'failed', error };
+        }
         try { removeDelivered(saved); }
-        catch (error) { return { status: 'queued', error }; }
-        return { status: 'failed', error };
+        catch (error) { blocked = true; return { status: 'queued', error }; }
+        return { status: 'confirmed', value };
+      } finally {
+        activeSubmissions.delete(key);
+        if (activeSubmissions.size === 0) { for (const resume of idleWaiters) resume(); idleWaiters.clear(); }
       }
-      try { removeDelivered(saved); }
-      catch (error) { return { status: 'queued', error }; }
-      return { status: 'confirmed', value };
-    } finally {
-      activeSubmissions.delete(key);
+    })();
+    return { accepted: true, completion };
+  }
+
+  function admit<T>(item: QueueItem, deliver: (saved: QueueItem) => Promise<T>) {
+    return admitItem(item, deliver);
+  }
+
+  function submit<T>(item: QueueItem, deliver: (saved: QueueItem) => Promise<T>): Promise<Submission<T>> {
+    return admitItem(item, deliver).completion;
+  }
+
+  /** Admit a bulk gesture with one durable write before any request is sent. */
+  function admitMany(items: QueueItem[], deliver: (saved: QueueItem) => Promise<void>) {
+    let mustWait = false;
+    try {
+      const existing = readQueue();
+      const active = activeIndices(existing);
+      mustWait = replaying || existing.some((pending, index) => !active.has(index)
+        || items.some(item => (item.op === 'edit' || item.op === 'delete')
+          && (pending.op === 'edit' || pending.op === 'delete') && pending.id === item.id));
+      staged = existing;
+      for (const item of items) enqueue(item);
+      const saved = staged;
+      staged = null;
+      writeQueue(saved);
+    } catch (error) {
+      staged = null;
+      return { accepted: false, error, completions: items.map(() => Promise.resolve<Submission<void>>({ status: 'failed', error })) };
     }
+    // Bulk confirmed-entry requests may deliver independently; older failed
+    // work still prevents any new request from bypassing it.
+    if (mustWait) return { accepted: true, completions: items.map(() => Promise.resolve<Submission<void>>({ status: 'queued' })) };
+    const admissions = items.map(item => admitItem(item, deliver, true, new Set(items.map(item => JSON.stringify(item)))));
+    return { accepted: true, completions: admissions.map(admission => admission.completion) };
   }
 
   type AddDelivery = (payload: AddEntryPayload, mutationId: string) => Promise<Entry>;
@@ -277,8 +320,11 @@ function createQueue(scope: string | null) {
     edit: (id: number, patch: UpdateEntryPatch) => Promise<void>;
     delete: (id: number) => Promise<void>;
     isCurrent?: () => boolean;
+    automatic?: boolean;
+    onResult?: (result: DrainItemResult) => void;
   }): Promise<DrainItemResult[]> {
-    if (replaying || activeSubmissions.size > 0) return [];
+    if (activeSubmissions.size > 0 || replaying || !(callbacks.isCurrent?.() ?? true) || (callbacks.automatic && blocked)) return [];
+    blocked = false;
     const results: DrainItemResult[] = [];
     let q = readQueue();
 
@@ -309,17 +355,31 @@ function createQueue(scope: string | null) {
         writeQueue(q);
         results.push({ item, status: 'drained', entry, entries });
       } catch (err) {
-        results.push({ item, status: 'stopped', error: err });
+        blocked = true;
+        if (!isQueueable(err) && !isAuthError(err) && !(err instanceof QueuePersistenceError)) {
+          try { removeDelivered(item); results.push({ item, status: 'rejected', error: err }); }
+          catch (error) { results.push({ item, status: 'stopped', error }); }
+        } else results.push({ item, status: 'stopped', error: err });
         break;
       } finally {
-        replaying = false;
+        try { if (results.length) callbacks.onResult?.(results.at(-1)!); }
+        finally {
+          replaying = false;
+          if (activeSubmissions.size === 0) { for (const resume of idleWaiters) resume(); idleWaiters.clear(); }
+        }
       }
     }
 
     return results;
   }
 
-  return { readQueue, restoreQueueForRecovery, enqueue, isQueuedAddId, getLocalEntryIds, submitAdd, submitAddBatch, submitEdit, submitDelete, drain };
+  /** A drain request is latched through active initial delivery. */
+  async function requestDrain(callbacks: Parameters<typeof drain>[0]): Promise<DrainItemResult[]> {
+    if (activeSubmissions.size > 0 || replaying) await new Promise<void>(resolve => idleWaiters.add(resolve));
+    return drain(callbacks);
+  }
+
+  return { admit, admitMany, requestDrain, readQueue, restoreQueueForRecovery, enqueue, isQueuedAddId, getLocalEntryIds, submitAdd, submitAddBatch, submitEdit, submitDelete, drain };
 }
 
 const owners = new Map<string | null, ReturnType<typeof createQueue>>();

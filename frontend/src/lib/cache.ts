@@ -2,6 +2,10 @@ import type { Entry, MasterRow, CategoryMap, Config, StatsData } from './types';
 import { financialScope, scopedKey } from './financialScope';
 
 export interface CachePayload {
+  lastUpdated?: number;
+  statsStale?: boolean;
+  statsAvailable?: boolean;
+  acknowledged?: { entries: Entry[]; deletedIds: number[] };
   entries: Entry[];
   master: MasterRow;
   categories: CategoryMap;

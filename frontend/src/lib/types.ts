@@ -42,9 +42,11 @@ export type EntryMutation =
   | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
   | { type: 'edit'; id: number; patch: UpdateEntryPatch };
 
-/** Acceptance is synchronous; completion includes reconciliation and refresh. */
+/** Durable acceptance is synchronous. The store owns delivery, replay, and reconciliation;
+ * completion reports this submission?s initial outcome and any immediately owned core read. */
 export interface EntrySubmission {
   accepted: boolean;
+  error?: string;
   completion: Promise<boolean>;
 }
 

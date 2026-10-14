@@ -85,13 +85,16 @@
 
   function handleSave(m: EntryMutation) {
     if (m.type === 'edit') return store.submitUpdateEntry(m.id, m.patch);
-    return store.addEntry(m.payload).then(async saved => {
-      if (saved && scrollArea) {
-        await tick();
+    const routeKey = router.key;
+    const destination = connection.current;
+    const mock = mockMode.current;
+    const submission = store.submitAddEntry(m.payload);
+    if (submission.accepted) void tick().then(() => {
+      if (router.key === routeKey && connection.current === destination && mockMode.current === mock && scrollArea) {
         scrollArea.scrollTop = scrollArea.scrollHeight;
       }
-      return saved;
     });
+    return submission;
   }
 
   // Settings overlay state
@@ -105,6 +108,7 @@
     return () => {
       document.removeEventListener('visibilitychange', syncToastVisibility);
       toast.resume('hidden');
+      store.dispose();
     };
   });
 </script>
@@ -118,13 +122,6 @@
     <MockBanner onExit={exitMockMode} />
   {/if}
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 lg:pt-8' : ''}">
-    {#if store.syncing}
-      <span
-        class="fixed {mockMode.current ? 'top-[46px] lg:top-[34px]' : 'top-[14px]'} z-50 size-2 rounded-full bg-accent animate-pulse right-[calc(max(0px,(100vw-var(--app-max-width))/2)+36px)]"
-        aria-label="Syncing data"
-      ></span>
-    {/if}
-
     <!-- Scrollable content area -->
     <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip pb-[calc(60px+env(safe-area-inset-bottom,0px))]" bind:this={scrollArea} onscroll={handleScroll}>
       {#if store.legacyWork && !mockMode.current}
@@ -144,7 +141,7 @@
             {/if}
           </div>
         </div>
-      {:else}
+      {/if}
         {#key router.key}
           {#if router.current.kind === 'home'}
             <HomeScreen onnavigate={navigateTab} onsettings={() => (settingsOpen = true)} />
@@ -165,7 +162,6 @@
             <SummaryView ondeeper={() => navigate({ kind: 'statistics' })} onsettings={() => (settingsOpen = true)} />
           {/if}
         {/key}
-      {/if}
     </div>
 
     {#if !store.loading && !store.error}
@@ -207,7 +203,7 @@
       entry={sheetEntry}
       onclose={() => (sheetOpen = false)}
       onsave={handleSave}
-      ondelete={(id) => { store.deleteEntry(id); sheetOpen = false; }}
+      ondelete={store.submitDeleteEntry}
     />
 
     <!-- Settings overlay (shadcn Sheet, side=bottom) -->

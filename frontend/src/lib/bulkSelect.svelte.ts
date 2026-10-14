@@ -1,6 +1,7 @@
+import type { EntrySubmission } from './types';
 export function createBulkSelect(
   getSelectableIds: () => number[],
-  deleteEntries: (ids: number[]) => Promise<void>
+  deleteEntries: (ids: number[]) => EntrySubmission
 ) {
   let selectedIds = $state(new Set<number>());
   let confirmOpen = $state(false);
@@ -26,11 +27,12 @@ export function createBulkSelect(
   }
 
   async function confirmDelete(onDone: () => void): Promise<void> {
+    const submission = deleteEntries([...selectedIds]);
+    if (!submission.accepted) return;
     confirmOpen = false;
-    const completion = deleteEntries([...selectedIds]);
     clear();
     onDone();
-    await completion;
+    await submission.completion;
   }
 
   return {

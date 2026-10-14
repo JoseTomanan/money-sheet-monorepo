@@ -6,6 +6,7 @@
   import { recentForDisplay, splitRunPositions } from '../lib/groupEntries';
   import { latestEntryDate } from '../lib/aggregations';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import BalanceStatus from '../components/ui/BalanceStatus.svelte';
   import PageHeader from '../components/ui/PageHeader.svelte';
   import EntryRow from '../components/entry/EntryRow.svelte';
 
@@ -36,7 +37,7 @@
 </script>
 
 <div class="home p-0 pb-[72px]">
-{#if store.loading}
+{#if store.loading || store.hasSnapshot === false}
   <!-- Skeleton -->
   <PageHeader {onsettings}>
     {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
@@ -79,6 +80,7 @@
     {#snippet title()}{greeting}{/snippet}
   </PageHeader>
 
+  <BalanceStatus />
   <div class="home-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <!-- Left: hero + latest -->
     <div class="home-left">
@@ -87,8 +89,6 @@
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
           class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
-          class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
-          class:opacity-40={store.masterLoading}
         >
           {peso(store.master.onHand, store.config.currency)}
         </div>
@@ -111,7 +111,7 @@
             <div
               class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card"
             >
-              <EntryRow {entry} splitPos={todaySplitPos[i]} />
+              <EntryRow {entry} splitPos={todaySplitPos[i]} local={store.localIds?.has(entry.id) ?? false} />
             </div>
           {/each}
         {/if}
@@ -141,9 +141,7 @@
             </div>
             <div
               class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right whitespace-nowrap"
-              class:animate-[shimmer_1s_ease-in-out_infinite]={store.masterLoading}
-              class:opacity-40={store.masterLoading}
-              style="color: {c.color};"
+                      style="color: {c.color};"
             >
               {peso(budget, store.config.currency)}
             </div>

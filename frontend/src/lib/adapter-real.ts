@@ -13,9 +13,11 @@ import { normalizeDate } from "./format";
 import { dedupeEntries } from "./dedupe";
 import { createMutationId } from "./mutationId";
 
-export class ConnectionError extends Error {}
+const CONNECTION_FAILURE = Symbol.for('money-sheet.connection-failure');
+const AUTH_FAILURE = Symbol.for('money-sheet.auth-failure');
+export class ConnectionError extends Error { readonly [CONNECTION_FAILURE] = true; }
 export class ConnectionMissingError extends ConnectionError {}
-export class UnauthorizedError extends ConnectionError {}
+export class UnauthorizedError extends ConnectionError { readonly [AUTH_FAILURE] = true; }
 
 // ---------------------------------------------------------------------------
 // Semantic interface — the only vocabulary callers above this module should
@@ -25,12 +27,12 @@ export class UnauthorizedError extends ConnectionError {}
 
 /** Should this mutation go to the Offline Queue rather than fail outright? */
 export function isQueueable(err: unknown): boolean {
-  return err instanceof ConnectionError;
+  return err instanceof ConnectionError || !!(err && typeof err === 'object' && CONNECTION_FAILURE in err && err[CONNECTION_FAILURE]);
 }
 
 /** Was this failure specifically a rejected/mismatched API secret? */
 export function isAuthError(err: unknown): boolean {
-  return err instanceof UnauthorizedError;
+  return err instanceof UnauthorizedError || !!(err && typeof err === 'object' && AUTH_FAILURE in err && err[AUTH_FAILURE]);
 }
 
 /** What should the user read for this failure? */
@@ -47,30 +49,20 @@ export function userMessage(err: unknown): string {
 type ConnectionSource = () => Connection | null;
 
 const DEFAULT_CONFIG: Config = { currency: "₱" };
-const REQUEST_TIMEOUT_MS = 15_000;
+export const REQUEST_TIMEOUT_MS = 15_000;
 
 export class RealAdapter implements GatewayAdapter {
   constructor(private readonly getConnection: ConnectionSource) {}
 
-  // Races a fetch against a timeout so every request self-limits — callers
-  // never need their own timeout wrapper.
-  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-    let timer: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new ConnectionError("Request timed out.")), REQUEST_TIMEOUT_MS);
-    });
-    return Promise.race([fetch(url, init), timeout]).finally(() => clearTimeout(timer));
-  }
-
   // Single deep helper — owns the fetch→parse→error-taxonomy protocol.
-  private async gasRequest<T>(
+  private async parseRequest<T>(
     init: RequestInit & { url: string },
     opts: { tolerateUnknownAction?: boolean } = {},
   ): Promise<T> {
     let res: Response;
     try {
       const { url, ...fetchInit } = init;
-      res = await this.fetchWithTimeout(url, fetchInit);
+      res = await fetch(url, fetchInit);
     } catch (e) {
       throw new ConnectionError(e instanceof Error ? e.message : String(e));
     }
@@ -87,6 +79,23 @@ export class RealAdapter implements GatewayAdapter {
       throw new Error(String(json.error));
     }
     return json as T;
+  }
+
+  private gasRequest<T>(init: RequestInit & { url: string }, opts: { tolerateUnknownAction?: boolean } = {}): Promise<T> {
+    const started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(new ConnectionError('Request timed out.'));
+        controller.abort();
+      }, REQUEST_TIMEOUT_MS);
+    });
+    return Promise.race([this.parseRequest<T>({ ...init, signal: controller.signal }, opts), timeout])
+      .then(value => {
+        if (Date.now() - started >= REQUEST_TIMEOUT_MS) throw new ConnectionError('Request timed out.');
+        return value;
+      }).finally(() => clearTimeout(timer));
   }
 
   private async gasGet<T>(action: string): Promise<T> {

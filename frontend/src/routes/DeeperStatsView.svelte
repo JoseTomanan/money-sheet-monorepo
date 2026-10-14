@@ -9,6 +9,7 @@
   import { peso } from '../lib/format';
   import Money from '../components/ui/Money.svelte';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
+  import BalanceStatus from '../components/ui/BalanceStatus.svelte';
   import PageHeader from '../components/ui/PageHeader.svelte';
   import type { StatsWindow } from '../lib/types';
 
@@ -68,6 +69,10 @@
     {#snippet title()}Deeper stats{/snippet}
   </PageHeader>
 
+  <BalanceStatus statistics />
+  {#if store.hasStats === false}
+    <p class="mx-4 mt-4 text-sm text-muted-foreground lg:mx-6">Statistics are not available yet.</p>
+  {:else}
   <!-- Window selector -->
   <div class="segmented flex shrink-0 gap-[2px] mx-4 mt-3 mb-1 lg:mx-6" role="radiogroup" aria-label="Rolling window">
     {#each WINDOWS as [val, label] (val)}
@@ -177,4 +182,5 @@
   </div>
   </div>
   </div>
+  {/if}
 </div>

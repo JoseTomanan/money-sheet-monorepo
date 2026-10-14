@@ -9,7 +9,7 @@ export function loadSnapshot(scope = financialScope()): CachePayload | null {
   const cache = readCache(scope);
   if (!cache) return null;
   // Backward-compat: older cached snapshots predate `stats` (#130) — default it.
-  return { ...cache, entries: dedupeEntries(cache.entries), stats: cache.stats ?? EMPTY_STATS };
+  return { ...cache, statsAvailable: cache.statsAvailable ?? !!cache.stats, entries: dedupeEntries(cache.entries), stats: cache.stats ?? EMPTY_STATS };
 }
 
 export function saveSnapshot(data: CachePayload, scope = financialScope()): void {

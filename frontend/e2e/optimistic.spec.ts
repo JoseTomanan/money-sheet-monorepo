@@ -199,7 +199,8 @@ test("Add Entry closes while its optimistic row is still synchronizing", async (
   await expect(page.locator('.sheet[data-state="open"]')).toBeHidden();
   const pendingRow = page.locator(".entry-card", { hasText: desc });
   await expect(pendingRow).toBeVisible();
-  await expect(pendingRow).toHaveClass(/animate-\[shimmer_1s_ease-in-out_infinite\]/);
+  await expect(pendingRow).not.toHaveClass(/animate-\[shimmer_1s_ease-in-out_infinite\]/);
+  await expect(pendingRow.locator("[data-local-indicator]")).toBeVisible();
 
   await page.evaluate(() => window.dispatchEvent(new Event("release-e2e-add")));
   await expect(pendingRow).not.toHaveClass(/animate-\[shimmer_1s_ease-in-out_infinite\]/);

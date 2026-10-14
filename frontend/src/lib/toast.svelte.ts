@@ -1,5 +1,6 @@
 import { isQueueable } from './api';
 
+let owner: symbol | null = null;
 let msg = $state<string | null>(null);
 let action = $state<{ label: string; run: () => void } | null>(null);
 let isConnection = $state(false);
@@ -46,6 +47,7 @@ function show(
   variantArg: 'default' | 'destructive' = 'default',
   presentationArg?: ToastPresentation,
 ): void {
+  owner = null;
   cancelTimer();
   msg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
   action = actionArg ?? null;
@@ -58,6 +60,7 @@ function show(
 }
 
 function dismiss(): void {
+  owner = null;
   cancelTimer();
   msg = null;
   action = null;
@@ -76,6 +79,19 @@ export const toast = {
   get variant() { return variant; },
   get presentation() { return presentation; },
   show,
+  showOwned(key: symbol, message: string, actionArg?: { label: string; run: () => void }): boolean {
+    if (msg !== null && (errorNotification || isConnection || variant === 'destructive')) return false;
+    show(message, actionArg);
+    owner = key;
+    return true;
+  },
+  updateOwned(key: symbol, message: string, actionArg?: { label: string; run: () => void }): void {
+    if (owner !== key || msg === null) return;
+    // Updating a phase does not restart expiry or disturb focus/hover pauses.
+    msg = message;
+    action = actionArg ?? null;
+  },
+  dismissOwned(key: symbol): void { if (owner === key) dismiss(); },
   dismiss,
   pause,
   resume,

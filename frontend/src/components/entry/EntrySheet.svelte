@@ -12,8 +12,8 @@
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
-    onsave: (m: EntryMutation) => Promise<boolean> | EntrySubmission;
-    ondelete?: (id: number) => void;
+    onsave: (m: EntryMutation) => EntrySubmission;
+    ondelete?: (id: number) => EntrySubmission;
     defaultDirection?: Direction;
   }
 
@@ -39,32 +39,28 @@
       snapping   = false;
       dismissing = false;
       saving = false;
+      admissionError = "";
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
     wasOpen = open;
   });
 
-  async function handleSave() {
+  let admissionError = $state('');
+  function handleSave() {
     if (saving || form.saveDisabled) return;
     saving = true;
-    const mutation = form.buildMutation(entry?.id);
-    if (mutation.type === 'add') {
-      void onsave(mutation);
-      onclose();
-      return;
-    }
-    const submission = onsave(mutation);
-    if ('accepted' in submission) {
-      if (submission.accepted) onclose();
-      else saving = false;
-    } else {
-      try {
-        if (await submission) onclose();
-      } finally {
-        saving = false;
-      }
-    }
+    admissionError = '';
+    const submission = onsave(form.buildMutation(entry?.id));
+    if (submission.accepted) onclose();
+    else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
+  }
+  function handleDelete() {
+    if (saving || !entry || !ondelete) return;
+    saving = true;
+    const submission = ondelete(entry.id);
+    if (submission.accepted) onclose();
+    else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
   }
 
   // During drag: track finger exactly with no transition.
@@ -135,6 +131,7 @@
 </script>
 
 <Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} class="pb-0">
+  {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
   <!-- handle — drag down to dismiss, drag up to reveal Delete button -->
   <div
     class="flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
@@ -225,7 +222,8 @@
     <div class="delete-wrap" class:delete-wrap-visible={snap === 'expanded'}>
       <button
         class="delete-btn block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
-        onclick={() => { ondelete!(entry!.id); onclose(); }}
+        onclick={handleDelete}
+        disabled={saving}
       >Delete entry</button>
     </div>
   {/if}

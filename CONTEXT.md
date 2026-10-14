@@ -68,6 +68,29 @@ The permanent opt-out from Mock Mode. Recorded as a truthy value under the `ms_m
 ## Local Entry
 An Entry that is visible in the app's UI but has not yet been confirmed written to the spreadsheet. Holds a temporary negative integer ID until it syncs and receives a real Entry ID from GAS. Displayed with a visual indicator to distinguish it from confirmed entries. A Local Entry exists because its originating mutation was queued in the Offline Queue rather than successfully sent.
 
+## Background Sync
+
+An interaction finishes when the Offline Queue durably accepts its intent (ephemeral
+in Mock Mode), independently of HTTP delivery and financial reconciliation. Failed
+admission retains the draft or selection. Unconfirmed new saves keep the Local Entry
+marker and remain frozen; confirmed Entries become actionable before balance reads
+finish. ON HAND, Budgets, and statistics remain last confirmed sheet values, with
+“Balances awaiting sync” while stale. Unavailable values are not zero balances.
+
+Usable destination-scoped snapshots stay visible through background read failures.
+The cache contains the confirmed server baseline; queued intent is overlaid during
+hydration. Confirmed write acknowledgments remain separate cache metadata until a
+new coherent read replaces them, preserving acknowledged rows and deletions on
+reload without replaying confirmed writes. Online startup, reconnection, successful delivery, and Sync now resume
+the existing queue owner. Delivery runs only while the app is open.
+
+One owned notice appears after five seconds of unresolved work and distinguishes
+durable waiting writes, confirmed writes awaiting reads, and read-only refreshes.
+Fast work has no routine toast; actionable errors are immediate. Dismissal does
+not repeat a notice during the same episode. The static header status retains the
+retry path. The fifteen-second transport deadline covers the whole response and
+does not prove that a server write was cancelled. See ADR-0018.
+
 ## Offline Queue
 
 Queues and cached financial snapshots are destination-scoped under `ms_queue:v2:<JSON URL>` and `ms_cache:v2:<JSON URL>`. Returning to the exact URL restores its own work with original Mutation IDs. Mock Mode uses ephemeral work and never consumes real queues or writes real snapshots. Unknown-origin legacy `ms_queue` bytes are retained in one quarantine, excluded from automatic delivery and display; Settings requires explicit confirmation of their original saved URL before association. Unknown-origin legacy cache is never displayed. The `ms_queue_legacy_owner` recovery journal makes confirmed association resumable after interruption (ADR-0017).
