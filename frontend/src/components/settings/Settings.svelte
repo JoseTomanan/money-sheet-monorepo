@@ -11,9 +11,11 @@
 
   interface Props {
     onsaved: () => void;
+    legacyWork?: boolean;
+    onrecover?: () => void;
   }
 
-  let { onsaved }: Props = $props();
+  let { onsaved, legacyWork = false, onrecover = () => {} }: Props = $props();
 
   let gasUrl    = $state(connection.current?.gasUrl    ?? '');
   let apiSecret = $state(connection.current?.apiSecret ?? '');
@@ -123,6 +125,16 @@
       onclick={handleCopySetupLink}
       type="button"
     >{copyLabel}</button>
+  {/if}
+
+  {#if legacyWork && connection.current}
+    <div class="mt-5 p-4 rounded-lg border border-border">
+      <p class="text-sm text-muted-foreground">Older pending saves are retained but have no known destination. Associate them only if this saved GAS URL is their original destination.</p>
+      <p class="mt-2 text-xs break-all text-foreground">{connection.current.gasUrl}</p>
+      <button class="mt-3 text-sm font-semibold text-accent cursor-pointer" type="button" onclick={() => {
+        if (window.confirm(`Confirm these older pending saves originally belonged to ${connection.current?.gasUrl}. They may be delivered there on the next sync.`)) onrecover();
+      }}>Confirm original destination and recover</button>
+    </div>
   {/if}
 
   </section>

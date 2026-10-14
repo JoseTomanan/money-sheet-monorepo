@@ -1,9 +1,9 @@
-import { gateway, isAuthError, isQueueable } from './api';
+import { connection, mockMode, onConnectionChange } from './connection.svelte';
+import { captureGateway, isAuthError, isQueueable } from './api';
 import { loadSnapshot, saveSnapshot } from './cacheSync';
 import { toast } from './toast.svelte';
 import { buildEntry, getMainCategory } from './domain';
-import { drain, getLocalEntryIds, isQueuedAddId, submitAdd, submitAddBatch, submitDelete, submitEdit } from './offlineMutation';
-import { readQueue, QueuePersistenceError } from './queue';
+import { queueFor, QueuePersistenceError, hasLegacyWork, associateLegacyWork } from './queue';
 import type { QueueItem } from './queue';
 import { compareEntriesForDisplay } from './groupEntries';
 import type {
@@ -37,6 +37,33 @@ let nextTemporaryId = -1;
 let mutationRevision = 0;
 let refreshSequence = 0;
 const confirmedEditIds = new Set<number>();
+
+let lifetime = 0;
+let initialized = false;
+function activeScope() { return mockMode.current ? null : connection.current?.gasUrl ?? null; }
+function readQueue() { return queueFor(activeScope()).readQueue(); }
+function getLocalEntryIds() { return queueFor(activeScope()).getLocalEntryIds(); }
+function isQueuedAddId(id: number) { return queueFor(activeScope()).isQueuedAddId(id); }
+function session() {
+  const generation = lifetime;
+  const scope = activeScope();
+  return { scope, api: captureGateway(), queue: queueFor(scope), current: () => generation === lifetime };
+}
+function activate() {
+  lifetime++;
+  refreshSequence++;
+  mutationRevision++;
+  entries = []; master = { onHand: 0, budgets: {} }; categories = {};
+  config = { currency: '\u20b1' };
+  stats = { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] };
+  pendingIds = new Set(); deletePendingIds = new Set(); localIds = new Set();
+  confirmedEditIds.clear();
+  loading = false; error = null; errorIsConnection = false;
+  masterLoading = false; draining = false; syncing = false; nextTemporaryId = -1;
+  toast.dismiss();
+  void init();
+}
+onConnectionChange(activate);
 
 const QUEUED_ADD_FROZEN_MESSAGE = "This entry is waiting to sync — sync it first, then try again.";
 
@@ -102,6 +129,7 @@ function removeDeletePending(id: number): void { deletePendingIds = new Set([...
 // a transient connection failure (e.g. net::ERR_NETWORK_CHANGED) on just one
 // of them. A single reject shouldn't discard the other 3 that succeeded.
 async function refreshAll(silent = false): Promise<void> {
+  const owner = session();
   const revision = mutationRevision;
   const sequence = ++refreshSequence;
   if (!silent) {
@@ -111,12 +139,13 @@ async function refreshAll(silent = false): Promise<void> {
   }
   try {
     const [e, m, c, cfg, st] = await Promise.allSettled([
-      gateway().getEntries(),
-      gateway().getMaster(),
-      gateway().getCategories(),
-      gateway().getConfig(),
-      gateway().getStats(),
+      owner.api.getEntries(),
+      owner.api.getMaster(),
+      owner.api.getCategories(),
+      owner.api.getConfig(),
+      owner.api.getStats(),
     ]);
+    if (!owner.current() || sequence !== refreshSequence) return;
     // Entries, MASTER, and Categories form one financial snapshot. Never
     // combine a fresh subset with a previous MASTER value: that can make an
     // entry list and its displayed balances contradict each other.
@@ -159,12 +188,13 @@ async function refreshAll(silent = false): Promise<void> {
     entries = [...entries, ...pendingEntries.filter(entry => !entries.some(current => current.id === entry.id))]
       .filter(entry => !deletePendingIds.has(entry.id));
     syncLocalIds();
-    saveSnapshot({ entries, master, categories, config, stats });
+    saveSnapshot({ entries, master, categories, config, stats }, owner.scope);
   } catch (cause) {
+    if (!owner.current()) return;
     toast.show(cause, undefined, 'destructive');
     if (!silent) { error = cause instanceof Error ? cause.message : String(cause); errorIsConnection = isQueueable(cause); }
   } finally {
-    if (!silent) loading = false;
+    if (owner.current() && sequence === refreshSequence && !silent) loading = false;
   }
 }
 
@@ -185,17 +215,20 @@ function reserveRehydratedTemporaryIds(): void {
 }
 
 async function add(payload: AddEntryPayload): Promise<boolean> {
+  const owner = session();
   const tempId = nextTemporaryId--;
   entries = [...entries, buildEntry(tempId, payload, categories)];
   addPending(tempId);
   masterLoading = true;
   try {
-    const outcome = await submitAdd(tempId, payload, (saved, key) => gateway().addEntry(saved, key));
+    const outcome = await owner.queue.submitAdd(tempId, payload, (saved, key) => owner.api.addEntry(saved, key));
+    if (!owner.current()) return false;
     removePending(tempId);
     if (outcome.status === 'confirmed') {
       replaceEntry(tempId, outcome.entry);
       addPending(outcome.entry.id);
       await refreshAll(true);
+      if (!owner.current()) return false;
       removePending(outcome.entry.id);
     } else if (outcome.status === 'queued') {
       syncLocalIds();
@@ -207,17 +240,21 @@ async function add(payload: AddEntryPayload): Promise<boolean> {
     }
     return true;
   } finally {
-    masterLoading = false;
+    if (owner.current()) {
+      masterLoading = false;
+    }
   }
 }
 
 async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
+  const owner = session();
   const tempIds = legs.map(() => nextTemporaryId--);
   entries = [...entries, ...legs.map((leg, index) => buildEntry(tempIds[index], leg, categories))];
   for (const id of tempIds) addPending(id);
   masterLoading = true;
   try {
-    const outcome = await submitAddBatch(tempIds, legs, (saved, key) => gateway().addEntries(saved, key));
+    const outcome = await owner.queue.submitAddBatch(tempIds, legs, (saved, key) => owner.api.addEntries(saved, key));
+    if (!owner.current()) return false;
     for (const id of tempIds) removePending(id);
 
     if (outcome.status === 'confirmed') {
@@ -237,7 +274,9 @@ async function addLegs(legs: AddEntryPayload[]): Promise<boolean> {
     await refreshAll(true);
     return true;
   } finally {
-    masterLoading = false;
+    if (owner.current()) {
+      masterLoading = false;
+    }
   }
 }
 
@@ -246,6 +285,7 @@ function addEntry(payload: AddEntryPayload | AddEntryPayload[]): Promise<boolean
 }
 
 async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean> {
+  const owner = session();
   if (!queueReadable()) return false;
   if (mutationInFlight(id)) return false;
   const previous = entries.find((entry) => entry.id === id);
@@ -264,7 +304,8 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
   addPending(id);
   masterLoading = true;
   try {
-    const outcome = await submitEdit(id, patch, (savedId, savedPatch) => gateway().updateEntry(savedId, savedPatch));
+    const outcome = await owner.queue.submitEdit(id, patch, (savedId, savedPatch) => owner.api.updateEntry(savedId, savedPatch));
+    if (!owner.current()) return false;
     if (outcome.status === 'confirmed') {
       confirmedEditIds.add(id);
       mutationRevision++;
@@ -279,10 +320,12 @@ async function updateEntry(id: number, patch: UpdateEntryPatch): Promise<boolean
     }
     return true;
   } finally {
-    removePending(id);
-    confirmedEditIds.delete(id);
-    mutationRevision++;
-    masterLoading = false;
+    if (owner.current()) {
+      removePending(id);
+      confirmedEditIds.delete(id);
+      mutationRevision++;
+      masterLoading = false;
+    }
   }
 }
 
@@ -294,6 +337,7 @@ function submitUpdateEntry(id: number, patch: UpdateEntryPatch): EntrySubmission
 }
 
 async function deleteEntry(id: number): Promise<boolean> {
+  const owner = session();
   if (!queueReadable()) return false;
   if (mutationInFlight(id)) return false;
   const previous = entries.find((entry) => entry.id === id);
@@ -307,7 +351,8 @@ async function deleteEntry(id: number): Promise<boolean> {
   addDeletePending(id);
   masterLoading = true;
   try {
-    const outcome = await submitDelete(id, savedId => gateway().deleteEntry(savedId));
+    const outcome = await owner.queue.submitDelete(id, savedId => owner.api.deleteEntry(savedId));
+    if (!owner.current()) return false;
     if (outcome.status === 'confirmed') {
       entries = entries.filter((entry) => entry.id !== id);
       await refreshAll(true);
@@ -321,13 +366,16 @@ async function deleteEntry(id: number): Promise<boolean> {
     }
     return true;
   } finally {
-    removeDeletePending(id);
-    mutationRevision++;
-    masterLoading = false;
+    if (owner.current()) {
+      removeDeletePending(id);
+      mutationRevision++;
+      masterLoading = false;
+    }
   }
 }
 
 async function deleteEntries(ids: number[]): Promise<void> {
+  const owner = session();
   if (!queueReadable()) return;
   const present = [...new Set(ids)].filter((id) => entries.some((entry) => entry.id === id)
     && !mutationInFlight(id));
@@ -347,7 +395,8 @@ async function deleteEntries(ids: number[]): Promise<void> {
   try {
     let failCount = 0;
     await Promise.all(deletable.map(async id => {
-      const outcome = await submitDelete(id, savedId => gateway().deleteEntry(savedId));
+      const outcome = await owner.queue.submitDelete(id, savedId => owner.api.deleteEntry(savedId));
+      if (!owner.current()) return false;
       if (outcome.status === 'failed') {
         entries = [...entries.filter(entry => entry.id !== id), previous.get(id)!].sort(compareEntriesForDisplay);
         removeDeletePending(id);
@@ -359,28 +408,34 @@ async function deleteEntries(ids: number[]): Promise<void> {
       }
       syncLocalIds();
     }));
+    if (!owner.current()) return;
     syncLocalIds();
     if (failCount > 0) toast.show(`Failed to delete ${failCount} entr${failCount === 1 ? 'y' : 'ies'}.`, undefined, 'destructive');
     await refreshAll(true);
   } finally {
-    for (const id of retainedPendingIds) removeDeletePending(id);
-    mutationRevision++;
-    masterLoading = false;
+    if (owner.current()) {
+      for (const id of retainedPendingIds) removeDeletePending(id);
+      mutationRevision++;
+      masterLoading = false;
+    }
   }
 }
 
 async function drainQueue(): Promise<void> {
+  const owner = session();
   if (draining) return;
   draining = true;
   mutationRevision++;
   try {
     if (getLocalEntryIds().size === 0) return;
-    const results = await drain({
-      add: (payload, mutationId) => gateway().addEntry(payload, mutationId),
-      addEntries: (payloads, mutationId) => gateway().addEntries(payloads, mutationId),
-      edit: (id, patch) => gateway().updateEntry(id, patch),
-      delete: (id) => gateway().deleteEntry(id),
+    const results = await owner.queue.drain({
+      isCurrent: owner.current,
+      add: (payload, mutationId) => owner.api.addEntry(payload, mutationId),
+      addEntries: (payloads, mutationId) => owner.api.addEntries(payloads, mutationId),
+      edit: (id, patch) => owner.api.updateEntry(id, patch),
+      delete: (id) => owner.api.deleteEntry(id),
     });
+    if (!owner.current()) return;
     for (const result of results) {
       if (result.status === 'drained') {
         const item = result.item;
@@ -401,39 +456,67 @@ async function drainQueue(): Promise<void> {
     mutationRevision++;
     if (results.length > 0 && results.every((result) => result.status === 'drained')) await refreshAll(true);
   } catch (error) {
+    if (!owner.current()) return;
     toast.show(error, undefined, 'destructive');
   } finally {
-    draining = false;
-    mutationRevision++;
+    if (owner.current()) {
+      draining = false;
+      mutationRevision++;
+    }
   }
 }
 
-async function init(): Promise<void> {
+const onlineHandler = () => void drainQueue();
+let initialization: { lifetime: number; completion: Promise<void> } | null = null;
+let legacyWork = $state(hasLegacyWork());
+async function recoverLegacyWork(): Promise<void> {
+  const scope = activeScope();
+  if (scope === null) return;
   try {
-    localIds = getLocalEntryIds();
-    const cache = loadSnapshot();
+    associateLegacyWork(scope);
+    legacyWork = hasLegacyWork();
+    initialization = null;
+    await init();
+  } catch (error) { toast.show(error, undefined, 'destructive'); }
+}
+function init(): Promise<void> {
+  if (initialization?.lifetime === lifetime) return initialization.completion;
+  const completion = initialize();
+  initialization = { lifetime, completion };
+  return completion;
+}
+
+async function initialize(): Promise<void> {
+  const owner = session();
+  const finish = () => {
+    if (owner.current()) { syncing = false; masterLoading = false; }
+  };
+  if (!initialized) {
+    initialized = true;
+    window.addEventListener('online', onlineHandler);
+  }
+  try {
+    const cache = loadSnapshot(owner.scope);
     if (cache) {
-      entries = cache.entries;
-      master = cache.master;
-      categories = cache.categories;
+      entries = cache.entries.filter(entry => entry.id >= 0);
+      master = cache.master; categories = cache.categories;
       if (cache.config) config = cache.config;
       if (cache.stats) stats = cache.stats;
-      injectQueue();
-      localIds = getLocalEntryIds();
-      syncing = true;
-      masterLoading = true;
-      void refreshAll(true).finally(() => {
-        syncing = false;
-        masterLoading = false;
-      });
-    } else {
-      await refreshAll(false);
-      injectQueue();
-      localIds = getLocalEntryIds();
     }
-    window.addEventListener('online', () => void drainQueue());
+    injectQueue();
+    syncLocalIds();
+    syncing = !!cache;
+    masterLoading = !!cache;
+    const refreshing = refreshAll(!!cache);
+    if (cache) {
+      void refreshing.finally(finish);
+      return;
+    }
+    await refreshing;
+    finish();
   } catch (error) {
-    toast.show(error, undefined, 'destructive');
+    if (owner.current()) toast.show(error, undefined, 'destructive');
+    finish();
   }
 }
 
@@ -466,6 +549,8 @@ function injectQueue(queue: QueueItem[] = readQueue()): void {
 }
 
 export const store = {
+  get legacyWork() { return legacyWork; },
+  recoverLegacyWork,
   get entries() { return entries; },
   get master() { return master; },
   get categories() { return categories; },

@@ -1,6 +1,5 @@
 import type { Entry, MasterRow, CategoryMap, Config, StatsData } from './types';
-
-const KEY = 'ms_cache';
+import { financialScope, scopedKey } from './financialScope';
 
 export interface CachePayload {
   entries: Entry[];
@@ -10,17 +9,19 @@ export interface CachePayload {
   stats?: StatsData;
 }
 
-export function readCache(): CachePayload | null {
+export function readCache(scope = financialScope()): CachePayload | null {
+  if (scope === null) return null;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(scopedKey('ms_cache', scope));
     return raw ? (JSON.parse(raw) as CachePayload) : null;
   } catch {
     return null;
   }
 }
 
-export function writeCache(data: CachePayload): void {
+export function writeCache(data: CachePayload, scope = financialScope()): void {
+  if (scope === null) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(scopedKey('ms_cache', scope), JSON.stringify(data));
   } catch {}
 }

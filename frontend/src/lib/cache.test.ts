@@ -1,3 +1,4 @@
+import { scopedKey } from './financialScope';
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { readCache, writeCache } from "./cache";
 import type { CachePayload } from "./cache";
@@ -19,14 +20,17 @@ const payload: CachePayload = {
 };
 
 describe("cache", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it("readCache returns null when localStorage is empty", () => {
     expect(readCache()).toBeNull();
   });
 
   it("readCache returns null when stored value is invalid JSON", () => {
-    localStorage.setItem("ms_cache", "not-json");
+    localStorage.setItem(scopedKey('ms_cache'), "not-json");
     expect(readCache()).toBeNull();
   });
 
@@ -37,7 +41,7 @@ describe("cache", () => {
 
   it("writeCache stores under the ms_cache key", () => {
     writeCache(payload);
-    expect(localStorage.getItem("ms_cache")).toBe(JSON.stringify(payload));
+    expect(localStorage.getItem(scopedKey('ms_cache'))).toBe(JSON.stringify(payload));
   });
 
   it("writeCache overwrites previously cached data", () => {

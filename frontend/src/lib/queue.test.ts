@@ -1,3 +1,4 @@
+import { scopedKey } from './financialScope';
 import { describe, it, expect, beforeEach } from "vitest";
 import { readQueue, restoreQueueForRecovery, enqueue } from "./queue";
 import type { QueueItem } from "./queue";
@@ -37,7 +38,10 @@ const DELETE_REAL: QueueItem = {
 };
 
 describe("queue", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it("readQueue returns [] when localStorage is empty", () => {
     expect(readQueue()).toEqual([]);
@@ -120,7 +124,7 @@ describe("queue", () => {
   });
 
   it("readQueue reports corrupted JSON without discarding it", () => {
-    localStorage.setItem("ms_queue", "{invalid-json}");
+    localStorage.setItem(scopedKey('ms_queue'), "{invalid-json}");
     expect(() => readQueue()).toThrow('pending saves');
   });
 

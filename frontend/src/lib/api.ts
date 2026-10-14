@@ -17,6 +17,12 @@ export function gateway(): GatewayAdapter {
   return _override ?? (mockMode.current ? mockAdapter : realAdapter);
 }
 
+/** A session captures credentials so later dispatch never follows Settings. */
+export function captureGateway(): GatewayAdapter {
+  const saved = connection.current ? { ...connection.current } : null;
+  return _override ?? (mockMode.current ? mockAdapter : new RealAdapter(() => saved));
+}
+
 export function setAdapter(a: GatewayAdapter): void {
   _override = a;
 }

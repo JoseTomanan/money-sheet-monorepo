@@ -1,3 +1,4 @@
+import { scopedKey } from './financialScope';
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { writeCache } from "./cache";
 import { restoreQueueForRecovery } from "./queue";
@@ -306,7 +307,7 @@ describe("store", () => {
 
     it("writes fetched data to cache", async () => {
       await store.refreshAll();
-      const raw = localStorage.getItem("ms_cache");
+      const raw = localStorage.getItem(scopedKey('ms_cache'));
       expect(raw).not.toBeNull();
       const cached = JSON.parse(raw!);
       expect(cached.entries).toEqual(freshEntries);
@@ -344,7 +345,7 @@ describe("store", () => {
         const fetch = vi.fn().mockRejectedValue(new Error("Network error"));
         vi.stubGlobal("fetch", fetch);
         await store.refreshAll();
-        const queued = localStorage.getItem("ms_queue");
+        const queued = localStorage.getItem(scopedKey('ms_queue'));
         await vi.advanceTimersByTimeAsync(7000);
         toast.action!.run();
         expect(toast.msg).toBeNull();
@@ -356,7 +357,7 @@ describe("store", () => {
         await vi.advanceTimersByTimeAsync(1);
         expect(toast.msg).toBeNull();
         expect(store.error).toBe("Network error");
-        expect(localStorage.getItem("ms_queue")).toBe(queued);
+        expect(localStorage.getItem(scopedKey('ms_queue'))).toBe(queued);
         expect(fetch).toHaveBeenCalledTimes(10);
       } finally {
         toast.dismiss();
@@ -903,7 +904,7 @@ describe("offline queue — queued add is immutable", () => {
     // Give any async work a tick
     await new Promise(r => setTimeout(r, 10));
     expect(fetchMock.mock.calls.length).toBe(callsBefore); // no new fetch
-    const q = JSON.parse(localStorage.getItem("ms_queue")!);
+    const q = JSON.parse(localStorage.getItem(scopedKey('ms_queue'))!);
     expect(q).toHaveLength(1);
     expect(q[0].op).toBe("add");
     expect(q[0].payload.amount).toBe(50); // immutable retry payload
@@ -914,7 +915,7 @@ describe("offline queue — queued add is immutable", () => {
     store.deleteEntry(localId);
     await vi.waitFor(() => expect(store.localIds.size).toBe(1));
     expect(store.entries.some(e => e.id === localId)).toBe(true);
-    const q = JSON.parse(localStorage.getItem("ms_queue") ?? "[]");
+    const q = JSON.parse(localStorage.getItem(scopedKey('ms_queue')) ?? "[]");
     expect(q).toHaveLength(1);
   });
 });
@@ -959,7 +960,7 @@ describe("drainQueue", () => {
     expect(store.localIds.size).toBe(0);
     expect(store.entries.some(e => e.id === tempId)).toBe(false);
     expect(store.entries.some(e => e.id === 77)).toBe(true);
-    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+    expect(JSON.parse(localStorage.getItem(scopedKey('ms_queue')) ?? "[]")).toHaveLength(0);
   });
 
   it("drains an edit item: queue emptied, entry retains updated state", async () => {
@@ -981,7 +982,7 @@ describe("drainQueue", () => {
     await store.drainQueue();
 
     expect(store.localIds.size).toBe(0);
-    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+    expect(JSON.parse(localStorage.getItem(scopedKey('ms_queue')) ?? "[]")).toHaveLength(0);
     expect(store.entries.find(e => e.id === 1)?.description).toBe("queued-edit");
   });
 
@@ -1004,7 +1005,7 @@ describe("drainQueue", () => {
 
     expect(store.localIds.size).toBe(0);
     expect(store.entries.some(e => e.id === 1)).toBe(false);
-    expect(JSON.parse(localStorage.getItem("ms_queue") ?? "[]")).toHaveLength(0);
+    expect(JSON.parse(localStorage.getItem(scopedKey('ms_queue')) ?? "[]")).toHaveLength(0);
   });
 
   it("drain stops at the first failure; successfully drained items are committed", async () => {
@@ -1090,6 +1091,7 @@ describe("init with existing queue", () => {
 
   it("init injects Local Entry from a queued add item on cache path", async () => {
     const payload = { date: "2026-01-01", tag: "Groceries", description: "queued", direction: "O" as const, amount: 50 };
+    localStorage.setItem("ms_connection", JSON.stringify({ gasUrl: "https://fake.example", apiSecret: "fake-secret" }));
     restoreQueueForRecovery([{ op: "add", tempId: -9999, payload }]);
     writeCache({
       entries: freshEntries,
@@ -1325,23 +1327,23 @@ describe("store mutation workflow regressions", () => {
   });
 
   it("reports unreadable pending work during initialization without crashing or replacing it", async () => {
-    localStorage.setItem('ms_queue', '{broken');
+    localStorage.setItem(scopedKey('ms_queue'), '{broken');
     vi.resetModules();
     const restored = (await import('./store.svelte')).store;
     const { toast } = await import('./toast.svelte');
     await restored.init();
     expect(toast.msg).toContain('pending saves');
-    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+    expect(localStorage.getItem(scopedKey('ms_queue'))).toBe('{broken');
     expect(restored.loading).toBe(false);
   });
 
   it("reports storage failure during manual sync without rejecting the store call", async () => {
     const { toast } = await import('./toast.svelte');
-    localStorage.setItem('ms_queue', '{broken');
+    localStorage.setItem(scopedKey('ms_queue'), '{broken');
     await store.drainQueue();
     expect(toast.msg).toContain('pending saves');
     expect(store.draining).toBe(false);
-    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+    expect(localStorage.getItem(scopedKey('ms_queue'))).toBe('{broken');
   });
 
   it("retains and reports a save whose confirmation could not be removed from storage", async () => {
@@ -1366,14 +1368,14 @@ describe("store mutation workflow regressions", () => {
     await store.refreshAll();
     const previous = store.entries;
     const { toast } = await import('./toast.svelte');
-    localStorage.setItem('ms_queue', '{broken');
+    localStorage.setItem(scopedKey('ms_queue'), '{broken');
     if (action === 'edit') expect(await store.updateEntry(1, { amount: 99 })).toBe(false);
     if (action === 'delete') expect(await store.deleteEntry(1)).toBe(false);
     if (action === 'bulk delete') await store.deleteEntries([1]);
     if (action === 'refresh') await store.refreshAll();
     expect(store.entries).toEqual(previous);
     expect(toast.msg).toContain('pending saves');
-    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+    expect(localStorage.getItem(scopedKey('ms_queue'))).toBe('{broken');
   });
 
   it("queues an unauthorized add and keeps its destructive recovery toast", async () => {

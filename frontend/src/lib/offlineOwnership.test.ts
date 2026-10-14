@@ -1,3 +1,4 @@
+import { scopedKey } from './financialScope';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { drain, submitAdd, submitEdit, submitDelete, submitAddBatch } from './offlineMutation';
 import { enqueue, readQueue, restoreQueueForRecovery } from './queue';
@@ -20,7 +21,10 @@ const callbacks = () => ({
 });
 
 describe('Offline Queue ownership through caller interfaces', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it('retains and delivers a save enqueued during awaited replay in order', async () => {
@@ -89,10 +93,10 @@ describe('Offline Queue ownership through caller interfaces', () => {
   });
 
   it('does not overwrite unreadable pending work or treat it as an empty queue', async () => {
-    localStorage.setItem('ms_queue', '{broken');
+    localStorage.setItem(scopedKey('ms_queue'), '{broken');
     expect(() => readQueue()).toThrow();
     expect((await submitAdd(-1, payload, 'save-a', offline)).status).toBe('failed');
-    expect(localStorage.getItem('ms_queue')).toBe('{broken');
+    expect(localStorage.getItem(scopedKey('ms_queue'))).toBe('{broken');
   });
 
   it('persists the immutable save before first delivery so storage failure cannot strand an ambiguous commit', async () => {

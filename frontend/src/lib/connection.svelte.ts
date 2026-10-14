@@ -1,17 +1,12 @@
 import type { Connection } from "./types";
+import { readSavedConnection, usesMock } from './financialScope';
 
 const LS_KEY = "ms_connection";
 const LS_MOCK_DISMISSED = "ms_mock_dismissed";
-const envMock = import.meta.env.VITE_MOCK === "true";
 
 function readFromStorage(): Connection | null {
-  if (import.meta.env.DEV && !import.meta.env.VITEST && import.meta.env.VITE_GAS_URL && import.meta.env.VITE_API_SECRET) {
-    return { gasUrl: import.meta.env.VITE_GAS_URL, apiSecret: import.meta.env.VITE_API_SECRET };
-  }
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Connection;
+    return readSavedConnection();
   } catch {
     return null;
   }
@@ -19,6 +14,11 @@ function readFromStorage(): Connection | null {
 
 const _initial = readFromStorage();
 let current = $state<Connection | null>(_initial);
+const listeners = new Set<() => void>();
+export function onConnectionChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
 
 // Migration: existing users who have a Connection but no dismissal flag get the
 // flag written silently so they never see Mock Mode after this feature ships.
@@ -32,13 +32,15 @@ export const connection = {
 
 export const mockMode = {
   get current() {
-    return envMock || (current == null && !localStorage.getItem(LS_MOCK_DISMISSED));
+    return usesMock(current);
   },
 };
 
 export function setConnection(c: Connection): void {
   localStorage.setItem(LS_KEY, JSON.stringify(c));
+  if (current?.gasUrl === c.gasUrl && current.apiSecret === c.apiSecret) return;
   current = c;
+  for (const listener of listeners) listener();
 }
 
 export function importFromUrl(): void {

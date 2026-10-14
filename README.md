@@ -50,6 +50,10 @@ When you're ready to connect, click **Exit** in the `Mock mode` banner across th
 
 That's it. The app is connected to your spreadsheet.
 
+Pending saves and cached data belong to the exact web app URL. Changing URLs keeps the previous destination's work recoverable; return to that URL to sync it. Updating only its API secret preserves pending saves.
+
+If the app reports older pending saves with no known destination, open Settings, save their original web app URL and secret, then choose **Confirm original destination and recover**. Confirm only when that URL is their original destination. Sync any newer pending work on that Connection first. Older work stays on the device until associated; it is never delivered automatically to a newly configured URL.
+
 ### Customizing the currency symbol
 
 Open the **Config** sheet in your spreadsheet and change the value in the `currency` row to your currency symbol (e.g. `$`, `€`, `£`). The app picks it up automatically on next load.

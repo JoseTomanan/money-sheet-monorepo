@@ -8,7 +8,10 @@ import { restoreQueueForRecovery } from './queue';
 // ---------------------------------------------------------------------------
 
 describe('offlineMutation — identity', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('isLocalEntryId: negative IDs are Local Entries', () => {
     expect(isLocalEntryId(-1)).toBe(true);
@@ -60,7 +63,10 @@ const REAL_ENTRY: Entry = {
 };
 
 describe('offlineMutation — submitAdd success', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns confirmed with the real entry when tryAdd resolves', async () => {
     const outcome = await submitAdd(-1, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.resolve(REAL_ENTRY));
@@ -79,7 +85,10 @@ describe('offlineMutation — submitAdd success', () => {
 // ---------------------------------------------------------------------------
 
 describe('offlineMutation — submitAdd failure', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns queued when a connection failure occurs', async () => {
     const outcome = await submitAdd(-1001, { date: '2026-01-01', tag: 'Groceries', description: 'test', direction: 'O', amount: 50 }, () => Promise.reject(new ConnectionError('Network error')));
@@ -114,7 +123,10 @@ const REAL_ENTRIES: Entry[] = [
 ];
 
 describe('offlineMutation — submitAddBatch success', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns confirmed with entries in array order when tryAddBatch resolves', async () => {
     const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.resolve(REAL_ENTRIES));
@@ -129,7 +141,10 @@ describe('offlineMutation — submitAddBatch success', () => {
 });
 
 describe('offlineMutation — submitAddBatch failure', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns queued and enqueues exactly one addBatch item (not per-leg) when tryAddBatch rejects', async () => {
     const outcome = await submitAddBatch([-1, -2], [LEG_A, LEG_B], () => Promise.reject(new ConnectionError('Network error')));
@@ -157,7 +172,10 @@ import { submitEdit } from './offlineMutation';
 import { readQueue } from './queue';
 
 describe('offlineMutation — submitEdit', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns confirmed when tryEdit resolves', async () => {
     const outcome = await submitEdit(1, { description: 'updated' }, () => Promise.resolve());
@@ -204,7 +222,10 @@ describe('offlineMutation — submitEdit', () => {
 import { submitDelete } from './offlineMutation';
 
 describe('offlineMutation — submitDelete', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('returns confirmed when tryDelete resolves', async () => {
     const outcome = await submitDelete(1, () => Promise.resolve());
@@ -238,7 +259,10 @@ describe('offlineMutation — submitDelete', () => {
 });
 
 describe('offlineMutation — confirmed-entry coalescing', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('edit + edit combines latest values', async () => {
     await submitEdit(42, { description: 'first' }, () => Promise.reject(new ConnectionError('offline')));
@@ -263,7 +287,10 @@ import type { AddEntryPayload as AEP } from './types';
 const BASE_PAYLOAD: AEP = { date: '2026-01-01', tag: 'Groceries', description: 'q', direction: 'O', amount: 50 };
 
 describe('offlineMutation — drain', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
+  });
 
   it('drains an add item: returns drained result with real entry, queue emptied', async () => {
     restoreQueueForRecovery([{ op: 'add', tempId: -1001, payload: BASE_PAYLOAD }]);

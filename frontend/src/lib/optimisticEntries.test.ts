@@ -16,6 +16,7 @@ describe('optimistic Entries reconciliation', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://optimistic.example', apiSecret: 'test' }));
     vi.resetModules();
     api = await import('./api');
     server = [1, 2, 3].map(id => ({

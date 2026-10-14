@@ -112,7 +112,7 @@
 <svelte:window onhashchange={syncRoute} onpopstate={syncRoute} />
 
 {#if connection.current == null && !mockMode.current}
-  <SettingsGate onsaved={() => store.refreshAll()} />
+  <SettingsGate onsaved={() => {}} />
 {:else}
   {#if mockMode.current}
     <MockBanner onExit={exitMockMode} />
@@ -127,6 +127,12 @@
 
     <!-- Scrollable content area -->
     <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip pb-[calc(60px+env(safe-area-inset-bottom,0px))]" bind:this={scrollArea} onscroll={handleScroll}>
+      {#if store.legacyWork && !mockMode.current}
+        <div class="mx-4 my-4 p-4 rounded-lg border border-border bg-background">
+          <p class="text-sm text-foreground">Older pending saves have no known destination. They are retained on this device and will not sync automatically.</p>
+          <button class="mt-3 text-sm font-semibold text-accent cursor-pointer" onclick={() => (settingsOpen = true)}>Recover pending saves in Settings</button>
+        </div>
+      {/if}
       {#if store.error}
         <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[var(--destructive-tint-bg)] border border-[var(--destructive-tint-border)]">
           <p class="error-title font-sans text-[15px] font-semibold text-destructive mb-1">Could not load data</p>
@@ -216,7 +222,7 @@
           onclick={() => (settingsOpen = false)}
         >Done</button>
       </Sheet.Header>
-      <Settings onsaved={() => { settingsOpen = false; store.refreshAll(); }} />
+      <Settings onsaved={() => { settingsOpen = false; }} legacyWork={store.legacyWork && !mockMode.current} onrecover={() => void store.recoverLegacyWork()} />
     </Sheet.Root>
   </div>
 {/if}

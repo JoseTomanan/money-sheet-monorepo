@@ -11,6 +11,7 @@ const dupEntries: Entry[] = [
 describe("cacheSync.loadSnapshot", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
   });
 
   it("returns null when there is no cached snapshot", () => {
@@ -28,6 +29,7 @@ describe("cacheSync.loadSnapshot", () => {
 describe("cacheSync.saveSnapshot", () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unit.example', apiSecret: 'test' }));
   });
 
   it("writes the payload to the underlying cache", () => {
