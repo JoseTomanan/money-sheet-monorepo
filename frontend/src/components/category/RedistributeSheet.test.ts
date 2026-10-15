@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, waitFor } from '@testing-library/svelte';
 import RedistributeSheet from './RedistributeSheet.svelte';
-import type { CategoryMap, AddEntryPayload } from '../../lib/types';
+import type { CategoryMap, AddEntryPayload, EntrySubmission } from '../../lib/types';
 
 const CATEGORIES: CategoryMap = {
   HOUSING: ['Rent', 'Utilities'],
@@ -19,9 +19,37 @@ function baseProps(overrides = {}) {
   };
 }
 
+it('opens as a dialog labeled Redistribute Funds', () => {
+  const { getByRole } = render(RedistributeSheet, baseProps());
+  expect(getByRole('dialog', { name: 'Redistribute Funds' })).toBeVisible();
+});
+
+it('resets selections, amount, validation and admission errors when reopened', async () => {
+  const view = render(RedistributeSheet, baseProps({
+    onsubmit: () => ({ accepted: false, error: 'Storage is full', completion: Promise.resolve(false) }),
+  }));
+  await fireEvent.click(view.getAllByRole('button', { name: /^HOUSING$/ })[0]);
+  await fireEvent.click(view.getAllByRole('button', { name: /^FINANCE$/ })[1]);
+  await fireEvent.input(view.getByPlaceholderText('0.00'), { target: { value: '100' } });
+  await fireEvent.click(view.getByRole('button', { name: /^Redistribute$/ }));
+  expect(view.getByRole('alert')).toHaveTextContent('Storage is full');
+  await fireEvent.input(view.getByPlaceholderText('0.00'), { target: { value: '-5' } });
+  await fireEvent.blur(view.getByPlaceholderText('0.00'));
+  expect(view.getByText('Amount must be positive')).toBeVisible();
+  await view.rerender({ open: false });
+  await waitFor(() => expect(view.queryByRole('dialog')).not.toBeInTheDocument());
+  await view.rerender({ open: true });
+  expect(view.getByRole('dialog', { name: 'Redistribute Funds' })).toBeVisible();
+  expect(view.getByPlaceholderText('0.00')).toHaveValue('');
+  expect(view.queryByRole('alert')).not.toBeInTheDocument();
+  expect(view.queryByText('Amount must be positive')).not.toBeInTheDocument();
+  expect(view.queryAllByRole('button', { pressed: true })).toHaveLength(0);
+  expect(view.getByRole('button', { name: /^Redistribute$/ })).toBeDisabled();
+});
+
 it('retains the redistribution draft after refused admission and permits retry', async () => {
   const onclose = vi.fn();
-  const onsubmit = vi.fn((_legs: AddEntryPayload[]) => ({ accepted: false, error: 'Storage is full', completion: Promise.resolve(false) }));
+  const onsubmit = vi.fn<(_legs: AddEntryPayload[]) => EntrySubmission>(() => ({ accepted: false, error: 'Storage is full', completion: Promise.resolve(false) }));
   const { getAllByRole, getByPlaceholderText, getByRole, getByText } = render(RedistributeSheet, baseProps({ onsubmit, onclose }));
   await fireEvent.click(getAllByRole('button', { name: /^HOUSING$/ })[0]);
   await fireEvent.click(getAllByRole('button', { name: /^FINANCE$/ })[1]);
@@ -31,8 +59,11 @@ it('retains the redistribution draft after refused admission and permits retry',
   expect(onclose).not.toHaveBeenCalled();
   expect(amount).toHaveValue('100');
   expect(getByText('Storage is full')).toBeVisible();
+  onsubmit.mockReturnValueOnce({ accepted: true, completion: new Promise<boolean>(() => {}) });
   await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
   expect(onsubmit).toHaveBeenCalledTimes(2);
+  expect(onsubmit.mock.calls[1][0]).toEqual(onsubmit.mock.calls[0][0]);
+  expect(onclose).toHaveBeenCalledOnce();
 });
 
 // --- Cycle 1: submit disabled initially ---
