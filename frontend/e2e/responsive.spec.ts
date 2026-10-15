@@ -542,7 +542,7 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     await switchTab(page, "Entries");
     await page.getByRole("button", { name: "Redistribute" }).click();
 
-    const sheet = page.locator(".sheet-root .sheet");
+    const sheet = page.getByRole("dialog", { name: "Redistribute Funds" });
     const amount = await sheet.locator(".redistribution-amount").boundingBox();
     const source = await sheet.locator(".redistribution-source").boundingBox();
     const target = await sheet.locator(".redistribution-target").boundingBox();

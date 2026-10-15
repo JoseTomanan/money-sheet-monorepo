@@ -3,7 +3,7 @@
      optional formula support. Emits two AddEntryPayload legs via onsubmit:
      a negative-amount drain (source) and a positive-amount credit (target). -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import * as Sheet from '../../lib/components/ui/sheet';
   import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { redistributionAmount } from '../../lib/amountField';
   import { store } from '../../lib/store.svelte';
@@ -27,8 +27,6 @@
   let target      = $state('');
   let amount      = $state('');
   let amountError = $state('');
-  let animOpen    = $state(false);
-  let animTimer: ReturnType<typeof setTimeout> | null = null;
 
   $effect(() => {
     if (open) {
@@ -37,11 +35,6 @@
       target      = '';
       amount      = '';
       amountError = '';
-      animTimer = setTimeout(() => { animOpen = true; }, 10);
-      void tick();
-    } else {
-      animOpen = false;
-      if (animTimer) { clearTimeout(animTimer); animTimer = null; }
     }
   });
 
@@ -68,100 +61,81 @@
   }
 </script>
 
-{#if open}
-  <div class="sheet-root fixed inset-0 z-[200]">
-    <!-- backdrop -->
-    <div
-      class="backdrop absolute inset-0 bg-[var(--overlay-bg)] opacity-0 transition-[opacity] duration-[280ms] ease-[cubic-bezier(.2,.7,.2,1)]"
-      class:opacity-100={animOpen}
-      role="button"
-      tabindex="-1"
-      aria-label="Close"
+<Sheet.Root {open} onOpenChange={(v) => !v && onclose()}>
+  {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
+  <!-- handle -->
+  <div class="flex justify-center pt-[14px] pb-[10px]">
+    <div class="w-9 h-1 rounded-[2px] bg-border"></div>
+  </div>
+
+  <!-- header -->
+  <Sheet.Header>
+    <button
+      class="cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
       onclick={onclose}
-      onkeydown={(e) => e.key === 'Escape' && onclose()}
-    ></div>
+    >Cancel</button>
+    <Sheet.Title>Redistribute Funds</Sheet.Title>
+    <button
+      class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      onclick={handleSubmit}
+      disabled={saving || submitDisabled}
+    >Redistribute</button>
+  </Sheet.Header>
 
-    <!-- sheet -->
-    <div
-      class="sheet sheet-modal"
-      style="transform: {animOpen ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(100%)'}; transition: transform 320ms cubic-bezier(.2,.7,.2,1);"
-    >
-      {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
-      <!-- handle -->
-      <div class="flex justify-center pt-[14px] pb-[10px]">
-        <div class="w-9 h-1 rounded-[2px] bg-border"></div>
+  <div class="redistribution-layout lg:px-6 lg:pb-6">
+    <!-- Amount input -->
+    <div class="redistribution-amount card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center lg:mx-auto lg:max-w-[420px]">
+      <div class="label-overline mb-2">Amount to move</div>
+      <div class="flex justify-center items-baseline gap-1">
+        <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
+        <input
+          type="text"
+          inputmode="decimal"
+          class="w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
+          bind:value={amount}
+          oninput={(e) => {
+            const v = (e.target as HTMLInputElement).value;
+            amount = redistributionAmount.sanitize(v);
+          }}
+          onblur={() => {
+            const result = redistributionAmount.resolve(amount);
+            if (result.amount !== null) amount = result.amount;
+            amountError = result.error ?? '';
+          }}
+          placeholder="0.00"
+        />
       </div>
+      {#if amountError}
+        <p class="mt-1 text-[12px] font-sans text-destructive">{amountError}</p>
+      {/if}
+    </div>
 
-      <!-- header -->
-      <div class="flex items-center justify-between px-5 pt-2 pb-[6px]">
-        <button
-          class="cancel bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground"
-          onclick={onclose}
-        >Cancel</button>
-        <span class="font-display text-base font-semibold text-foreground tracking-[-0.2px]">Redistribute Funds</span>
-        <button
-          class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-          onclick={handleSubmit}
-          disabled={saving || submitDisabled}
-        >Redistribute</button>
-      </div>
-
-      <div class="redistribution-layout lg:px-6 lg:pb-6">
-      <!-- Amount input -->
-      <div class="redistribution-amount card mx-4 mt-[10px] pt-5 pb-5 px-[22px] text-center lg:mx-auto lg:max-w-[420px]">
-        <div class="label-overline mb-2">Amount to move</div>
-        <div class="flex justify-center items-baseline gap-1">
-          <span class="font-mono text-[32px] font-medium text-muted-foreground tracking-[-0.5px]">{store.config.currency}</span>
-          <input
-            type="text"
-            inputmode="decimal"
-            class="w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
-            bind:value={amount}
-            oninput={(e) => {
-              const v = (e.target as HTMLInputElement).value;
-              amount = redistributionAmount.sanitize(v);
-            }}
-            onblur={() => {
-              const result = redistributionAmount.resolve(amount);
-              if (result.amount !== null) amount = result.amount;
-              amountError = result.error ?? '';
-            }}
-            placeholder="0.00"
+    <div class="redistribution-pickers lg:grid lg:grid-cols-2 lg:gap-4 lg:mt-4">
+      <!-- Source picker -->
+      <section class="redistribution-source min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
+        <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">From (source)</div>
+        {#key open}
+          <CategoryTagPicker
+            direction="I"
+            {categories}
+            tag={source}
+            onselect={(t) => (source = t)}
           />
-        </div>
-        {#if amountError}
-          <p class="mt-1 text-[12px] font-sans text-destructive">{amountError}</p>
-        {/if}
-      </div>
+        {/key}
+      </section>
 
-      <div class="redistribution-pickers lg:grid lg:grid-cols-2 lg:gap-4 lg:mt-4">
-        <!-- Source picker -->
-        <section class="redistribution-source min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
-          <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">From (source)</div>
-          {#key open}
-            <CategoryTagPicker
-              direction="I"
-              {categories}
-              tag={source}
-              onselect={(t) => (source = t)}
-            />
-          {/key}
-        </section>
-
-        <!-- Target picker -->
-        <section class="redistribution-target min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
-          <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">To (target)</div>
-          {#key open}
-            <CategoryTagPicker
-              direction="I"
-              {categories}
-              tag={target}
-              onselect={(t) => (target = t)}
-            />
-          {/key}
-        </section>
-      </div>
-      </div>
+      <!-- Target picker -->
+      <section class="redistribution-target min-w-0 lg:rounded-[var(--radius-lg)] lg:bg-card lg:py-3 lg:shadow-[var(--shadow-card)]">
+        <div class="label-overline px-5 pt-[14px] pb-[6px] lg:pt-0">To (target)</div>
+        {#key open}
+          <CategoryTagPicker
+            direction="I"
+            {categories}
+            tag={target}
+            onselect={(t) => (target = t)}
+          />
+        {/key}
+      </section>
     </div>
   </div>
-{/if}
+</Sheet.Root>
