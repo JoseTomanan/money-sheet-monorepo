@@ -59,6 +59,9 @@ for (const theme of ['light', 'dark'] as const) {
       const dot = page.locator('[data-sync-dot]');
       const trigger = page.locator('.sync-status');
       const initial = await trigger.boundingBox();
+      expect(initial?.x).toBe(0);
+      expect(initial?.y).toBe(0);
+      expect(await trigger.evaluate(el => getComputedStyle(el).position)).toBe('fixed');
       for (const route of ['#/entries/2026-10-11', '#/summary', '#/summary/statistics', '#/home']) {
         await page.evaluate(route => { location.hash = route; }, route);
         await expect(trigger).toBeVisible();
@@ -67,8 +70,15 @@ for (const theme of ['light', 'dark'] as const) {
         expect(rect?.y).toBe(initial?.y);
         await expect(page.getByRole('button', { name: 'Open settings' })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.locator('.scroll-area').evaluate(el => {
+          el.style.height = '120px';
+          el.scrollTop = el.scrollHeight;
+        });
+        expect(await trigger.boundingBox()).toEqual(initial);
+        await page.locator('.scroll-area').evaluate(el => { el.style.height = ''; el.scrollTop = 0; });
       }
       expect((await dot.boundingBox())?.width).toBe(7);
+      expect(await dot.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');
       expect(await dot.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
       network.write = gate(); network.core = gate(); network.stats = gate();
       await page.evaluate(async () => {
@@ -101,6 +111,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('Enter');
       await expect(trigger).toBeFocused();
       await expect(page.getByRole('region', { name: 'Sync details' })).toContainText('Statistics unavailable');
+      await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeVisible();
       network.failStats = false;
       await page.keyboard.press('Tab');
       await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeFocused();

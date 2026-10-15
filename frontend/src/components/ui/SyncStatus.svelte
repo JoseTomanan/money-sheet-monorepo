@@ -11,7 +11,7 @@
 <Popover.Root bind:open>
   <Popover.Trigger
     bind:ref={trigger}
-    class="sync-status size-11 shrink-0 flex items-center justify-center rounded-[var(--radius-sm)] bg-transparent border-0 p-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:size-8"
+    class="sync-status fixed top-[env(safe-area-inset-top,0px)] left-[env(safe-area-inset-left,0px)] z-[601] size-11 flex items-center justify-center rounded-[var(--radius-sm)] bg-transparent border-0 p-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
     aria-label={`Sync status. ${status.detail} Show details.`}
     title={status.detail}
     data-sync-phase={status.phase}
@@ -26,20 +26,20 @@
       aria-hidden="true"
       data-sync-dot
       class={[
-        'size-[7px] shrink-0 rounded-full',
-        status.phase === 'ready' ? 'bg-green-600 dark:bg-green-400' :
-        status.phase === 'busy' ? 'bg-blue-600 dark:bg-blue-400 motion-safe:animate-[shimmer_1s_ease-in-out_infinite]' :
-        status.phase === 'waiting' ? 'bg-red-600 dark:bg-red-400' : 'bg-muted-foreground',
+        'size-[7px] shrink-0 rounded-full shadow-[0_1px_4px_rgb(0_0_0/0.22)] dark:shadow-[0_1px_4px_rgb(0_0_0/0.4)]',
+        status.phase === 'ready' ? 'bg-[#6c8c78] dark:bg-[#7c9987]' :
+        status.phase === 'busy' ? 'bg-[#738da8] dark:bg-[#8199b1] motion-safe:animate-[shimmer_1s_ease-in-out_infinite]' :
+        status.phase === 'waiting' ? 'bg-[#ad7772] dark:bg-[#b78882]' : 'bg-muted-foreground',
       ]}
     ></span>
   </Popover.Trigger>
   <Popover.Portal>
     <Popover.Content
-      align="end"
+      align="start"
       sideOffset={4}
       trapFocus={false}
       onOpenAutoFocus={event => event.preventDefault()}
-      class="z-50 w-64 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-3 font-sans text-xs"
+      class="z-[602] w-64 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-3 font-sans text-xs"
     >
       <section aria-label="Sync details">
         <p role="status" class="m-0 leading-relaxed">{status.detail}</p>
