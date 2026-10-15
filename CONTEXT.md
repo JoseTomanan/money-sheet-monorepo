@@ -122,6 +122,18 @@ A single summary row. Shows ON HAND plus the Budget for each Category. Entirely 
 ### STATS sheet
 A formula-driven sheet mirroring MASTER's read-only pattern (ADR-0011): per-Category current-calendar-month net change, a spending-pace table (cumulative outgoing this month vs. a trailing-months baseline), and rolling-window (30d/3mo/12mo) per-category spend totals. Created by `ensureStatsSheet` and read back via the `getStats` GAS action at fixed anchor rows, never `getLastRow()`. GAS never writes to it after creation. All derived/aggregated metrics — the numbers the Summary and Deeper Statistics frontend views render — are computed here or in MASTER, not in frontend code; the frontend renders sheet-sourced numbers, it does not compute them. A per-subcategory-level breakdown in STATS is a fast-follow (#128) — no client-side subcategory computation exists in the frontend to migrate as of #133.
 
+Financial reads share one read-only boundary in
+`clasp/src/lib/infrastructure/financialReads.ts`. MASTER requires ON HAND and all
+seven Category budgets; STATS requires its Category, rolling-window, and
+window/Category blocks plus a contiguous spending-pace table. Only finite numbers
+and nonblank numeric strings are valid financial cells. Zero and negative values
+remain valid; formula errors, missing required cells, and malformed blocks fail the
+read through the existing API error envelope. Blank MASTER spacer/detail cells and
+formula-suppressed trailing pace days remain optional. A legacy spreadsheet without
+STATS reports statistics unavailable while other reads continue. Failed reads keep
+the last confirmed destination-scoped data marked stale; without prior data the
+app shows an unavailable state rather than fabricated zero values (#232).
+
 ### Categories sheet
 The Subcategory-to-Category mapping table. Column B = Subcategory name, Column C = parent Category (merged cell spanning all subcategories of that Category). Adding a subcategory here automatically propagates to VLOOKUP formulas in INCOMING/OUTGOING.
 

@@ -96,8 +96,8 @@ export interface CategoryMonthChange {
  * One day-of-month row of the spending-pace table: this calendar month's
  * cumulative outgoing through that day, and the trailing-months-average
  * cumulative outgoing through that same day ("usual" baseline). `day` is
- * 1-31; rows for days past the current month's length carry `0`/unused
- * values (the sheet formula suppresses them via IF(...,"","")) — see
+ * 1-31; rows for days past the current month's length are omitted
+ * (the sheet formula suppresses their financial values to blank) — see
  * infrastructure/stats.ts for the exact cell math.
  */
 export interface SpendingPaceDay {
