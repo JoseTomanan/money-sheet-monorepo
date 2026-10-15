@@ -2,6 +2,149 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { RealAdapter, ConnectionError, ConnectionMissingError, UnauthorizedError, isQueueable, isAuthError, userMessage } from "./adapter-real";
 
 const FAKE_CONN = { gasUrl: "https://fake.gas.example", apiSecret: "test-secret" };
+const PAYLOAD = { date: '2026-01-01', tag: 'Groceries', description: 'lunch', direction: 'O' as const, amount: 10 };
+const ENTRY = { ...PAYLOAD, id: 1, mainCategory: 'FOOD' };
+
+describe('RealAdapter add evidence', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([
+    { ok: true }, { ok: true, entry: null }, { ok: true, entry: {} },
+    { ok: true, entry: { ...ENTRY, id: -1 } },
+    { ok: true, entry: { ...ENTRY, amount: '10' } },
+    { ok: true, entry: { ...ENTRY, date: '2026-02-30' } },
+    { ok: true, entry: { ...ENTRY, description: 'another save' } },
+  ])('does not acknowledge an unusable or unrelated Entry: %j', async reply => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => JSON.stringify(reply) }));
+    const error = await new RealAdapter(() => FAKE_CONN).addEntry(PAYLOAD, 'original-key').catch(error => error);
+    expect(isQueueable(error)).toBe(true);
+  });
+  it.each([undefined, [], [ENTRY], [ENTRY, ENTRY],
+    [{ ...ENTRY, id: 2, description: '^^' }, ENTRY],
+    [ENTRY, { ...ENTRY, id: 0, description: '^^' }],
+  ].map(entries => ({ entries })))('does not acknowledge an incomplete or unordered batch: %j', async ({ entries }) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => JSON.stringify({ ok: true, entries }) }));
+    const error = await new RealAdapter(() => FAKE_CONN)
+      .addEntries([PAYLOAD, { ...PAYLOAD, description: '^^' }], 'batch-key').catch(error => error);
+    expect(isQueueable(error)).toBe(true);
+  });
+});
+
+describe('RealAdapter read evidence', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([
+    ['getEntries', { entries: [ENTRY, null] }],
+    ['getEntries', { entries: [{ ...ENTRY, direction: 'X' }] }],
+    ['getMaster', { master: { onHand: '100', budgets: {} } }],
+    ['getMaster', { master: { onHand: 100, budgets: { FOOD: null } } }],
+    ['getCategories', { categories: { FOOD: [123] } }],
+    ['getConfig', { config: { currency: 123 } }],
+    ['getStats', { stats: {} }],
+    ['getStats', { stats: { categoryMonthChange: [], spendingPace: [{ day: 1 }], windowTotals: [], windowCategorySpend: [] } }],
+  ] as const)('rejects malformed %s data', async (action, reply) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => JSON.stringify(reply) }));
+    const error = await new RealAdapter(() => FAKE_CONN)[action]().catch(error => error);
+    expect(isQueueable(error)).toBe(true);
+  });
+  it.each(['getEntries', 'getMaster', 'getCategories', 'getConfig', 'getStats'] as const)(
+    '%s rejects missing action data', async action => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => '{"ok":true}' }));
+      const error = await new RealAdapter(() => FAKE_CONN)[action]().catch(error => error);
+      expect(isQueueable(error)).toBe(true);
+    });
+});
+
+describe('RealAdapter supported success replies', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([true, false])('accepts shaped reads with canonical envelope: %s', async canonical => {
+    const stats = { categoryMonthChange: [{ category: 'FOOD', incoming: 10, outgoing: 2, netChange: 8 }],
+      spendingPace: [{ day: 1, cumulativeThisMonth: 2, cumulativeUsual: 3 }],
+      windowTotals: [{ window: '30d', incoming: 10, outgoing: 2, net: 8 }],
+      windowCategorySpend: [{ window: '30d', category: 'FOOD', outgoing: 2 }] };
+    const replies = {
+      getEntries: { entries: [{ ...ENTRY, date: '1/1/2026' }] },
+      getMaster: { master: { onHand: 8, budgets: { FOOD: 8 } } },
+      getCategories: { categories: { FOOD: ['Groceries'] } }, getConfig: { config: {} }, getStats: { stats },
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => ({ text: async () => JSON.stringify({
+      ...(canonical ? { ok: true } : {}), ...replies[new URL(url).searchParams.get('action') as keyof typeof replies],
+    }) })));
+    const adapter = new RealAdapter(() => FAKE_CONN);
+    expect(await adapter.getEntries()).toEqual([ENTRY]);
+    expect(await adapter.getMaster()).toEqual(replies.getMaster.master);
+    expect(await adapter.getCategories()).toEqual(replies.getCategories.categories);
+    expect(await adapter.getConfig()).toEqual({ currency: '₱' });
+    expect(await adapter.getStats()).toEqual(stats);
+  });
+  it.each([true, false])('accepts confirmed mutations and preserves text/plain transport (canonical adds: %s)', async canonical => {
+    const entries = [ENTRY, { ...ENTRY, id: 2, description: '^^' }];
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      return { text: async () => JSON.stringify({
+        ...(canonical || !['addEntry', 'addEntries'].includes(body.action) ? { ok: true } : {}),
+        ...(body.action === 'addEntry' ? { entry: ENTRY } : body.action === 'addEntries' ? { entries } : {}),
+      }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const adapter = new RealAdapter(() => FAKE_CONN);
+    expect(await adapter.addEntry(PAYLOAD, 'single-key')).toEqual(ENTRY);
+    expect(await adapter.addEntries([PAYLOAD, { ...PAYLOAD, description: '^^' }], 'batch-key')).toEqual(entries);
+    await expect(adapter.updateEntry(1, { amount: 2 })).resolves.toBeUndefined();
+    await expect(adapter.deleteEntry(1)).resolves.toBeUndefined();
+    await expect(adapter.validateConnection(FAKE_CONN.gasUrl, FAKE_CONN.apiSecret)).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls.every(([, init]) =>
+      (init.headers as Record<string, string>)['Content-Type'] === 'text/plain')).toBe(true);
+  });
+});
+
+describe('RealAdapter acknowledgment evidence', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([{}, null, [], { ok: false }, { ok: true, error: 'failed' },
+    { ok: false, code: 'validation', message: 'invalid', entry: ENTRY },
+    { ok: true, entry: ENTRY }, { ok: true, entries: [] },
+  ])(
+    'retains ambiguity for a malformed acknowledgment: %j', async reply => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => JSON.stringify(reply) }));
+      const adapter = new RealAdapter(() => FAKE_CONN);
+      for (const request of [() => adapter.updateEntry(1, { amount: 2 }), () => adapter.deleteEntry(1),
+        () => adapter.validateConnection(FAKE_CONN.gasUrl, FAKE_CONN.apiSecret)]) {
+        const error = await request().then(() => null, error => error);
+        expect(isQueueable(error)).toBe(true);
+      }
+    },
+  );
+});
+
+describe('RealAdapter rejection semantics', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([
+    [{ ok: false, code: 'auth', message: 'denied' }, true, true],
+    [{ ok: false, code: 'validation', message: 'invalid tag' }, false, false],
+    [{ ok: false, code: 'not_found', message: 'gone' }, false, false],
+    [{ ok: false, code: 'internal', message: 'write may have committed' }, true, false],
+    [{ error: 'write failed unexpectedly' }, true, false],
+    [{ error: 'Incoming entries failed during writing' }, true, false],
+    [{ error: 'Entry with id 1 not found' }, false, false],
+    [{ error: 'Entry not found' }, false, false],
+    [{ ok: false, code: 'future_code', message: 'unknown' }, true, false],
+    [{ ok: false, code: 'validation', message: 12 }, true, false],
+    [{ code: 'not_found', message: 'gone' }, true, false],
+    [{ ok: false, code: 'validation', message: 'invalid', error: 'different outcome' }, true, false],
+    [{ error: 'Tag "gone" is not a Category. Incoming entries require a Category tag (e.g. FOOD, HOUSING).' }, false, false],
+    [{ error: '"amount" must be a finite number, got: null' }, false, false],
+  ])('classifies rejection %j', async (reply, queueable, auth) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => JSON.stringify(reply) }));
+    const error = await new RealAdapter(() => FAKE_CONN).deleteEntry(1).catch(error => error);
+    expect(error).toBeInstanceOf(Error);
+    expect(isQueueable(error)).toBe(queueable);
+    expect(isAuthError(error)).toBe(auth);
+  });
+  it('does not acknowledge success carried by a failed HTTP response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, text: async () => '{"ok":true}' })));
+    const error = await new RealAdapter(() => FAKE_CONN).deleteEntry(1).catch(error => error);
+    expect(isQueueable(error)).toBe(true);
+  });
+});
 
 // ── Cycle 1: connection-missing errors ────────────────────────────────────
 
