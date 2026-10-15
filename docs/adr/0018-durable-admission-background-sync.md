@@ -60,7 +60,8 @@ validation, authorization, storage, and definitive rejection errors retain their
 existing interaction and dismissal behavior; sync transitions never erase them.
 
 One shared control floats in the viewport's upper-left corner (respecting device
-safe areas), with a muted 7px glyph and soft shadow, and opens status/recovery details
+safe areas), with a pastel 7px glyph derived from the existing positive/local/destructive
+semantic colors and a soft shadow, and opens status/recovery details
 by keyboard or touch. Static green requires usable confirmed data and no unresolved
 delivery, reconciliation, or failed reads. Blue uses the established shimmer only
 on the glyph while work is active, including optional Config and Stats reads.

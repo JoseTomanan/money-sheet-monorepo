@@ -49,6 +49,39 @@ async function fakeSheet(page: Page) {
   return state;
 }
 
+test('pastel status colors follow the existing semantic palette in both themes', async ({ page }) => {
+  const network = await fakeSheet(page);
+  const trigger = page.locator('.sync-status');
+  const dot = page.locator('[data-sync-dot]');
+  async function expectTint(token: string) {
+    expect(await dot.evaluate((el, token) => {
+      const reference = document.createElement('span');
+      reference.style.backgroundColor = `color-mix(in srgb, rgb(var(${token})) 65%, white)`;
+      document.body.append(reference);
+      const matches = getComputedStyle(el).backgroundColor === getComputedStyle(reference).backgroundColor;
+      reference.remove();
+      return matches;
+    }, token)).toBe(true);
+  }
+  for (const theme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: theme as 'light' | 'dark', reducedMotion: 'reduce' });
+    await expect(trigger).toHaveAttribute('data-sync-phase', 'ready');
+    await expectTint('--positive-rgb');
+    network.core = gate();
+    await trigger.click();
+    await page.getByRole('button', { name: 'Refresh data', exact: true }).click();
+    await expect(trigger).toHaveAttribute('data-sync-phase', 'busy');
+    await expectTint('--local-rgb');
+    await page.context().setOffline(true);
+    await expect(trigger).toHaveAttribute('data-sync-phase', 'waiting');
+    await expectTint('--destructive-rgb');
+    network.core.release(); network.core = null;
+    await page.context().setOffline(false);
+    await expect(trigger).toHaveAttribute('data-sync-phase', 'ready');
+    await page.keyboard.press('Escape');
+  }
+});
+
 for (const theme of ['light', 'dark'] as const) {
   for (const width of [320, 390, 1440]) {
     test(`status dot stays truthful and compact at ${width}px in ${theme}`, async ({ page }, testInfo) => {

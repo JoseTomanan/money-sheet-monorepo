@@ -85,7 +85,8 @@ reload without replaying confirmed writes. Online startup, reconnection, success
 the existing queue owner. Delivery runs only while the app is open.
 
 One small floating status dot stays in the viewport's upper-left corner, respecting
-device safe areas, with muted colors, a soft shadow, and keyboard/touch-accessible details and
+device safe areas, with pastel tints of the existing positive/local/destructive colors,
+a soft shadow, and keyboard/touch-accessible details and
 recovery: static green means usable confirmed data with no unresolved work; blue
 shimmer means active delivery or reads (including Config and Stats); static red
 means offline or failed waiting work, which takes precedence over blue. Details

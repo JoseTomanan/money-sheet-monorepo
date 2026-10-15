@@ -27,9 +27,9 @@
       data-sync-dot
       class={[
         'size-[7px] shrink-0 rounded-full shadow-[0_1px_4px_rgb(0_0_0/0.22)] dark:shadow-[0_1px_4px_rgb(0_0_0/0.4)]',
-        status.phase === 'ready' ? 'bg-[#6c8c78] dark:bg-[#7c9987]' :
-        status.phase === 'busy' ? 'bg-[#738da8] dark:bg-[#8199b1] motion-safe:animate-[shimmer_1s_ease-in-out_infinite]' :
-        status.phase === 'waiting' ? 'bg-[#ad7772] dark:bg-[#b78882]' : 'bg-muted-foreground',
+        status.phase === 'ready' ? 'bg-[color-mix(in_srgb,rgb(var(--positive-rgb))_65%,white)]' :
+        status.phase === 'busy' ? 'bg-[color-mix(in_srgb,rgb(var(--local-rgb))_65%,white)] motion-safe:animate-[shimmer_1s_ease-in-out_infinite]' :
+        status.phase === 'waiting' ? 'bg-[color-mix(in_srgb,rgb(var(--destructive-rgb))_65%,white)]' : 'bg-muted-foreground',
       ]}
     ></span>
   </Popover.Trigger>
