@@ -170,7 +170,7 @@ describe("pendingIds", () => {
     await vi.waitFor(() => expect(store.pendingIds.has(1)).toBe(false));
   });
 
-  it("updateEntry: pendingIds cleared on generic api failure + entry reverted", async () => {
+  it("updateEntry: pendingIds cleared on definitive API rejection + entry reverted", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
 
@@ -180,7 +180,7 @@ describe("pendingIds", () => {
         if ((url as string).includes("action=")) {
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: false, code: "validation", message: "invalid entry" })) });
       })
     );
     store.updateEntry(1, { description: "updated" });
@@ -209,7 +209,7 @@ describe("pendingIds", () => {
     await vi.waitFor(() => expect(store.deletePendingIds.has(1)).toBe(false));
   });
 
-  it("deleteEntry: entry stays + pendingIds cleared on generic api failure", async () => {
+  it("deleteEntry: entry stays + pendingIds cleared on definitive API rejection", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
 
@@ -219,7 +219,7 @@ describe("pendingIds", () => {
         if ((url as string).includes("action=")) {
           return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ entries: freshEntries, master: { onHand: 0, budgets: {} }, categories: {} })) });
         }
-        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+        return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: false, code: "validation", message: "invalid entry" })) });
       })
     );
     store.deleteEntry(1);
@@ -363,7 +363,7 @@ describe("store", () => {
 
     it("preserves recovery classification across mixed API and connection failures", async () => {
       vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
-        if (url.includes('action=getEntries')) return Promise.resolve({ text: async () => JSON.stringify({ error: 'Bad entries' }) });
+        if (url.includes('action=getEntries')) return Promise.resolve({ text: async () => JSON.stringify({ ok: false, code: 'validation', message: 'Bad entries' }) });
         if (url.includes('action=getStats')) return Promise.reject(new Error('Network error'));
         return Promise.resolve({ text: async () => JSON.stringify(gasGetBody(url)) });
       }));
@@ -682,9 +682,9 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     expect(store.errorIsConnection).toBe(true);
   });
 
-  it("errorIsConnection is false when refreshAll catches a generic API error", async () => {
+  it("errorIsConnection is false when refreshAll catches a definitive API rejection", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      text: () => Promise.resolve(JSON.stringify({ error: "server blew up" })),
+      text: () => Promise.resolve(JSON.stringify({ ok: false, code: "validation", message: "invalid request" })),
     }));
     await store.refreshAll(false);
     expect(store.errorIsConnection).toBe(false);
@@ -701,7 +701,7 @@ describe("store — errorIsConnection and toastIsConnection", () => {
     expect(store.error).toBeNull();
   });
 
-  it("toastIsConnection is false when a mutation fails with a generic API error", async () => {
+  it("toastIsConnection is false when a mutation fails with a definitive API rejection", async () => {
     vi.stubGlobal("fetch", makeFetchMock());
     await store.refreshAll();
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
@@ -820,12 +820,12 @@ describe("offline queue — updateEntry connection failure", () => {
     expect(toast.msg).toBeNull();
   });
 
-  it("generic API error still rolls back and shows toast", async () => {
+  it("definitive API rejection still rolls back and shows toast", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("action=")) {
         return Promise.resolve({ text: () => Promise.resolve(JSON.stringify(gasGetBody(url))) });
       }
-      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ error: "fail" })) });
+      return Promise.resolve({ text: () => Promise.resolve(JSON.stringify({ ok: false, code: "validation", message: "invalid entry" })) });
     }));
     store.updateEntry(1, { description: "updated" });
     await vi.waitFor(() => expect(toast.msg).not.toBeNull());

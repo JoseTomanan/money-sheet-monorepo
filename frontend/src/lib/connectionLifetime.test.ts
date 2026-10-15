@@ -231,7 +231,9 @@ it.each(['add', 'batch', 'edit', 'delete'] as const)('keeps a delayed successful
   setConnection(B);
   await store.init();
   const entry = { ...payload, id: 1, mainCategory: 'FOOD' };
-  pending.resolve(response({ ok: true, entry, entries: [entry] }));
+  pending.resolve(response({ ok: true,
+    ...(operation === 'add' ? { entry } : operation === 'batch' ? { entries: [entry] } : {}),
+  }));
   await oldMutation;
   expect(store.entries.map(e => e.description)).toEqual(['B']);
   expect(store.pendingIds.size).toBe(0);
