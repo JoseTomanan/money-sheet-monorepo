@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createEntryForm } from "./entryForm.svelte";
 import { addLeg } from "./splitEntry";
 import { today } from "./format";
+import { entryAmount } from "./amountField";
 import type { CategoryMap, Entry } from "./types";
 
 const CATEGORIES: CategoryMap = {
@@ -27,6 +28,44 @@ function makeEntry(overrides: Partial<Entry> = {}): Entry {
 }
 
 describe("createEntryForm — buildMutation", () => {
+  it.each(['', '=SUM(10,)', '100-', '5*3', 'Infinity', '1.2.3'])('refuses %s rather than constructing an invalid amount', (amount) => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: 'FOOD', amount }] };
+    expect(form.saveDisabled).toBe(true);
+    expect(() => form.buildMutation()).toThrow('Invalid formula');
+    expect(() => form.buildMutation(42)).toThrow('Invalid formula');
+    form.split = { legs: [{ tag: 'FOOD', amount: '10' }, { tag: 'TRANSIT', amount }] };
+    expect(form.saveDisabled).toBe(true);
+    expect(() => form.buildMutation()).toThrow('Invalid formula');
+  });
+  it.each([
+    ['100-30', 70], ['=SUM(10,5)', 15], ['1.234+0', 1.23],
+    ['1.239+0', 1.24], ['1.234', 1.234], ['-1.234', -1.23], ['0', 0],
+  ])("carries %s through Add, Edit, and Split before and after blur", (raw, expected) => {
+    for (const direction of ['I', 'O'] as const) {
+      const form = makeForm();
+      form.setDirection(direction);
+      const blurred = entryAmount.resolve(raw).amount ?? raw;
+      for (const amount of [raw, blurred]) {
+        form.split = { legs: [{ tag: 'FOOD', amount }] };
+        expect(form.saveDisabled).toBe(false);
+        expect(form.buildMutation()).toMatchObject({ payload: { amount: expected } });
+        expect(form.buildMutation(42)).toMatchObject({ id: 42, patch: { amount: expected } });
+        form.addLeg();
+        form.updateLeg(1, { tag: 'TRANSIT', amount });
+        expect(form.buildMutation()).toMatchObject({ payload: [
+          { amount: expected }, { amount: expected, description: '^^' },
+        ] });
+      }
+    }
+  });
+  it("submits raw arithmetic without requiring blur", () => {
+    const form = makeForm();
+    form.split = { legs: [{ tag: "Dining", amount: "100-30" }] };
+    expect(form.saveDisabled).toBe(false);
+    expect(form.buildMutation()).toMatchObject({ type: "add", payload: { amount: 70 } });
+  });
+
   it("1-leg new entry → { type:'add', payload } as a single object (not array)", () => {
     const form = makeForm();
     form.split = { legs: [{ tag: "Dining", amount: "100" }] };

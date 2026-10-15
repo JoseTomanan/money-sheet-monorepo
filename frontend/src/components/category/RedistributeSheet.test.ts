@@ -79,6 +79,30 @@ describe('RedistributeSheet — valid state', () => {
 // --- Cycle 4: on submit, onsubmit receives the correct two legs ---
 
 describe('RedistributeSheet — submit payload', () => {
+  it.each([
+    ['100-30', 70], ['=SUM(10,5)', 15], ['1.239+0', 1.24], ['1.234', 1.234],
+  ])('submits %s identically before and after blur, retaining a refused draft', async (raw, expected) => {
+    const onclose = vi.fn();
+    const onsubmit = vi.fn((_legs: AddEntryPayload[]) => ({ accepted: false, completion: Promise.resolve(false) }));
+    const { getAllByRole, getByPlaceholderText, getByRole } = render(RedistributeSheet, baseProps({ onsubmit, onclose }));
+    await fireEvent.click(getAllByRole('button', { name: /^HOUSING$/ })[0]);
+    await fireEvent.click(getAllByRole('button', { name: /^FINANCE$/ })[1]);
+    const input = getByPlaceholderText('0.00');
+    await fireEvent.input(input, { target: { value: raw } });
+    await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
+    expect(input).toHaveValue(raw);
+    expect(onclose).not.toHaveBeenCalled();
+    await fireEvent.blur(input);
+    await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
+    expect(onsubmit).toHaveBeenCalledTimes(2);
+    for (const [legs] of onsubmit.mock.calls) {
+      expect(legs).toMatchObject([
+        { tag: 'HOUSING', direction: 'I', amount: -expected },
+        { tag: 'FINANCE', direction: 'I', amount: expected },
+      ]);
+    }
+  });
+
   it('calls onsubmit with two legs: negative drain + positive credit', async () => {
     const onsubmit = vi.fn((_legs: AddEntryPayload[]) => ({ accepted: true, completion: Promise.resolve(true) }));
     const { getAllByRole, getByPlaceholderText, getByRole } = render(
@@ -132,6 +156,21 @@ describe('RedistributeSheet — formula amount', () => {
 // click Redistribute without ever blurring the amount input.
 
 describe('RedistributeSheet — non-positive amount stays disabled (ADR-0005)', () => {
+  it.each(['=SUM(10,)', '100-', '5*3', '0.001+0', '1-1'])('never submits invalid or rounded-zero input %s', async (raw) => {
+    const onsubmit = vi.fn();
+    const view = render(RedistributeSheet, baseProps({ onsubmit }));
+    await fireEvent.click(view.getAllByRole('button', { name: /^HOUSING$/ })[0]);
+    await fireEvent.click(view.getAllByRole('button', { name: /^FINANCE$/ })[1]);
+    const input = view.getByPlaceholderText('0.00');
+    await fireEvent.input(input, { target: { value: raw } });
+    const submit = view.getByRole('button', { name: /^Redistribute$/ });
+    expect(submit).toBeDisabled();
+    await fireEvent.click(submit);
+    await fireEvent.blur(input);
+    expect(submit).toBeDisabled();
+    await fireEvent.click(submit);
+    expect(onsubmit).not.toHaveBeenCalled();
+  });
   it('submit stays disabled for a zero amount, before and after blur', async () => {
     const { getAllByRole, getByPlaceholderText, getByRole } = render(RedistributeSheet, baseProps());
     const housingBtns = getAllByRole('button', { name: /^HOUSING$/ });

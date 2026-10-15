@@ -8,7 +8,7 @@ import {
   toAddEntryPayloads,
   type SplitState,
 } from './splitEntry';
-import type { CategoryMap, Entry, AddEntryPayload, Direction, EntryMutation } from './types';
+import type { CategoryMap, Entry, Direction, EntryMutation } from './types';
 
 export function createEntryForm(getCategories: () => CategoryMap) {
   const today = todayStr();
@@ -45,14 +45,8 @@ export function createEntryForm(getCategories: () => CategoryMap) {
   }
 
   function buildMutation(entryId?: number): EntryMutation {
-    const leg = split.legs[0];
-    const sharedPayload: AddEntryPayload = {
-      date,
-      tag: leg.tag,
-      description,
-      direction,
-      amount: parseFloat(leg.amount) || 0,
-    };
+    const payloads = toAddEntryPayloads(split, { date, description, direction });
+    const sharedPayload = payloads[0];
 
     if (entryId != null) {
       return { type: 'edit', id: entryId, patch: sharedPayload };
@@ -62,7 +56,7 @@ export function createEntryForm(getCategories: () => CategoryMap) {
       return { type: 'add', payload: sharedPayload };
     }
 
-    return { type: 'add', payload: toAddEntryPayloads(split, { date, description, direction }) };
+    return { type: 'add', payload: payloads };
   }
 
   function setDirection(d: Direction): void {

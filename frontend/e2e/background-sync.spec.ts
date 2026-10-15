@@ -22,7 +22,7 @@ async function deferredNetwork(page: Page) {
       const legs: AddEntryPayload[] = body.action === 'addEntries' ? body.entries : [body];
       const saved = legs.map((leg, index) => ({ ...leg, id: 90_000 + snapshot.entries.length + index, row: snapshot.entries.length + index + 3, mainCategory: 'FOOD' })) as Entry[];
       snapshot.entries.push(...saved);
-      await route.fulfill({ json: body.action === 'addEntries' ? { entries: saved } : { entry: saved } });
+      await route.fulfill({ json: body.action === 'addEntries' ? { entries: saved } : { entry: saved[0] } });
     } else {
       reads++;
       const action = new URL(request.url()).searchParams.get('action');

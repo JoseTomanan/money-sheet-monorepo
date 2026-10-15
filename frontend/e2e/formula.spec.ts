@@ -89,6 +89,21 @@ test("formula resolves correctly and entry can be saved", async ({ page }) => {
   await expect(page.locator(".entry-card", { hasText: "formula test entry" })).toContainText("₱15.00");
 });
 
+for (const [raw, expected] of [['100-30', '70.00'], ['=SUM(10,5)', '15.00']]) {
+  test(`submits raw ${raw} without a blur event`, async ({ page }) => {
+    await openNewEntrySheet(page);
+    const description = `raw amount ${expected}`;
+    await page.locator('.field-input').first().fill(description);
+    await page.locator('.tag-pill', { hasText: 'FOOD' }).first().click();
+    await page.locator('.tag-pill', { hasText: 'Dining' }).first().click();
+    await page.locator('.amount-input').fill(raw);
+    // Dispatch activation without moving focus: payload correctness must not rely on blur.
+    await page.locator('button.header-btn.save').dispatchEvent('click');
+    await page.locator('.sheet[data-state="open"]').waitFor({ state: 'detached' });
+    await expect(page.locator('.entry-card', { hasText: description })).toContainText(`₱${expected}`);
+  });
+}
+
 test("arithmetic 100-50 without = resolves to 50.00 on blur", async ({ page }) => {
   await openNewEntrySheet(page);
   const input = page.locator(".amount-input");
@@ -98,11 +113,13 @@ test("arithmetic 100-50 without = resolves to 50.00 on blur", async ({ page }) =
   await expect(page.locator(".leg-error")).not.toBeVisible();
 });
 
-test("arithmetic 100-50 disables Save until blur resolves it", async ({ page }) => {
+test("arithmetic can be saved before blur after choosing a tag", async ({ page }) => {
   await openNewEntrySheet(page);
+  await page.locator(".tag-pill", { hasText: "FOOD" }).first().click();
+  await page.locator(".tag-pill", { hasText: "Dining" }).first().click();
   const input = page.locator(".amount-input");
   await input.fill("100-50");
-  await expect(page.locator("button.header-btn.save")).toBeDisabled();
+  await expect(page.locator("button.header-btn.save")).toBeEnabled();
   await input.blur();
   await expect(input).toHaveValue("50.00");
 });

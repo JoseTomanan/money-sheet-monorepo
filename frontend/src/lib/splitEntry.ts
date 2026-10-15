@@ -79,11 +79,16 @@ export function toAddEntryPayloads(
   state: SplitState,
   shared: { date: string; description: string; direction: Direction }
 ): AddEntryPayload[] {
-  return state.legs.map((leg, i) => ({
-    date: shared.date,
-    tag: leg.tag,
-    description: i === 0 ? shared.description : DITTO_DESCRIPTION,
-    direction: shared.direction,
-    amount: parseFloat(leg.amount),
-  }));
+  return state.legs.map((leg, i) => {
+    if (leg.error) throw new Error(leg.error);
+    const amount = entryAmount.validate(leg.amount);
+    if ('error' in amount) throw new Error(amount.error);
+    return {
+      date: shared.date,
+      tag: leg.tag,
+      description: i === 0 ? shared.description : DITTO_DESCRIPTION,
+      direction: shared.direction,
+      amount: amount.value,
+    };
+  });
 }
