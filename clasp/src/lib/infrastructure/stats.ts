@@ -2,7 +2,7 @@
  * STATS sheet — formula-driven, GAS read-only (mirrors MASTER, docs/adr/0011).
  * `ensureStatsSheet` records the one-time creation routine used to build or
  * repair the maintained template's fixed layout and cell formulas.
- * `statsReader.ts`'s `getStats()` reads it back — GAS never writes into the data
+ * `financialReads.ts`'s `getStats()` reads it back — GAS never writes into the data
  * cells after creation.
  *
  * ## Sheet layout (fixed anchor rows — never use getLastRow() to locate data,
@@ -69,7 +69,7 @@ export const TRAILING_MONTHS = 3;
 
 // Spending-pace rows always span 1-31 so the sheet layout is stable across
 // months; days that don't exist in the current month evaluate to "" (blank),
-// filtered out by statsReader.ts.
+// filtered out by financialReads.ts.
 export const PACE_DAYS = 31;
 
 /**

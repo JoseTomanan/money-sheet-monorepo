@@ -8,9 +8,8 @@ import {
 import { getConfig } from "./infrastructure/configReader";
 import { rotateConnectionSecret, showConnectionDetails } from "./infrastructure/connectionUi";
 import { addEntries, addEntry, deleteEntry, getEntries, updateEntry } from "./infrastructure/entries";
-import { getMaster } from "./infrastructure/masterReader";
+import { getMaster, getStats } from "./infrastructure/financialReads";
 import { bootstrapApiSecret } from "./infrastructure/setup";
-import { getStats } from "./infrastructure/statsReader";
 import {
   applyRowVisibilityForActiveSheet,
   installWeeklyVisibilityTrigger,

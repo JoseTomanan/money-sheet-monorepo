@@ -1518,3 +1518,99 @@ describe("store mutation workflow regressions", () => {
     expect(store.entries.map((entry) => entry.id)).toContain(77);
   });
 });
+
+
+describe("financial sheet read failures (#232)", () => {
+  let store: Awaited<typeof import("./store.svelte")>["store"];
+  const confirmedStats = {
+    categoryMonthChange: [{ category: "FOOD", incoming: 0, outgoing: 2, netChange: -2 }],
+    spendingPace: [{ day: 1, cumulativeThisMonth: 0, cumulativeUsual: -1 }],
+    windowTotals: [{ window: "30d", incoming: 0, outgoing: 2, net: -2 }],
+    windowCategorySpend: [{ window: "30d", category: "FOOD", outgoing: 2 }],
+  };
+  function financialFetch(failed = false) {
+    return vi.fn(async (url: string) => {
+      const action = new URL(url).searchParams.get('action');
+      const body = failed && (action === 'getMaster' || action === 'getStats')
+        ? { ok: false, code: 'internal', error: 'Financial data unavailable: formula error', message: 'Financial data unavailable: formula error' }
+        : action === 'getStats' ? { ok: true, stats: confirmedStats } : gasGetBody(url);
+      return { text: async () => JSON.stringify(body) };
+    });
+  }
+  beforeEach(async () => {
+    localStorage.clear();
+    localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://fake.example', apiSecret: 'fake-secret' }));
+    vi.resetModules();
+    vi.stubGlobal('fetch', financialFetch());
+    store = (await import('./store.svelte')).store;
+  });
+  afterEach(() => { store.dispose(); vi.unstubAllGlobals(); });
+
+  it("retains confirmed balances and statistics and marks them stale after formula errors", async () => {
+    await store.refreshAll();
+    expect(store.hasSnapshot).toBe(true);
+    expect(store.hasStats).toBe(true);
+    const lastUpdated = store.lastUpdated;
+    vi.stubGlobal('fetch', financialFetch(true));
+    await store.refreshAll(true);
+    expect(store.master).toEqual(freshMaster);
+    expect(store.stats).toEqual(confirmedStats);
+    expect(store.lastUpdated).toBe(lastUpdated);
+    expect(store.hasSnapshot).toBe(true);
+    expect(store.hasStats).toBe(true);
+    expect(store.statsStale).toBe(true);
+    expect(store.balancesStale).toBe(true);
+    expect(store.syncStatus.phase).toBe('waiting');
+  });
+  it("represents a cold financial failure as unavailable without caching zero balances", async () => {
+    vi.stubGlobal('fetch', financialFetch(true));
+    await store.refreshAll();
+    expect(store.hasSnapshot).toBe(false);
+    expect(store.hasStats).toBe(false);
+    expect(store.error).toContain('Financial data unavailable');
+    expect(store.syncStatus.phase).toBe('waiting');
+    expect(localStorage.getItem(scopedKey('ms_cache', 'https://fake.example'))).toBeNull();
+  });
+
+  it("keeps core data usable when a legacy spreadsheet has no STATS", async () => {
+    const valid = financialFetch();
+    vi.stubGlobal('fetch', async (url: string) => new URL(url).searchParams.get('action') === 'getStats'
+      ? { text: async () => JSON.stringify({ ok: false, code: 'internal', error: 'Financial data unavailable: legacy spreadsheet has no STATS sheet', message: 'Financial data unavailable: legacy spreadsheet has no STATS sheet' }) }
+      : valid(url));
+    await store.refreshAll();
+    expect(store.hasSnapshot).toBe(true);
+    expect(store.master).toEqual(freshMaster);
+    expect(store.hasStats).toBe(false);
+    expect(store.error).toBeNull();
+    expect(store.balancesStale).toBe(false);
+  });
+
+  it("restores only the destination's confirmed snapshot after failed reads", async () => {
+    await store.refreshAll();
+    vi.stubGlobal('fetch', financialFetch(true));
+    const { setConnection } = await import('./connection.svelte');
+    setConnection({ gasUrl: 'https://other.example', apiSecret: 'other-secret' });
+    await store.init();
+    expect(store.hasSnapshot).toBe(false);
+    expect(store.hasStats).toBe(false);
+    setConnection({ gasUrl: 'https://fake.example', apiSecret: 'fake-secret' });
+    await store.init();
+    await store.refreshAll(true);
+    expect(store.hasSnapshot).toBe(true);
+    expect(store.hasStats).toBe(true);
+    expect(store.master).toEqual(freshMaster);
+    expect(store.stats).toEqual(confirmedStats);
+    expect(store.balancesStale).toBe(true);
+  });
+
+  it("clears the failed-read stale state after a successful refresh", async () => {
+    vi.stubGlobal('fetch', financialFetch(true));
+    await store.refreshAll();
+    vi.stubGlobal('fetch', financialFetch());
+    await store.refreshAll();
+    expect(store.balancesStale).toBe(false);
+    expect(store.statsStale).toBe(false);
+    expect(store.syncStatus.phase).toBe('ready');
+  });
+
+});

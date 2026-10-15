@@ -21,11 +21,12 @@ import type {
 let online = $state(navigator.onLine);
 let disposed = $state(false);
 let readFailed = $state(false);
+let coreReadFailed = $state(false);
 let readFailure = $state('');
 let statsPending = $state(false);
 let configPending = $state(false);
 function resetSyncStatus() {
-  readFailed = false; readFailure = ''; statsPending = false; configPending = false;
+  readFailed = false; coreReadFailed = false; readFailure = ''; statsPending = false; configPending = false;
 }
 
 let entries = $state<Entry[]>([]);
@@ -152,6 +153,7 @@ function handleCoreRefreshFailures(
   failures: RefreshFailure[],
   silent: boolean,
 ): void {
+  coreReadFailed = true;
   if (!silent) {
     error = rejectionMessage(failures[0].rejection);
     errorIsConnection = isQueueable(failures[0].rejection.reason);
@@ -266,6 +268,7 @@ function acceptSnapshot(snapshot: { entries: Entry[]; master: MasterRow; categor
   // The cache is the confirmed server baseline, never the presentation overlay.
   baseline = snapshot.entries; acknowledgedEntries.clear(); acknowledgedDeletes.clear(); acknowledgmentsPending = false;
   hasSnapshot = true;
+  coreReadFailed = false;
   lastUpdated = Date.now();
   saveSnapshot({ ...snapshot, config, stats: hasStats ? stats : undefined, lastUpdated, statsStale, statsAvailable: hasStats }, scope);
   for (const [key, operation] of operations) {
@@ -356,7 +359,7 @@ async function refreshCycle(silent: boolean): Promise<void> {
     error = null; errorIsConnection = false; readFailed = cycleFailures.length > 0;
   } catch (cause) {
     if (!snapshot.current()) return;
-    readFailed = true;
+    readFailed = true; coreReadFailed = true;
     readFailure = cause instanceof Error ? cause.message : String(cause);
 
     toast.show(cause, undefined, 'destructive');
@@ -727,7 +730,7 @@ export const store = {
   get statsStale() { return statsStale; },
   get statisticsAwaitingSync() { return financialDirty && statsStale; },
   get lastUpdated() { return lastUpdated; },
-  get balancesStale() { return acknowledgmentsPending || activeOperations > 0 || localIds.size > 0; },
+  get balancesStale() { return coreReadFailed || acknowledgmentsPending || activeOperations > 0 || localIds.size > 0; },
   get pendingIds() { return pendingIds; },
   get busyIds() { operations; return new Set([...pendingIds, ...deletePendingIds].filter(id => !confirmedIds.has(id)).concat(draining ? [...localIds] : [])); },
   get deletePendingIds() { return deletePendingIds; },
