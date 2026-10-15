@@ -327,17 +327,17 @@ describe("store", () => {
       expect(store.loading).toBe(false);
     });
 
-    it("silent mode delays a network failure notice and offers retry", async () => {
+    it("silent mode reports a network failure through status without a toast", async () => {
       vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
       await store.refreshAll(true);
       expect(store.loading).toBe(false);
       expect(store.error).toBeNull();
       expect(toast.msg).toBeNull();
       expect(store.syncWaiting).toBe(true);
-      expect(store.syncDelayed).toBe(false);
+      expect(store.syncStatus.phase).toBe('waiting');
     });
 
-    it("Retry keeps one notification episode and requests one bounded cycle", async () => {
+    it("Retry remains quiet and requests one bounded cycle", async () => {
       vi.useFakeTimers();
       try {
         const fetch = vi.fn().mockRejectedValue(new Error('Network error'));
@@ -346,12 +346,11 @@ describe("store", () => {
         const queued = localStorage.getItem(scopedKey('ms_queue'));
         expect(toast.msg).toBeNull();
         await vi.advanceTimersByTimeAsync(5_000);
-        expect(toast.msg).toBe('Waiting to load your data.');
-        expect(toast.action?.label).toBe('Retry');
-        toast.action!.run();
+        expect(toast.msg).toBeNull();
+        await store.retrySync();
         await vi.advanceTimersByTimeAsync(0);
         expect(fetch).toHaveBeenCalledTimes(10);
-        expect(toast.msg).toBe('Waiting to load your data.');
+        expect(toast.msg).toBeNull();
         await vi.advanceTimersByTimeAsync(8_000);
         expect(toast.msg).toBeNull();
         await vi.advanceTimersByTimeAsync(10_000);

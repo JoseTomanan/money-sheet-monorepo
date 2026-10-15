@@ -3,6 +3,8 @@ import { render, within } from "@testing-library/svelte";
 import SummaryView from "./SummaryView.svelte";
 
 const mockStore = vi.hoisted(() => ({
+  syncStatus: { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action: 'Refresh data' },
+  retrySync: vi.fn(),
   loading: true,
   entries: [] as Array<{ id: number; date: string; direction: 'I' | 'O'; amount: number; tag: string; mainCategory: string; description: string }>,
   master: { onHand: 0, budgets: {} as Record<string, number> },

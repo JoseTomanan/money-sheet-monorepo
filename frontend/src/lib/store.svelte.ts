@@ -18,48 +18,14 @@ import type {
   EntrySubmission,
 } from './types';
 
-export const SYNC_NOTICE_DELAY_MS = 5_000;
-let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-let episode: { owner: symbol; started: number; announced: boolean; writes: boolean } | null = null;
-let delayed = $state(false);
-let waiting = $state(false);
-let readFailed = false;
-let statsPending = false;
-function resetNotice() {
-  clearTimeout(noticeTimer);
-  if (episode) toast.dismissOwned(episode.owner);
-  episode = null; delayed = false; waiting = false; readFailed = false; statsPending = false;
-}
-function noticeWork() {
-  return acknowledgmentsPending || operations.size > 0 || localIds.size > 0 || syncing || statsPending || readFailed;
-}
-function noticeCopy() {
-  if (waiting) return episode?.writes ? 'Waiting to sync. Your changes are saved on this device.' :
-    hasSnapshot ? 'Waiting to refresh. Showing your last update.' : 'Waiting to load your data.';
-  if (episode?.writes) return localIds.size > 0 || [...operations.values()].some(op => op.phase === 'delivery' || op.phase === 'waiting')
-    ? 'Taking longer than usual. Your changes are saved on this device.' : 'Changes saved. Balances are still updating.';
-  return hasSnapshot ? 'Taking longer to refresh. Showing your last update.' : 'Taking longer to load your data.';
-}
-function noticeAction() {
-  if (!waiting) return undefined;
-  return { label: localIds.size > 0 ? 'Sync now' : 'Retry', run: () => { if (localIds.size > 0) void drainQueue(); else void refreshAll(true); } };
-}
-function updateNotice(writes = false) {
-  waiting = readFailed || [...operations.values()].some(operation => operation.failed);
-  if (!noticeWork()) { resetNotice(); return; }
-  if (!episode) {
-    episode = { owner: Symbol('sync episode'), started: Date.now(), announced: false, writes };
-    const generation = lifetime;
-    noticeTimer = setTimeout(() => {
-      if (generation !== lifetime || !episode) return;
-      delayed = true;
-      episode.announced = true;
-      toast.showOwned(episode.owner, noticeCopy(), noticeAction());
-    }, SYNC_NOTICE_DELAY_MS);
-  } else {
-    episode.writes ||= writes;
-    if (episode.announced) toast.updateOwned(episode.owner, noticeCopy(), noticeAction());
-  }
+let online = $state(navigator.onLine);
+let disposed = $state(false);
+let readFailed = $state(false);
+let readFailure = $state('');
+let statsPending = $state(false);
+let configPending = $state(false);
+function resetSyncStatus() {
+  readFailed = false; readFailure = ''; statsPending = false; configPending = false;
 }
 
 let entries = $state<Entry[]>([]);
@@ -79,8 +45,9 @@ let financialDirty = $state(false);
 let lastUpdated = $state<number | null>(null);
 let activeRefresh: { lifetime: number; completion: Promise<void> } | null = null;
 let refreshDirty = false;
-interface Operation { ids: Set<number>; deletion: boolean; phase: 'delivery' | 'waiting' | 'reconciliation'; failed: boolean; acceptedAt: number; revision: number; }
+interface Operation { ids: Set<number>; deletion: boolean; phase: 'delivery' | 'waiting' | 'reconciliation'; failed: boolean; failure?: string; revision: number; }
 let operations = $state(new Map<symbol, Operation>());
+const waiting = $derived(readFailed || [...operations.values()].some(operation => operation.failed));
 function publishOperations() {
   operations = new Map(operations);
   activeOperations = operations.size;
@@ -115,7 +82,7 @@ function session() {
   return { scope, api: captureGateway(), queue: queueFor(scope), current: () => generation === lifetime };
 }
 function activate() {
-  resetNotice();
+  resetSyncStatus();
   lifetime++;
   refreshSequence++;
   mutationRevision++;
@@ -162,8 +129,11 @@ function isRejected<T>(result: PromiseSettledResult<T>): result is PromiseReject
 }
 
 function notifyRefreshFailures(failures: RefreshFailure[]): void {
+  readFailed = true;
+  readFailure = failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ');
+
   if (failures.every(({ rejection }) => isQueueable(rejection.reason) && !isAuthError(rejection.reason))) {
-    readFailed = true; waiting = true; updateNotice(); return;
+    return;
   }
   const message = `Not updated: ${failures.map(({ label }) => label).join(', ')}.`;
   toast.show(message, {
@@ -227,10 +197,10 @@ function beginOperation(ids: number[] = [], deletion = false) {
   }
   mutationRevision++;
   statsStale = true; financialDirty = true;
-  const record: Operation = { ids: tracked, deletion, phase: 'delivery', failed: false, acceptedAt: Date.now(), revision: mutationRevision };
+  const record: Operation = { ids: tracked, deletion, phase: 'delivery', failed: false, revision: mutationRevision };
   operations.set(key, record);
   publishOperations();
-  updateNotice(true);
+
   return {
     confirm(replacements?: Entry[]) {
       if (generation !== lifetime) return;
@@ -248,11 +218,13 @@ function beginOperation(ids: number[] = [], deletion = false) {
       record.failed = false;
       record.revision = ++mutationRevision;
       publishOperations();
-      updateNotice();
+
     },
     wait(error?: unknown) {
       if (generation !== lifetime) return;
-      record.phase = 'waiting'; record.failed ||= !!error; updateNotice();
+      record.phase = 'waiting'; record.failed ||= !!error;
+      if (error) record.failure = error instanceof Error ? error.message : String(error);
+      publishOperations();
     },
     rollback(previous: Entry) {
       if (generation !== lifetime) return;
@@ -266,7 +238,7 @@ function beginOperation(ids: number[] = [], deletion = false) {
       if (record.phase === 'delivery') operations.delete(key);
       publishOperations();
       if (activeOperations === 0 && localIds.size === 0 && !acknowledgmentsPending && !statsPending && !readFailed) financialDirty = false;
-      updateNotice();
+
     },
   };
 }
@@ -322,6 +294,7 @@ function reconcile(): Promise<void> {
 }
 
 function refreshAll(silent = false): Promise<void> {
+  disposed = false;
   if (activeRefresh?.lifetime === lifetime) return activeRefresh.completion;
   const generation = lifetime;
   const completion = (async () => {
@@ -329,10 +302,10 @@ function refreshAll(silent = false): Promise<void> {
       refreshDirty = false;
       await refreshCycle(silent);
     } while (generation === lifetime && refreshDirty);
-  })().finally(() => { if (generation === lifetime) { activeRefresh = null; syncing = false; updateNotice(); } });
+  })().finally(() => { if (generation === lifetime) { activeRefresh = null; syncing = false; } });
   activeRefresh = { lifetime: generation, completion };
   syncing = true;
-  readFailed = false; waiting = false; updateNotice();
+  readFailed = false; readFailure = '';
   return completion;
 }
 
@@ -346,10 +319,15 @@ async function refreshCycle(silent: boolean): Promise<void> {
     if (!snapshot.current()) return;
     statsPending = false;
     if (activeOperations === 0 && localIds.size === 0 && !acknowledgmentsPending) financialDirty = false;
-    updateNotice();
+
   };
   // Optional reads have their own publication lifetime and never gate the core.
-  void owner.api.getConfig().then(value => { if (optionalCurrent()) config = value; }, cause => {
+  configPending = true;
+  void owner.api.getConfig().then(value => {
+    if (snapshot.current()) configPending = false;
+    if (optionalCurrent()) config = value;
+  }, cause => {
+    if (snapshot.current()) configPending = false;
     if (optionalCurrent()) report([{ label: 'settings', rejection: { status: 'rejected', reason: cause } }]);
   });
   statsStale = true; statsPending = true;
@@ -357,12 +335,12 @@ async function refreshCycle(silent: boolean): Promise<void> {
     if (!optionalCurrent()) { releaseObsoleteStats(); return; }
     stats = value; hasStats = true; statsStale = false; statsPending = false;
     if (activeOperations === 0 && localIds.size === 0 && !acknowledgmentsPending) financialDirty = false;
-    updateNotice();
+
     const cache = loadSnapshot(owner.scope);
     if (cache) saveSnapshot({ ...cache, config, stats, statsStale: false, statsAvailable: true }, owner.scope);
   }, cause => {
     if (!optionalCurrent()) { releaseObsoleteStats(); return; }
-    if (optionalCurrent()) { statsPending = false; report([{ label: 'statistics', rejection: { status: 'rejected', reason: cause } }]); updateNotice(); }
+    if (optionalCurrent()) { statsPending = false; report([{ label: 'statistics', rejection: { status: 'rejected', reason: cause } }]); }
   });
   try {
     const [e, m, c] = await Promise.allSettled([owner.api.getEntries(), owner.api.getMaster(), owner.api.getCategories()]);
@@ -375,9 +353,12 @@ async function refreshCycle(silent: boolean): Promise<void> {
     if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
     if (snapshot.changed()) { refreshDirty = true; return; }
     acceptSnapshot({ entries: e.value, master: m.value, categories: c.value }, owner.scope, snapshot.revision);
-    error = null; errorIsConnection = false; readFailed = cycleFailures.length > 0; updateNotice();
+    error = null; errorIsConnection = false; readFailed = cycleFailures.length > 0;
   } catch (cause) {
     if (!snapshot.current()) return;
+    readFailed = true;
+    readFailure = cause instanceof Error ? cause.message : String(cause);
+
     toast.show(cause, undefined, 'destructive');
     if (!hasSnapshot) { error = cause instanceof Error ? cause.message : String(cause); errorIsConnection = isQueueable(cause); }
   } finally { snapshot.finish(); }
@@ -558,7 +539,7 @@ function applyReplayResult(result: DrainItemResult): void {
   }
   syncLocalIds();
   publishOperations();
-  updateNotice();
+
 }
 
 async function drainCycle(automatic: boolean): Promise<void> {
@@ -580,8 +561,10 @@ async function drainCycle(automatic: boolean): Promise<void> {
     });
     if (!owner.current()) return;
     syncLocalIds();
-    if (results.some(result => result.status === 'stopped')) { waiting = true; operation.wait(true); }
+    const stopped = results.find(result => result.status === 'stopped');
     if (results.some(result => result.status === 'drained')) operation.confirm();
+    // A later failure still owns the status after earlier items were confirmed.
+    if (stopped?.status === 'stopped') operation.wait(stopped.error);
     if (results.some(result => result.status === 'drained')) await reconcile();
   } catch (error) {
     if (!owner.current()) return;
@@ -594,7 +577,8 @@ async function drainCycle(automatic: boolean): Promise<void> {
   }
 }
 
-const onlineHandler = () => { if (localIds.size > 0) void drainQueue(); else if (readFailed) void refreshAll(true); };
+const offlineHandler = () => { online = false; };
+const onlineHandler = () => { online = true; if (localIds.size > 0) void drainQueue(); else if (readFailed) void refreshAll(true); };
 let initialization: { lifetime: number; completion: Promise<void> } | null = null;
 let legacyWork = $state(hasLegacyWork());
 async function recoverLegacyWork(): Promise<void> {
@@ -608,6 +592,7 @@ async function recoverLegacyWork(): Promise<void> {
   } catch (error) { toast.show(error, undefined, 'destructive'); }
 }
 function init(): Promise<void> {
+  disposed = false;
   stopConnection ??= onConnectionChange(activate);
   if (initialization?.lifetime === lifetime) return initialization.completion;
   const completion = initialize();
@@ -622,7 +607,9 @@ async function initialize(): Promise<void> {
   };
   if (!initialized) {
     initialized = true;
+    online = navigator.onLine;
     window.addEventListener('online', onlineHandler);
+    window.addEventListener('offline', offlineHandler);
   }
   try {
     const cache = loadSnapshot(owner.scope);
@@ -637,7 +624,7 @@ async function initialize(): Promise<void> {
         for (const id of ack.deletedIds) acknowledgedDeletes.add(id);
         for (const [ids, deletion] of [[ack.entries.map(entry => entry.id), false], [ack.deletedIds, true]] as const) {
           if (ids.length === 0) continue;
-          operations.set(Symbol('restored acknowledgment'), { ids: new Set(ids), deletion, phase: 'reconciliation', failed: false, acceptedAt: Date.now(), revision: ++mutationRevision });
+          operations.set(Symbol('restored acknowledgment'), { ids: new Set(ids), deletion, phase: 'reconciliation', failed: false, revision: ++mutationRevision });
           for (const id of ids) confirmedIds.add(id);
         }
         publishOperations();
@@ -653,7 +640,7 @@ async function initialize(): Promise<void> {
     financialDirty = localIds.size > 0 || activeOperations > 0;
     syncing = !!cache;
     masterLoading = !!cache;
-    updateNotice(localIds.size > 0 || activeOperations > 0);
+
     const refreshing = refreshAll(!!cache);
     if (localIds.size > 0 && navigator.onLine) void drainQueue();
     if (cache) {
@@ -696,7 +683,34 @@ function injectQueue(queue: QueueItem[] = readQueue()): void {
   reserveRehydratedTemporaryIds();
 }
 
+function syncStatus(): { phase: 'ready' | 'busy' | 'waiting' | 'inactive'; detail: string; action: string } {
+  if (disposed) return { phase: 'inactive', detail: 'Sync is stopped.', action: '' };
+  const busy = syncing || draining || statsPending || configPending || activeOperations > 0 || acknowledgmentsPending || queueCount > 0;
+  const failure = readFailed ? readFailure : [...operations.values()].find(op => op.failed)?.failure;
+  if (mockMode.current) return {
+    phase: waiting ? 'waiting' : busy ? 'busy' : 'inactive',
+    detail: waiting ? `Demo Mode. Unable to update demo data. ${failure || 'Retry pending work.'} ${queueCount ? `${queueCount} pending demo change${queueCount === 1 ? '' : 's'} for this session.` : ''}`.trim() :
+      busy ? 'Demo Mode. Updating demo data; changes last for this session.' : 'Demo Mode. No spreadsheet is connected; changes last for this session.',
+    action: queueCount > 0 ? 'Sync now' : 'Refresh demo',
+  };
+  if (!connection.current) return { phase: 'inactive', detail: 'No Connection. Open Settings to connect your spreadsheet.', action: '' };
+  const action = queueCount > 0 ? 'Sync now' : 'Refresh data';
+  const pending = queueCount > 0
+    ? `${queueCount} pending change${queueCount === 1 ? '' : 's'} saved on this device; not yet confirmed in Sheets.`
+    : acknowledgmentsPending ? 'Confirmed in Sheets; updating balances and statistics.' : '';
+  if (!online) return { phase: 'waiting', detail: `Offline. ${pending || 'Showing the last confirmed data.'}`, action };
+  if (waiting) {
+    return { phase: 'waiting', detail: `Unable to sync. ${failure || 'Retry to resume pending work.'} ${pending}`.trim(), action };
+  }
+  if (busy) {
+    return { phase: 'busy', detail: pending || 'Refreshing data from Sheets.', action };
+  }
+  if (!hasSnapshot) return { phase: 'waiting', detail: 'Data unavailable. Refresh to load confirmed data from Sheets.', action };
+  return { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action };
+}
+
 export const store = {
+  get syncStatus() { return syncStatus(); },
   get legacyWork() { return legacyWork; },
   recoverLegacyWork,
   get entries() { return entries; },
@@ -720,19 +734,19 @@ export const store = {
   get localIds() { return localIds; },
   get draining() { return draining; },
   get syncing() { return syncing; },
-  get syncCount() { return Math.max(queueCount, acknowledgmentsPending ? 1 : 0, activeOperations ? [...operations.values()].filter(operation => operation.ids.size > 0).length : 0); },
-  get syncDelayed() { return delayed; },
   get syncWaiting() { return waiting; },
-  get syncBusy() { return syncing || draining || (activeOperations > 0 && [...operations.values()].some(op => op.phase === 'delivery')); },
 
   init,
   refreshAll,
+  retrySync() { return queueCount > 0 ? drainQueue() : refreshAll(true); },
   addEntry,
   submitAddEntry,
   dispose() {
-    resetNotice(); lifetime++; refreshSequence++;
+    disposed = true;
+    resetSyncStatus(); lifetime++; refreshSequence++;
     stopConnection?.(); stopConnection = null;
     window.removeEventListener('online', onlineHandler);
+    window.removeEventListener('offline', offlineHandler);
     initialized = false; initialization = null; activeRefresh = null; activeDrain = null;
     operations = new Map(); confirmedIds.clear(); activeOperations = 0;
     pendingIds = new Set(); deletePendingIds = new Set(); draining = false; syncing = false;

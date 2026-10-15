@@ -107,11 +107,11 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByText('Balances awaiting sync', { exact: true })).toBeVisible();
       expect(await page.locator('.hero-amount').evaluate(element => getComputedStyle(element).opacity)).toBe('1');
       await page.clock.fastForward(5_000);
-      await expect(page.getByRole('region', { name: 'Notification' })).toContainText('Taking longer than usual. Your changes are saved on this device.');
-      await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
+      await expect(page.getByRole('region', { name: 'Notification' })).toHaveCount(0);
+      await expect(page.locator('.sync-status')).toHaveAttribute('data-sync-phase', 'busy');
       await page.getByRole('button', { name: 'Summary', exact: true }).click();
       await page.screenshot({ path: testInfo.outputPath(`background-${theme}-${width}.png`), fullPage: true });
-      await page.screenshot({ path: `../docs/pr/228/background-${theme}-${width}.png`, fullPage: true });
+      await page.screenshot({ path: `../docs/pr/236/background-${theme}-${width}.png`, fullPage: true });
       const before = await page.locator('.scroll-area').evaluate(element => element.scrollTop);
       network.release();
       await expect(page.getByText('Balances awaiting sync', { exact: true })).toHaveCount(0);

@@ -84,12 +84,22 @@ new coherent read replaces them, preserving acknowledged rows and deletions on
 reload without replaying confirmed writes. Online startup, reconnection, successful delivery, and Sync now resume
 the existing queue owner. Delivery runs only while the app is open.
 
-One owned notice appears after five seconds of unresolved work and distinguishes
-durable waiting writes, confirmed writes awaiting reads, and read-only refreshes.
-Fast work has no routine toast; actionable errors are immediate. Dismissal does
-not repeat a notice during the same episode. The static header status retains the
-retry path. The fifteen-second transport deadline covers the whole response and
-does not prove that a server write was cancelled. See ADR-0018.
+The header has one small status dot with keyboard/touch-accessible details and
+recovery: static green means usable confirmed data with no unresolved work; blue
+shimmer means active delivery or reads (including Config and Stats); static red
+means offline or failed waiting work, which takes precedence over blue. Details
+distinguish intent saved on this device from confirmation in Sheets and expose
+the actual failure. Retry delivers queued work through its existing owner, or
+refreshes reads when no delivery remains. Demo/no-Connection status never claims
+real-sheet confirmation. Reduced motion makes blue static; usable financial data
+and entry rows stay at normal contrast without sync animation.
+
+Routine saved/syncing/refreshing/loading/waiting toasts are absent, including after
+five seconds. Actionable errors remain immediate and status transitions do not
+dismiss unrelated errors. The fifteen-second transport deadline covers the whole
+response and does not prove that a server write was cancelled. Issue #236 explicitly
+revises ADR-0018's original delayed-notification/static-header presentation policy.
+
 
 ## Offline Queue
 

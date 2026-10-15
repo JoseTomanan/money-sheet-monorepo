@@ -74,7 +74,7 @@ it('keeps edits, deletes and bulk selection unaccepted when local storage refuse
   expect(adapter.deleteEntry).not.toHaveBeenCalled();
 });
 
-it('shows one notice at five seconds, carries its age into reconciliation and preserves a newer error', async () => {
+it('stays quiet beyond five seconds through delivery and reconciliation and preserves an unrelated error', async () => {
   vi.useFakeTimers();
   const write = deferred<Entry>();
   const read = deferred<Entry[]>();
@@ -84,12 +84,14 @@ it('shows one notice at five seconds, carries its age into reconciliation and pr
   await vi.advanceTimersByTimeAsync(4_999);
   expect(toast.msg).toBeNull();
   await vi.advanceTimersByTimeAsync(1);
-  expect(toast.msg).toBe('Taking longer than usual. Your changes are saved on this device.');
+  expect(toast.msg).toBeNull();
+  await vi.advanceTimersByTimeAsync(5_000);
+  expect(toast.msg).toBeNull();
   adapter.getEntries = () => read.promise;
   const confirmed = { ...payload, id: 2, row: 4, mainCategory: 'FOOD' };
   write.resolve(confirmed);
   await vi.advanceTimersByTimeAsync(0);
-  expect(toast.msg).toBe('Changes saved. Balances are still updating.');
+  expect(toast.msg).toBeNull();
   toast.show('Another operation was rejected', undefined, 'destructive');
   read.resolve([...server, confirmed]);
   await submission.completion;
@@ -185,23 +187,22 @@ it.each([1_000, 4_900])('finishes a %ims operation without a routine toast', asy
   expect((await import('./toast.svelte')).toast.msg).toBeNull();
 });
 
-it('does not repeat an expired/dismissed notice during overlapping operations or internal reads', async () => {
+it('stays quiet during overlapping operations and internal reads', async () => {
   vi.useFakeTimers();
   const first = deferred<Entry>();
   adapter.addEntry = () => first.promise;
   store.submitAddEntry(payload);
   const { toast } = await import('./toast.svelte');
   await vi.advanceTimersByTimeAsync(5_000);
-  expect(toast.msg).not.toBeNull();
-  toast.dismiss();
+  expect(toast.msg).toBeNull();
   store.submitAddEntry({ ...payload, description: 'Second' });
   await store.refreshAll(true);
   await vi.advanceTimersByTimeAsync(10_000);
   expect(toast.msg).toBeNull();
-  expect(store.syncDelayed).toBe(true);
+  expect(store.syncStatus.phase).toBe('busy');
 });
 
-it('retains a warm snapshot on read failure and cancels its delayed notice on teardown', async () => {
+it('retains a warm snapshot and stays quiet on read failure and teardown', async () => {
   vi.useFakeTimers();
   const { ConnectionError } = await import('./api');
   adapter.getEntries = async () => { throw new ConnectionError('Offline'); };
@@ -213,8 +214,9 @@ it('retains a warm snapshot on read failure and cancels its delayed notice on te
   const { toast } = await import('./toast.svelte');
   expect(toast.msg).toBeNull();
   await vi.advanceTimersByTimeAsync(5_000);
-  expect(toast.msg).toBe('Waiting to refresh. Showing your last update.');
-  expect(toast.action?.label).toBe('Retry');
+  expect(toast.msg).toBeNull();
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.action).toBe('Refresh data');
   store.dispose();
   await vi.advanceTimersByTimeAsync(10_000);
   expect(toast.msg).toBeNull();
@@ -334,7 +336,7 @@ it('a rejected replay restores the last acknowledged edit rather than an older c
   await first.completion;
 });
 
-it('discards an optional read invalidated by a rejected write without keeping a sync episode alive', async () => {
+it('discards an optional read invalidated by a rejected write without keeping status busy', async () => {
   const optional = deferred<Awaited<ReturnType<GatewayAdapter['getStats']>>>();
   adapter.getStats = () => optional.promise;
   await store.refreshAll(true);
@@ -342,5 +344,169 @@ it('discards an optional read invalidated by a rejected write without keeping a 
   await store.updateEntry(1, { amount: 99 });
   optional.resolve({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] });
   await vi.waitFor(() => expect(store.statisticsAwaitingSync).toBe(false));
-  expect(store.syncDelayed).toBe(false);
+  expect(store.syncStatus.phase).toBe('ready');
+});
+
+it('reports delivery, confirmed reconciliation, optional reads and readiness distinctly', async () => {
+  expect(store.syncStatus.phase).toBe('ready');
+  const write = deferred<Entry>();
+  const read = deferred<Entry[]>();
+  const optional = deferred<Awaited<ReturnType<GatewayAdapter['getStats']>>>();
+  adapter.addEntry = () => write.promise;
+  const submission = store.submitAddEntry(payload);
+  expect(store.syncStatus.phase).toBe('busy');
+  expect(store.syncStatus.detail).toContain('1 pending change saved on this device');
+  adapter.getEntries = () => read.promise;
+  adapter.getStats = () => optional.promise;
+  const confirmed = { ...payload, id: 2, row: 4, mainCategory: 'FOOD' };
+  write.resolve(confirmed);
+  await vi.waitFor(() => expect(store.localIds.size).toBe(0));
+  expect(store.syncStatus.phase).toBe('busy');
+  expect(store.syncStatus.detail).toContain('Confirmed in Sheets');
+  read.resolve([...server, confirmed]);
+  await submission.completion;
+  expect(store.syncStatus.phase).toBe('busy');
+  optional.resolve({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] });
+  await vi.waitFor(() => expect(store.syncStatus.phase).toBe('ready'));
+});
+
+it('settles a failed optional read red with the actual reason and recovers on refresh', async () => {
+  const optional = deferred<Awaited<ReturnType<GatewayAdapter['getStats']>>>();
+  adapter.getStats = () => optional.promise;
+  await store.refreshAll(true);
+  optional.reject(new Error('Statistics unavailable'));
+  await vi.waitFor(() => expect(store.syncStatus.phase).toBe('waiting'));
+  expect(store.syncStatus.detail).toContain('Statistics unavailable');
+  expect(store.syncStatus.detail).not.toContain('Offline');
+  adapter.getStats = async () => ({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] });
+  await store.refreshAll(true);
+  expect(store.syncStatus.phase).toBe('ready');
+});
+
+it('tracks Settings reads beyond core completion and settles after failure', async () => {
+  const settings = deferred<Awaited<ReturnType<GatewayAdapter['getConfig']>>>();
+  adapter.getConfig = () => settings.promise;
+  await store.refreshAll(true);
+  expect(store.syncStatus.phase).toBe('busy');
+  settings.reject(new Error('Settings unavailable'));
+  await vi.waitFor(() => expect(store.syncStatus.phase).toBe('waiting'));
+  expect(store.syncStatus.detail).toContain('Settings unavailable');
+});
+
+it('shows idle offline and failed delivery reasons, then reconnects through the existing queue', async () => {
+  await store.init();
+  const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+  window.dispatchEvent(new Event('offline'));
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('Offline');
+  const { UnauthorizedError } = await import('./api');
+  adapter.addEntry = async () => { throw new UnauthorizedError('Secret rejected'); };
+  online.mockReturnValue(true);
+  window.dispatchEvent(new Event('online'));
+  await store.addEntry(payload);
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('Secret rejected');
+  expect(store.syncStatus.detail).not.toContain('Offline');
+  adapter.addEntry = async saved => {
+    const entry = { ...saved, id: 2, row: 4, mainCategory: 'FOOD' };
+    server.push(entry); return entry;
+  };
+  window.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(store.syncStatus.phase).toBe('ready'));
+});
+
+it('does not claim real-sheet confirmation in Mock Mode or without a Connection', async () => {
+  store.dispose();
+  localStorage.clear();
+  vi.resetModules();
+  (await import('./api')).setAdapter(adapter);
+  store = (await import('./store.svelte')).store;
+  await store.refreshAll();
+  expect(store.syncStatus.phase).toBe('inactive');
+  expect(store.syncStatus.detail).toContain('Demo');
+  expect(store.syncStatus.detail).not.toContain('Confirmed');
+  store.dispose();
+  localStorage.setItem('ms_mock_dismissed', '1');
+  vi.resetModules();
+  store = (await import('./store.svelte')).store;
+  expect(store.syncStatus.phase).toBe('inactive');
+  expect(store.syncStatus.detail).toContain('No Connection');
+});
+
+it('invalidates status on teardown and ignores old optional completions after a Connection change', async () => {
+  const optional = deferred<Awaited<ReturnType<GatewayAdapter['getStats']>>>();
+  adapter.getStats = () => optional.promise;
+  await store.refreshAll(true);
+  store.dispose();
+  expect(store.syncStatus.phase).toBe('inactive');
+  const next = { ...adapter, getStats: async () => ({ categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] }) };
+  (await import('./api')).setAdapter(next);
+  await store.init();
+  const { setConnection } = await import('./connection.svelte');
+  setConnection({ gasUrl: 'https://new-background.example', apiSecret: 'new' });
+  await store.init();
+  await vi.waitFor(() => expect(store.syncStatus.phase).toBe('ready'));
+  optional.reject(new Error('Old destination failed'));
+  await Promise.resolve();
+  expect(store.syncStatus.phase).toBe('ready');
+  expect((await import('./toast.svelte')).toast.msg).toBeNull();
+});
+
+it('settles a partially drained queue red when a later item fails', async () => {
+  const { ConnectionError } = await import('./api');
+  adapter.addEntry = async () => { throw new ConnectionError('Unreachable'); };
+  await store.addEntry({ ...payload, description: 'First' });
+  await store.addEntry({ ...payload, description: 'Second' });
+  adapter.addEntry = async saved => {
+    if (saved.description === 'Second') throw new ConnectionError('Second delivery failed');
+    const confirmed = { ...saved, id: 2, row: 4, mainCategory: 'FOOD' };
+    server.push(confirmed); return confirmed;
+  };
+  await store.drainQueue();
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('Second delivery failed');
+  expect(store.syncStatus.action).toBe('Sync now');
+});
+
+it('settles failed demo work without claiming a real spreadsheet or shimmering forever', async () => {
+  store.dispose(); localStorage.clear(); vi.resetModules();
+  adapter.getStats = async () => { throw new Error('Demo statistics unavailable'); };
+  (await import('./api')).setAdapter(adapter);
+  store = (await import('./store.svelte')).store;
+  await store.refreshAll();
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('Demo statistics unavailable');
+  expect(store.syncStatus.detail).not.toContain('Sheets');
+});
+
+it('reports storage failure during read publication instead of claiming a confirmed refresh', async () => {
+  const getItem = Storage.prototype.getItem;
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+    if (key.startsWith('ms_queue:v2:')) throw new Error('Storage unavailable');
+    return getItem.call(this, key);
+  });
+  await store.refreshAll(true);
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('pending saves');
+  expect((await import('./toast.svelte')).toast.isError).toBe(true);
+});
+
+
+it('keeps slow read-only refresh quiet beyond the former threshold and settles failed reads', async () => {
+  vi.useFakeTimers();
+  const read = deferred<Entry[]>();
+  adapter.getEntries = () => read.promise;
+  const refresh = store.refreshAll(true);
+  const { toast } = await import('./toast.svelte');
+  await vi.advanceTimersByTimeAsync(5_001);
+  expect(store.syncStatus.phase).toBe('busy');
+  expect(toast.msg).toBeNull();
+  expect(store.master.onHand).toBe(100);
+  const { ConnectionError } = await import('./api');
+  read.reject(new ConnectionError('Read timed out'));
+  await refresh;
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(store.syncStatus.phase).toBe('waiting');
+  expect(store.syncStatus.detail).toContain('Read timed out');
+  expect(toast.msg).toBeNull();
 });

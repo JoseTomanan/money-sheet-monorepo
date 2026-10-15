@@ -129,7 +129,10 @@ for (const outcome of ['confirmed', 'failed', 'queued'] as const) {
       await expect(page.getByRole('alert')).toContainText('The change was rejected');
       await page.screenshot({ path: testInfo.outputPath('optimistic-edit-failure.png') });
     }
-    if (outcome === 'queued') await expect(page.getByRole('button', { name: 'Sync now' })).toBeVisible();
+    if (outcome === 'queued') {
+      await page.locator('.sync-status').click();
+      await expect(page.getByRole('button', { name: 'Sync now', exact: true })).toBeVisible();
+    }
     await expect(page.locator('.sheet[data-state="open"]')).toBeHidden();
   });
 
@@ -151,7 +154,10 @@ for (const outcome of ['confirmed', 'failed', 'queued'] as const) {
       await expect(page.getByRole('alert')).toContainText('The change was rejected');
     } else {
       await expect(card).toBeHidden();
-      if (outcome === 'queued') await expect(page.getByRole('button', { name: 'Sync now' })).toBeVisible();
+      if (outcome === 'queued') {
+        await page.locator('.sync-status').click();
+        await expect(page.getByRole('button', { name: 'Sync now', exact: true })).toBeVisible();
+      }
     }
   });
 }
