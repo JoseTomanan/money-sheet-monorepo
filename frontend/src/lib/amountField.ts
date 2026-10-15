@@ -8,7 +8,7 @@ import {
 
 /**
  * A named amount-input policy: sanitize (oninput), resolve (onblur), and
- * validate (disabled-button derived) always agree on whether a non-positive
+ * validate (save eligibility and payload value) always agree on whether a non-positive
  * result is acceptable, because they share one `allowNegative` choice made
  * exactly once, here.
  *
@@ -21,6 +21,7 @@ import {
 export interface AmountField {
   sanitize(raw: string): string;
   resolve(raw: string): AmountBlurResult;
+  /** Numeric value for submission, including blur's expression rounding. */
   validate(raw: string): FormulaResult;
 }
 
@@ -28,7 +29,11 @@ function amountField(allowNegative: boolean): AmountField {
   return {
     sanitize: sanitizeAmountInput,
     resolve: (raw: string) => resolveAmountOnBlur(raw, allowNegative),
-    validate: (raw: string) => evaluateAmountInput(raw, allowNegative),
+    validate: (raw: string) => {
+      const resolved = resolveAmountOnBlur(raw, allowNegative);
+      if (resolved.error) return { error: resolved.error };
+      return evaluateAmountInput(resolved.amount ?? raw, allowNegative);
+    },
   };
 }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, waitFor, fireEvent } from "@testing-library/svelte";
 import EntrySheet from "./EntrySheet.svelte";
-import type { CategoryMap, Entry } from "../../lib/types";
+import type { CategoryMap, Entry, EntryMutation } from "../../lib/types";
 
 const CATEGORIES: CategoryMap = {
   Food: ["Dining", "Groceries"],
@@ -30,6 +30,64 @@ function makeEntry(overrides: Partial<Entry> = {}): Entry {
     ...overrides,
   };
 }
+
+describe('EntrySheet — amount interpretation through submission', () => {
+  for (const mode of ['Add', 'Edit', 'Split'] as const) {
+    it(`${mode} never emits an invalid amount before or after blur`, async () => {
+      const onsave = vi.fn();
+      const view = render(EntrySheet, baseProps({ onsave, entry: mode === 'Edit' ? makeEntry() : null }));
+      if (mode !== 'Edit') {
+        await fireEvent.click(view.getByRole('button', { name: /^Food$/ }));
+        await fireEvent.click(view.getByRole('button', { name: /^Dining$/ }));
+      }
+      await fireEvent.input(view.getAllByPlaceholderText('0.00')[0], { target: { value: '10' } });
+      if (mode === 'Split') {
+        await fireEvent.click(view.getByText('Add leg'));
+        await fireEvent.click(view.getAllByRole('button', { name: /^Food$/ })[1]);
+        await fireEvent.click(view.getAllByRole('button', { name: /^Groceries$/ })[1]);
+      }
+      const input = view.getAllByPlaceholderText('0.00').at(-1)!;
+      await fireEvent.input(input, { target: { value: '=SUM(10,)' } });
+      const save = view.getByRole('button', { name: 'Save' });
+      expect(save).toBeDisabled();
+      await fireEvent.click(save);
+      await fireEvent.blur(input);
+      expect(save).toBeDisabled();
+      await fireEvent.click(save);
+      expect(onsave).not.toHaveBeenCalled();
+    });
+    it.each([['100-30', 70], ['=SUM(10,5)', 15], ['1.239+0', 1.24], ['1.234', 1.234]])(
+      `${mode} emits %s before and after blur and retains refused drafts`, async (raw, expected) => {
+        const onclose = vi.fn();
+        const onsave = vi.fn((_mutation: EntryMutation) => ({ accepted: false, completion: Promise.resolve(false) }));
+        const view = render(EntrySheet, baseProps({ onsave, onclose, entry: mode === 'Edit' ? makeEntry() : null }));
+        if (mode !== 'Edit') {
+          await fireEvent.click(view.getByRole('button', { name: /^Food$/ }));
+          await fireEvent.click(view.getByRole('button', { name: /^Dining$/ }));
+        }
+        if (mode === 'Split') {
+          await fireEvent.click(view.getByText('Add leg'));
+          await fireEvent.click(view.getAllByRole('button', { name: /^Food$/ })[1]);
+          await fireEvent.click(view.getAllByRole('button', { name: /^Groceries$/ })[1]);
+        }
+        const inputs = view.getAllByPlaceholderText('0.00');
+        for (const input of inputs) await fireEvent.input(input, { target: { value: raw } });
+        await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+        expect(onclose).not.toHaveBeenCalled();
+        for (const input of inputs) expect(input).toHaveValue(raw);
+        for (const input of inputs) await fireEvent.blur(input);
+        await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+        expect(onsave).toHaveBeenCalledTimes(2);
+        for (const [mutation] of onsave.mock.calls) {
+          if (mode === 'Edit') expect(mutation).toMatchObject({ type: 'edit', patch: { amount: expected } });
+          else expect(mutation).toMatchObject({ type: 'add', payload: mode === 'Split'
+            ? [{ amount: expected }, { amount: expected, description: '^^' }]
+            : { amount: expected } });
+        }
+      },
+    );
+  }
+});
 
 describe("EntrySheet — body scroll lock", () => {
   it("restores the existing body overflow after closing", async () => {

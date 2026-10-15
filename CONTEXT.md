@@ -6,6 +6,12 @@ A single financial transaction. One row in the INCOMING/OUTGOING sheet. Fields: 
 ## Amount Field
 A policy-bearing amount input in the frontend (`frontend/src/lib/amountField.ts`, ADR-0012): sanitizing keystrokes, resolving formulas/arithmetic on blur, and validating for save/submit are all decided by one named adapter, never a boolean threaded separately through each. Two adapters exist: `entryAmount` (manual Add/Edit Entry, either direction — accepts any sign, including zero) and `redistributionAmount` (Fund Redistribution's "Amount to move" — must be strictly positive; moving zero or less between Categories has no sensible meaning).
 
+Amount Field validation also returns the numeric submission value used by Add,
+Edit, Split Entry, and Fund Redistribution, without requiring blur first.
+Expression results use the existing two-decimal blur rounding; plain numeric text
+keeps its precision. Invalid input never produces an amount payload, and a
+Redistribution amount must remain strictly positive after rounding (issue #233).
+
 ## Split Entry
 A user-initiated group of Entries that share the same date and description, each with a different Tag and amount. Structurally identical to a series of independent single Entries — no special field or ID distinguishes them in the sheet. The first leg carries the real description; subsequent legs use `^^` as their description (a human-readable ditto marker). The app groups legs by a leading `^^` (prefix match, not exact equality), so a ditto leg's description may also continue past the marker, e.g. `^^ extra detail`. All legs are submitted together as one atomic `addEntries` batch (see ADR-0008) — either every leg lands or none does; the main leg is guaranteed the lowest Entry ID in the run.
 

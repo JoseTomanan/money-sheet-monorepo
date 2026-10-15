@@ -45,18 +45,19 @@
     }
   });
 
-  const parsedAmount = $derived(parseFloat(amount) || 0);
+  const evaluatedAmount = $derived(redistributionAmount.validate(amount));
 
   // Single source of truth for "is the typed amount acceptable" — reactive over the
   // raw string, so it catches a non-positive or malformed amount immediately, not
   // only after blur (see splitEntry.ts's validateSplit for the entry-form analogue).
   const submitDisabled = $derived(
-    !source || !target || source === target || !amount || 'error' in redistributionAmount.validate(amount)
+    !source || !target || source === target || 'error' in evaluatedAmount
   );
 
   function handleSubmit() {
-    if (saving || submitDisabled) return;
+    if (saving || submitDisabled || 'error' in evaluatedAmount) return;
     saving = true;
+    const parsedAmount = evaluatedAmount.value;
     const legs: AddEntryPayload[] = [
       { date: today, tag: source, description: '[REDISTRIBUTE]', direction: 'I', amount: -parsedAmount },
       { date: today, tag: target, description: '[REDISTRIBUTE]', direction: 'I', amount: parsedAmount },

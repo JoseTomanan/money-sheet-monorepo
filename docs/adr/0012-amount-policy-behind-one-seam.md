@@ -73,6 +73,15 @@ returns `"Invalid formula"` rather than `"Amount must be positive"`.
 
 ## Consequences
 
+Issue #233 extends the same seam through payload construction: `.validate(raw)`
+returns the numeric submission value after the existing blur normalization.
+Expressions round to two decimal places; plain numeric text keeps its precision.
+Add, Edit, Split Entry, and Fund Redistribution consume that value rather than
+parsing the raw text independently, so submission does not depend on blur order.
+Invalid amounts cannot produce payloads. Redistribution rechecks positivity after
+rounding, including when a positive expression rounds to zero. The grammar and
+the three-method adapter interface remain unchanged.
+
 - Adding a third amount-input policy (if one is ever needed) means adding a
   third named export from `amountField.ts`, not adding a new boolean
   parameter to thread through `formula.ts` and every call site.
