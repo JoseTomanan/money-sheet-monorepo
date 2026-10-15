@@ -3,6 +3,8 @@ import { render } from "@testing-library/svelte";
 import HomeScreen from "./HomeScreen.svelte";
 
 const mockStore = vi.hoisted(() => ({
+  syncStatus: { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action: 'Refresh data' },
+  retrySync: vi.fn(),
   loading: true,
   entries: [],
   master: { onHand: 0, budgets: {} as Record<string, number> },

@@ -5,6 +5,8 @@ import { currentWeekKey } from "../lib/entriesFilter.svelte";
 import EntriesView from "./EntriesView.svelte";
 
 const mockStore = vi.hoisted(() => ({
+  syncStatus: { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action: 'Refresh data' },
+  retrySync: vi.fn(),
   loading: false,
   entries: [] as Entry[],
   categories: {} as Record<string, unknown>,
@@ -18,7 +20,6 @@ const mockStore = vi.hoisted(() => ({
   addEntry: vi.fn(),
   submitDeleteEntries: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
   submitAddEntry: vi.fn(() => ({ accepted: true, completion: Promise.resolve(true) })),
-  syncCount: 0,
   syncWaiting: false,
 }));
 
@@ -264,7 +265,7 @@ describe("EntriesView local entry state (offline queue)", () => {
   });
 });
 
-describe("EntriesView Sync Now button", () => {
+describe("EntriesView sync status recovery", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-17"));
@@ -272,7 +273,9 @@ describe("EntriesView Sync Now button", () => {
     mockStore.pendingIds = new Set();
     mockStore.localIds = new Set();
     mockStore.draining = false;
-    mockStore.syncWaiting = false; mockStore.syncCount = 0;
+    mockStore.syncWaiting = false;
+    mockStore.syncStatus = { phase: 'ready', detail: 'Up to date.', action: 'Refresh data' };
+    mockStore.retrySync.mockReset();
     mockStore.drainQueue.mockReset();
   });
   afterEach(() => vi.useRealTimers());
@@ -284,23 +287,27 @@ describe("EntriesView Sync Now button", () => {
     expect(queryByRole("button", { name: /sync now/i })).not.toBeInTheDocument();
   });
 
-  it("Sync Now button is present for waiting local work", () => {
+  it("Sync Now is available in status details for waiting local work", async () => {
     const entry = makeEntry(5, "2026-05-17", "Local");
     mockStore.entries = [entry];
     mockStore.localIds = new Set([5]);
-    mockStore.syncWaiting = true; mockStore.syncCount = 1;
+    mockStore.syncWaiting = true;
+    mockStore.syncStatus = { phase: 'waiting', detail: '1 pending change saved on this device.', action: 'Sync now' };
     const { getByRole } = render(EntriesView, baseProps());
+    await fireEvent.click(getByRole("button", { name: /Sync status/ }));
     expect(getByRole("button", { name: /sync now/i })).toBeInTheDocument();
   });
 
-  it("clicking Sync Now calls store.drainQueue", async () => {
+  it("clicking Sync Now requests recovery", async () => {
     const entry = makeEntry(5, "2026-05-17", "Local");
     mockStore.entries = [entry];
     mockStore.localIds = new Set([5]);
-    mockStore.syncWaiting = true; mockStore.syncCount = 1;
+    mockStore.syncWaiting = true;
+    mockStore.syncStatus = { phase: 'waiting', detail: '1 pending change saved on this device.', action: 'Sync now' };
     const { getByRole } = render(EntriesView, baseProps());
+    await fireEvent.click(getByRole("button", { name: /Sync status/ }));
     await fireEvent.click(getByRole("button", { name: /sync now/i }));
-    expect(mockStore.drainQueue).toHaveBeenCalledOnce();
+    expect(mockStore.retrySync).toHaveBeenCalledOnce();
   });
 });
 

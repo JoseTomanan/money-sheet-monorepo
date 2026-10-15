@@ -1,6 +1,6 @@
 # ADR-0018: Durable Admission Finishes the Interaction
 
-**Status:** Accepted (issue #228)
+**Status:** Accepted (issue #228); presentation revised by issue #236 (2026-10-15)
 
 ## Context
 
@@ -21,7 +21,7 @@ submission-interface change required by #228, not completion of #224's broader
 interface exploration.
 
 The store owns optimistic presentation and eventual outcomes after forms unmount.
-Logical operations capture the Connection lifetime, accepted time, affected IDs,
+Logical operations capture the Connection lifetime, affected IDs,
 and delivery/waiting/reconciliation phase. Same-entry delivery guards and frozen
 new saves remain. Confirmation releases the interaction guard independently of
 financial reads. Revision guards retain acknowledged changes and tombstones until
@@ -51,18 +51,35 @@ authorization, storage, or definitive failure until reconnect or explicit retry.
 Already dispatched unrelated confirmed-entry requests keep their independent
 delivery semantics. New saves retain the original payload and Mutation ID.
 
-One notification episode starts with outstanding work. `SYNC_NOTICE_DELAY_MS`
-is 5,000; the full adapter request budget, `REQUEST_TIMEOUT_MS`, is 15,000,
-including response-body consumption and parsing. The soft deadline does not
-cancel delivery. Fast work produces no routine toast. Durable unresolved writes,
-confirmed writes awaiting reconciliation, read-only work, and failed waiting work
-use the issue's distinct delayed copy. Overlaps update one owned toast. Dismissal
-or expiry does not reannounce the same episode; static header status retains the
-retry path. Actionable errors take priority, and recovery dismisses only its own
-notice. Existing hover, focus, visibility, and keyboard behavior remains.
+### Presentation revision (issue #236)
+
+The maintainer explicitly replaces the original five-second owned notification
+policy and static text header control. Routine saved, syncing, refreshing, loading,
+and waiting toasts are no longer produced, regardless of duration. Actionable
+validation, authorization, storage, and definitive rejection errors retain their
+existing interaction and dismissal behavior; sync transitions never erase them.
+
+One shared header control contains a 7px glyph and opens status/recovery details
+by keyboard or touch. Static green requires usable confirmed data and no unresolved
+delivery, reconciliation, or failed reads. Blue uses the established shimmer only
+on the glyph while work is active, including optional Config and Stats reads.
+Offline or failed waiting takes precedence as static red, with the actual reason
+in the details. Reduced motion makes blue static. Demo/no-Connection states use an
+explicit inactive presentation and never claim confirmation in a real spreadsheet.
+Accessible text distinguishes saved-on-device intent from confirmed writes; an
+empty queue alone is insufficient to establish readiness. Retry uses the existing
+queue owner for unsent work and refreshes reads otherwise. There is no new polling,
+connectivity probe, queue, or delivery owner.
+
+This narrow glyph animation is intentionally authorized despite the reverted
+skeleton/radar indicator experiments (#60/#85/#86). Usable balances, budgets,
+statistics, and rows keep normal contrast and no background-sync animation. Cold
+loading, Local Entry markers, frozen guards, and stale/unavailable labels remain.
+The adapter request budget, `REQUEST_TIMEOUT_MS`, remains 15,000 including response
+consumption and parsing; timeout does not establish server-side cancellation.
 
 Connection changes, credential rotation, Mock Mode transitions, and teardown
-invalidate publication and notification lifetimes. Admission-time add scrolling
+invalidate publication and status lifetimes. Admission-time add scrolling
 also checks the initiating route and Connection before changing scroll position.
 
 ## Consequences and alternatives

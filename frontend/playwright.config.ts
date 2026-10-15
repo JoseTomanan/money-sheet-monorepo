@@ -5,7 +5,7 @@ loadEnv(); // makes VITE_GAS_URL from frontend/.env available to the test runner
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: 'connection.spec.ts',
+  testIgnore: ['connection.spec.ts', 'sync-status.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

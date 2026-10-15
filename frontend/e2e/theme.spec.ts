@@ -147,7 +147,14 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   }));
   const light = await read();
   await page.emulateMedia({ colorScheme: 'dark' });
-  await expect.poll(read).not.toEqual(light);
+  // CSS tokens and Svelte's category colors settle independently. Capture the
+  // complete dark palette rather than an intermediate frame with light stripes.
+  await expect.poll(async () => {
+    const value = await read();
+    return value.foreground !== light.foreground
+      && value.background !== light.background
+      && value.category !== light.category;
+  }).toBe(true);
   const dark = await read();
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();

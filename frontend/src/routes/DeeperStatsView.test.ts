@@ -3,6 +3,8 @@ import { render, fireEvent } from "@testing-library/svelte";
 import DeeperStatsView from "./DeeperStatsView.svelte";
 
 const mockStore = vi.hoisted(() => ({
+  syncStatus: { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action: 'Refresh data' },
+  retrySync: vi.fn(),
   config: { currency: "₱" },
   stats: {
     categoryMonthChange: [] as Array<{ category: string; incoming: number; outgoing: number; netChange: number }>,

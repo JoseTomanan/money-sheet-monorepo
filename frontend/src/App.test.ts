@@ -11,6 +11,8 @@ const mockConnection = vi.hoisted(() => ({
 }));
 const mockMockMode = vi.hoisted(() => ({ current: false }));
 const mockStore = vi.hoisted(() => ({
+  syncStatus: { phase: 'ready', detail: 'Up to date. Confirmed data from Sheets.', action: 'Refresh data' },
+  retrySync: vi.fn(),
   loading: false,
   error: null as string | null,
   errorIsConnection: false,
