@@ -98,3 +98,42 @@ also checks the initiating route and Connection before changing scroll position.
 
 Validation uses deferred adapters, fake timers, persistence refusal, lifetime
 isolation, cache/reload regressions, and intercepted-network browser scenarios.
+
+## Entry submission interface review (issue #224)
+
+The review after #228 and #223 retains the existing interface. `EntryMutation`
+already preserves single/batch Add payloads and Edit identity/patches. App's
+`handleSave` routes those variants to `submitAddEntry`/`submitUpdateEntry`, each
+returning `EntrySubmission`. EntrySheet reads only `accepted` and the optional
+admission `error`; it never branches on Promise versus submission return shape or
+awaits `completion`. App uses admission only for route/Connection-guarded Add
+scrolling. Delete, bulk selection, and Fund Redistribution use the same contract.
+
+The remaining problem was insufficiently documented completion semantics and
+coverage split between callback-only component tests and store tests. A resolved
+`true` completion includes work retained for replay, not just confirmed writes.
+`false` includes refusal, definitive rejection, and an obsolete Connection
+lifetime. An immediately owned core reconciliation may delay completion, and
+completion does not guarantee optional reads or future replay. The type now
+documents those limits beside each field.
+
+The Promise-only `addEntry`, `updateEntry`, `deleteEntry`, and `deleteEntries`
+helpers remain useful to tests and browser fixtures that deliberately await the
+initial outcome/reconciliation. No production UI caller uses them. They delegate
+to the submission methods and add no delivery ownership. Removing them would
+change those consumers without reducing knowledge at the interaction boundary.
+No new wrapper, submission dispatcher, result union, or delivery owner is needed.
+
+Evidence for retaining the seam:
+
+| Behavior | Evidence |
+|---|---|
+| Accepted Add/Split/Edit close during unresolved completion; repeated Save is latched | `frontend/src/components/entry/EntrySheet.test.ts`, in-flight save latch tests |
+| Real storage refusal surfaces an admission error, retains the draft, permits retry; later definitive failure rolls back after unmount | `frontend/src/components/entry/EntrySheet.submission.test.ts`, Add/Split/Edit refusal and rollback cases |
+| Ambiguous delivery retains the admitted payload/key, freezes new saves, and replays through the existing owner | Same integration test file, Add/Split/Edit ambiguous delivery cases |
+| App wiring dismisses Add/Split once, before delivery; later confirmation, rejection, or queuing never reopens it | `frontend/e2e/optimistic.spec.ts`, Add/Split admission matrix; existing Edit outcome matrix |
+| Confirmation releases guards before required reads; optional reads do not gate core completion | `frontend/src/lib/backgroundSync.test.ts` and `frontend/e2e/background-sync.spec.ts` |
+| Amount policies, atomic batching, Mutation IDs, frozen saves, and Connection lifetime isolation | Existing `amountField`, `entryForm.svelte`, `queue`, `optimisticEntries`, `connectionLifetime`, and parity test suites |
+
+These are local component/store and Mock Mode browser checks. They do not claim
+live Sheets validation or authorize live writes.

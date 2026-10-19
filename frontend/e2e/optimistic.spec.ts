@@ -10,14 +10,20 @@ async function switchTab(page: Page, label: "Home" | "Entries" | "Summary") {
   await page.locator(".tab-bar-pill").getByRole("button", { name: label }).click();
 }
 
-async function holdMockAdds(page: Page) {
-  await page.evaluate(async () => {
+async function holdMockAdds(page: Page, outcome: 'confirmed' | 'failed' | 'queued' = 'confirmed') {
+  await page.evaluate(async outcome => {
     const modulePath = "/money-sheet-monorepo/src/lib/api.ts";
     const api = await import(modulePath);
     const base = api.gateway() as GatewayAdapter;
     const waitForRelease = () => new Promise<void>((resolve) => {
       window.addEventListener("release-e2e-add", () => resolve(), { once: true });
     });
+    const finish = async <T>(run: () => Promise<T>): Promise<T> => {
+      await waitForRelease();
+      if (outcome === 'failed') throw new Error('The save was rejected');
+      if (outcome === 'queued') throw new api.ConnectionError('Delivery timed out');
+      return run();
+    };
 
     api.setAdapter({
       getEntries: () => base.getEntries(),
@@ -26,18 +32,16 @@ async function holdMockAdds(page: Page) {
       getConfig: () => base.getConfig(),
       getStats: () => base.getStats(),
       addEntry: async (payload: AddEntryPayload, mutationId?: string) => {
-        await waitForRelease();
-        return base.addEntry(payload, mutationId);
+        return finish(() => base.addEntry(payload, mutationId));
       },
       addEntries: async (payloads: AddEntryPayload[], mutationId?: string) => {
-        await waitForRelease();
-        return base.addEntries(payloads, mutationId);
+        return finish(() => base.addEntries(payloads, mutationId));
       },
       updateEntry: (id: number, patch: UpdateEntryPatch) => base.updateEntry(id, patch),
       deleteEntry: (id: number) => base.deleteEntry(id),
       validateConnection: (gasUrl: string, apiSecret: string) => base.validateConnection(gasUrl, apiSecret),
     });
-  });
+  }, outcome);
 }
 
 async function holdMockChanges(page: Page, outcome: 'confirmed' | 'failed' | 'queued' = 'confirmed') {
@@ -100,6 +104,10 @@ async function addEntryViaUi(
   await page.locator(".tag-pill", { hasText: opts.tag }).first().click();
   await page.locator("button.header-btn.save").click();
   await page.locator('.sheet[data-state="open"]').waitFor({ state: "detached" });
+  // This helper seeds a confirmed Entry for the next Edit/Delete interaction.
+  // Wait for both the closing overlay and the temporary row to finish first.
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  await expect(page.locator('.entry-card', { hasText: opts.description }).locator('[data-local-indicator]')).toHaveCount(0);
   await waitForAppReady(page);
 }
 
@@ -188,6 +196,59 @@ test('bulk confirmation hides selected entries and finishes selection before req
   await expect(page.locator('.entry-card', { hasText: 'Pending bulk' })).toHaveCount(2);
   await expect(page.getByRole('alert')).toContainText('Failed to delete 2 entries');
 });
+
+for (const mode of ['Add', 'Split'] as const) {
+  for (const outcome of ['confirmed', 'failed', 'queued'] as const) {
+    test(`${mode} admits once, closes during delivery, and handles a later ${outcome} outcome`, async ({ page }) => {
+      await holdMockAdds(page, outcome);
+      await switchTab(page, 'Entries');
+      await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+      const description = `${mode} submission ${outcome}`;
+      await page.locator('.amount-input').fill('42');
+      await page.locator('.field-input').first().fill(description);
+      await page.getByRole('button', { name: 'FOOD', exact: true }).click();
+      await page.getByRole('button', { name: 'Dining', exact: true }).click();
+      if (mode === 'Split') {
+        await page.getByText('Add leg', { exact: true }).click();
+        await page.getByRole('button', { name: 'FOOD', exact: true }).nth(1).click();
+        await page.getByRole('button', { name: 'Groceries', exact: true }).nth(1).click();
+        await page.locator('.amount-input').nth(1).fill('8');
+      }
+      await page.evaluate(() => {
+        const save = document.querySelector<HTMLButtonElement>('button.header-btn.save')!;
+        save.click();
+        save.click();
+      });
+      await expect(page.locator('.sheet[data-state="open"]')).toHaveCount(0);
+      const card = page.locator('.entry-card', { hasText: description });
+      await expect(card).toBeVisible();
+      await expect(card.locator('[data-local-indicator]').first()).toBeVisible();
+      const pending = () => page.evaluate(async () => {
+        const path = '/money-sheet-monorepo/src/lib/queue.ts';
+        return JSON.parse(JSON.stringify((await import(path)).readQueue()));
+      });
+      const admitted = await pending();
+      expect(admitted).toHaveLength(1);
+      expect(admitted[0].op).toBe(mode === 'Split' ? 'addBatch' : 'add');
+      expect(admitted[0].mutationId).toEqual(expect.any(String));
+      if (mode === 'Split') expect(admitted[0].payloads.map((leg: AddEntryPayload) => leg.amount)).toEqual([42, 8]);
+      await page.evaluate(() => window.dispatchEvent(new Event('release-e2e-add')));
+      if (outcome === 'failed') {
+        await expect(card).toHaveCount(0);
+        await expect(page.getByRole('alert')).toContainText('The save was rejected');
+        expect(await pending()).toEqual([]);
+      } else if (outcome === 'queued') {
+        await expect(page.locator('.sync-status')).toHaveAttribute('data-sync-phase', 'waiting');
+        expect(await pending()).toEqual(admitted);
+        await expect(card.locator('[data-local-indicator]').first()).toBeVisible();
+      } else {
+        await expect(card.locator('[data-local-indicator]')).toHaveCount(0);
+        expect(await pending()).toEqual([]);
+      }
+      await expect(page.locator('.sheet[data-state="open"]')).toHaveCount(0);
+    });
+  }
+}
 
 test("Add Entry closes while its optimistic row is still synchronizing", async ({ page }) => {
   const desc = `pending-add-${Date.now()}`;

@@ -42,11 +42,18 @@ export type EntryMutation =
   | { type: 'add'; payload: AddEntryPayload | AddEntryPayload[] }
   | { type: 'edit'; id: number; patch: UpdateEntryPatch };
 
-/** Durable acceptance is synchronous. The store owns delivery, replay, and reconciliation;
- * completion reports this submission?s initial outcome and any immediately owned core read. */
+/** One interaction contract for Add, Split, Edit, and Delete (ADR-0018).
+ * The store owns delivery, replay, rollback, and reconciliation after dismissal. */
 export interface EntrySubmission {
+  /** Intent was persisted on this device (ephemerally in Mock Mode).
+   * Close on acceptance without awaiting completion; this is not a Sheets acknowledgment. */
   accepted: boolean;
+  /** Admission refusal only. Keep the draft/selection and allow retry. */
   error?: string;
+  /** Initial outcome, including any core reconciliation immediately owned by it.
+   * true: confirmed OR retained for replay; false: refused, definitively rejected,
+   * or its Connection lifetime became obsolete. Not a delivery receipt or a promise
+   * that later replay/optional reads succeeded. Never use this as a dismissal gate. */
   completion: Promise<boolean>;
 }
 
