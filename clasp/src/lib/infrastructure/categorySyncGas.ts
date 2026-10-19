@@ -2,7 +2,7 @@
  * onEdit trigger for the Categories sheet: detects a Subcategory rename or
  * delete and propagates it into INCOMING/OUTGOING so existing entries
  * aren't orphaned (issue #126, building on #123's bare-Category recovery
- * path). Decision logic lives in infrastructure/categorySync.ts (unit-tested); this
+ * path). Decision and recovery policy lives in application/categorySync.ts; this
  * file only wires real SpreadsheetApp / LockService / PropertiesService /
  * ScriptApp collaborators into it. Not unit-testable — verify against a
  * real deployment.
@@ -11,8 +11,8 @@
 import {
   decodePendingSync,
   encodePendingSync,
-  retryCategorySync,
-  runCategorySync,
+  retryCategorySyncSheet,
+  runCategorySyncSheet,
   type CategoryRow,
 } from "./categorySync";
 import type { CategoryEditEventData } from "../application/categorySync";
@@ -50,7 +50,7 @@ function withDocumentLock<T>(fn: () => T): T {
 export function applyCategorySyncEdit(edit: CategoryEditEventData): void {
   const props = PropertiesService.getScriptProperties();
 
-  runCategorySync({
+  runCategorySyncSheet({
     edit: {
       isCategoriesSheet: edit.sheetName === SHEET_LAYOUT.categories.name,
       column: edit.column,
@@ -85,7 +85,7 @@ export function retryLastCategorySync(): void {
   const props = PropertiesService.getScriptProperties();
   const pending = decodePendingSync(props.getProperty(PENDING_CATEGORY_SYNC_KEY));
 
-  retryCategorySync({
+  retryCategorySyncSheet({
     pending,
     repo: liveIoRepository(),
     ui: SpreadsheetApp.getUi(),

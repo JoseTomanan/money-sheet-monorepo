@@ -1,6 +1,12 @@
 # ADR-0010: onEdit Trigger Syncs Subcategory Rename/Delete into INCOMING/OUTGOING
 
-**Status:** Accepted
+**Status:** Accepted; ownership and failure recovery extended by [ADR-0019](0019-category-sync-recovery-owner.md).
+
+The original implementation paths below are historical. Current decisions and
+recovery live in `clasp/src/lib/application/categorySync.ts`; sheet adapters live
+in `clasp/src/lib/infrastructure/categorySync.ts` and `categorySyncGas.ts`.
+ADR-0019 distinguishes lock refusal from interrupted application and defines
+retry convergence without rollback.
 
 ## Context
 

@@ -146,6 +146,18 @@ The Subcategory-to-Category mapping table. Column B = Subcategory name, Column C
 
 An optional installable `onEdit` trigger (`installCategorySyncTrigger`, under the "Categories" menu — not installed by default or by Connection bootstrap) detects a single-cell rename or delete of a Subcategory name (col B) and, after a Yes/No confirmation naming the affected entry count, bulk-rewrites the matching Outgoing Tags in INCOMING/OUTGOING: to the new name on a rename, or to the bare parent Category on a delete (reusing the #123 bare-Category-tag mechanism, not a new "Uncategorized" bucket). A rename whose new name collides with any existing Subcategory or top-level Category name is blocked before any confirmation. **Detection is limited to single-cell edits to col B** — GAS's `onEdit` event has no `oldValue`/`old value` for whole-row deletes or multi-cell paste, so those fire no propagation at all; this is an accepted limitation, not a bug (see ADR-0010). Reparenting a Subcategory (editing col C) is a no-op — col D's VLOOKUP already re-resolves automatically. If the shared document lock (ADR-0009) can't be acquired in time, the pending propagation is stashed and can be re-run via the "Retry last category sync" menu item.
 
+Category sync decisions and recovery belong to the application module
+(`clasp/src/lib/application/categorySync.ts`, ADR-0019). Lock refusal before work
+starts reports `deferred`; an exception after work starts reports `interrupted`
+and warns that some Tags may already have changed. Both retain the original
+old Tag to new Tag mapping in the one pending retry. Retry confirms the remaining
+matching Outgoing count, rereads and retags under the shared lock, and clears its
+record only after successful completion, including zero remaining matches.
+Decline and repeated failure preserve pending work. There is no rollback promise;
+hard GAS termination or failure to persist the pending record can prevent recovery.
+A deletion without a resolvable parent Category is blocked rather than writing blank
+Tags. Sheet coordinates, merged-cell interpretation, and dialogs stay in adapters.
+
 ### Config sheet
 A 2-column key-value sheet (Column A = key, Column B = value). Holds user-configurable app settings that are spreadsheet-scoped rather than device-scoped. Read by the `getConfig` GAS action and surfaced to the frontend as a flat `Record<string, string>`. Known keys: `currency` (currency symbol, default `₱`), `nickname` (display name, default empty), `week_start` (first day of the week, `"Sunday"` or `"Monday"`, default `"Sunday"`). Constrained-choice keys use Google Sheets dropdown chip validation on the value cell. The frontend falls back to defaults when a key is absent or the sheet doesn't exist (legacy spreadsheets). The maintained template includes this sheet; Connection bootstrap never creates or seeds it.
 

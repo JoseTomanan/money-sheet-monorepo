@@ -7,8 +7,8 @@ import {
   findNameCollision,
   encodePendingSync,
   decodePendingSync,
-  runCategorySync,
-  retryCategorySync,
+  runCategorySyncSheet as runCategorySync,
+  retryCategorySyncSheet as retryCategorySync,
 } from "./infrastructure/categorySync";
 
 /**
@@ -542,4 +542,31 @@ describe("retryCategorySync", () => {
     expect(restash).toHaveBeenCalledWith(pending);
     expect(alert).toHaveBeenCalledTimes(2); // confirmation, then lock-failure notice
   });
+});
+
+it.each(["edit", "retry"] as const)("%s explains interrupted writes and retains retry work", (source) => {
+  const pending = { kind: "rename" as const, oldValue: "Dining", newTag: "Dining Out" };
+  const alert = vi.fn(() => "YES");
+  const stash = vi.fn();
+  const clearStash = vi.fn();
+  const deps = {
+    repo: {
+      readRows: () => [["2026-10-20", "Dining", "FOOD", "Lunch", "O", 100, 1]],
+      writeEntryFields: () => { throw new Error("write failed"); },
+    },
+    ui: { alert, Button: { YES: "YES" }, ButtonSet: { YES_NO: "YES_NO" } },
+    withLock: <T>(work: () => T): T => work(),
+  };
+  if (source === "edit") {
+    runCategorySync({ ...deps, stash,
+      edit: { isCategoriesSheet: true, column: 2, row: 2, numRows: 1, numCols: 1,
+        oldValue: "Dining", value: "Dining Out" },
+      getCatData: () => [["Dining Out", "FOOD"]],
+    });
+  } else {
+    retryCategorySync({ ...deps, pending, restash: stash, clearStash });
+  }
+  expect(stash).toHaveBeenCalledWith(pending);
+  expect(clearStash).not.toHaveBeenCalled();
+  expect(alert).toHaveBeenLastCalledWith(expect.stringContaining("Some Tags may already have changed"));
 });

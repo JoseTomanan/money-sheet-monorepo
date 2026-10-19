@@ -4,13 +4,21 @@
  * gives an orphaned tag a manual recovery path; this trigger keeps most
  * entries from ever needing it). Pure logic only — no SpreadsheetApp /
  * LockService / PropertiesService calls, so it's unit-testable with vitest.
- * The GAS-facing glue (onEdit binding, trigger install, lock acquisition,
- * property stash) lives in 6_category_sync.ts.
+ * Coordinates and row operations live here; application/categorySync.ts owns
+ * decisions and recovery. categorySyncGas.ts supplies the GAS services.
  */
 
 import { isSeparatorRow, type IoRow, type IoRepository } from "./entryRepository";
 import { columnIndexWithinRange, SHEET_LAYOUT } from "./sheetLayout";
-import { applyCategorySync } from "../application/categorySync";
+import {
+  runCategorySync,
+  retryCategorySync,
+  type CategorySyncChange,
+  type CategorySyncResult,
+  type CategorySyncCatalog,
+  classifyCategoryChange,
+  categoryNameCollision,
+} from "../application/categorySync";
 
 // 1-based column of the Categories sheet's Subcategory field. Renames/deletes
 // are only ever detected on this column — col C (parent Category) edits are a
@@ -31,26 +39,7 @@ export type CategoryEditClassification =
   | { kind: "delete"; oldValue: string };
 
 export function classifyCategoryEdit(input: CategoryEditInput): CategoryEditClassification {
-  const isSingleCell = input.numRows === 1 && input.numCols === 1;
-  if (
-    !input.isCategoriesSheet ||
-    input.column !== SHEET_LAYOUT.categories.columns.subcategory ||
-    input.row < SHEET_LAYOUT.categories.rows.dataFirst ||
-    !isSingleCell
-  ) {
-    return { kind: "ignore" };
-  }
-
-  const oldValue = (input.oldValue ?? "").trim();
-  const value = (input.value ?? "").trim();
-
-  if (oldValue !== "" && value !== "" && oldValue !== value) {
-    return { kind: "rename", oldValue, newValue: value };
-  }
-  if (oldValue !== "" && value === "") {
-    return { kind: "delete", oldValue };
-  }
-  return { kind: "ignore" };
+  return classifyCategoryChange({ ...input, isSubcategoryCell: isSubcategoryCell(input) });
 }
 
 // catData rows: [Subcategory, Category]. catData[i] maps from
@@ -117,36 +106,7 @@ export function findNameCollision(
   catData: CategoryRow[],
   row: number
 ): NameCollision | null {
-  const ownIndex = row - SHEET_LAYOUT.categories.rows.dataFirst;
-  let currentCategory = "";
-  const categories = new Set<string>();
-  let collidingParent: string | null = null;
-
-  for (let i = 0; i < catData.length; i++) {
-    const subcategory = String(
-      catData[i][columnIndexWithinRange(
-        SHEET_LAYOUT.categories.columns.subcategory,
-        SHEET_LAYOUT.categories.columns.subcategory,
-      )] ?? "",
-    ).trim();
-    const categoryCell = String(
-      catData[i][columnIndexWithinRange(
-        SHEET_LAYOUT.categories.columns.category,
-        SHEET_LAYOUT.categories.columns.subcategory,
-      )] ?? "",
-    ).trim();
-    if (categoryCell !== "") currentCategory = categoryCell;
-    if (currentCategory !== "") categories.add(currentCategory);
-    if (i !== ownIndex && subcategory === newName) collidingParent = currentCategory;
-  }
-
-  if (categories.has(newName)) {
-    return { message: `'${newName}' already exists as a top-level Category — rename aborted` };
-  }
-  if (collidingParent !== null) {
-    return { message: `'${newName}' already exists under ${collidingParent} — rename aborted` };
-  }
-  return null;
+  return categoryNameCollision(newName, categoryCatalog(catData, row));
 }
 
 /**
@@ -174,15 +134,11 @@ export function retagOutgoingRows(
 
 /**
  * The one stashed pending propagation retried by "Retry last category sync"
- * when the DocumentLock couldn't be acquired in time. Rename and delete both
+ * after lock refusal or interrupted application. Rename and delete both
  * collapse to "retag oldValue -> newTag" (delete's newTag is the resolved
  * parent Category) so retryCategorySync doesn't need to re-derive it.
  */
-export interface PendingCategorySync {
-  kind: "rename" | "delete";
-  oldValue: string;
-  newTag: string;
-}
+export type PendingCategorySync = CategorySyncChange;
 
 /** Script Properties only store strings — JSON-encodes the stashed pending propagation. */
 export function encodePendingSync(pending: PendingCategorySync): string {
@@ -202,39 +158,54 @@ export interface SyncUi {
   ButtonSet: { YES_NO: unknown };
 }
 
-const LOCK_FAILURE_MESSAGE =
-  'Couldn\'t sync right now — it will be retried via "Retry last category sync".';
-
-/**
- * Shared tail of both runCategorySync and retryCategorySync: count affected
- * rows, confirm, and on YES retag under the caller's document lock
- * (ADR-0009). On a lock-acquisition failure, calls onLockFailure to stash
- * the pending propagation instead of partially applying it (issue #126),
- * rather than leaving it applied halfway.
- */
-function confirmAndRetag(
-  deps: { repo: Pick<IoRepository, "readRows" | "writeEntryFields">; ui: SyncUi; withLock<T>(fn: () => T): T },
-  kind: PendingCategorySync["kind"],
-  oldValue: string,
-  newTag: string,
-  confirmPrompt: string,
-  onLockFailure: () => void,
-  onSuccess?: () => void
-): void {
-  const result = applyCategorySync({
-    change: { kind, oldValue, newTag },
-    count: (tag) => countMatchingOutgoingTags(deps.repo.readRows(), tag),
-    confirm: (count) => deps.ui.alert(
-      `${confirmPrompt} This will update ${count} entries.`,
-      deps.ui.ButtonSet.YES_NO,
-    ) === deps.ui.Button.YES,
-    transact: deps.withLock,
-    retag: (oldTag, replacement) => retagOutgoingRows(deps.repo, oldTag, replacement),
-    onLockFailure: () => onLockFailure(),
+/** Translate merged cells into a semantic catalog; the application decides policy. */
+function categoryCatalog(catData: CategoryRow[], row: number): CategorySyncCatalog {
+  let parent = "";
+  const categories = new Set<string>();
+  const otherSubcategories: CategorySyncCatalog["otherSubcategories"] = [];
+  catData.forEach((cells, index) => {
+    const category = String(cells[columnIndexWithinRange(
+      SHEET_LAYOUT.categories.columns.category, SHEET_LAYOUT.categories.columns.subcategory,
+    )] ?? "").trim();
+    if (category) parent = category;
+    if (parent) categories.add(parent);
+    if (index !== row - SHEET_LAYOUT.categories.rows.dataFirst) {
+      otherSubcategories.push({ name: String(cells[columnIndexWithinRange(
+        SHEET_LAYOUT.categories.columns.subcategory, SHEET_LAYOUT.categories.columns.subcategory,
+      )] ?? "").trim(), parent });
+    }
   });
-  if (result.status === "applied") onSuccess?.();
+  return { parentCategory: parentCategoryForRow(catData, row), categories: [...categories], otherSubcategories };
+}
+
+function syncPorts(deps: {
+  repo: Pick<IoRepository, "readRows" | "writeEntryFields">;
+  ui: SyncUi;
+  withLock<T>(fn: () => T): T;
+}, savePending: (change: PendingCategorySync) => void) {
+  return {
+    count: (tag: string) => countMatchingOutgoingTags(deps.repo.readRows(), tag),
+    confirm: (change: CategorySyncChange, count: number, retry: boolean) => {
+      const { oldValue, newTag } = change;
+      const prompt = retry ? `Retry syncing "${oldValue}" to "${newTag}"?`
+        : change.kind === "rename" ? `Rename "${oldValue}" to "${newTag}"?`
+        : `Delete "${oldValue}"? Its entries will be reassigned to "${newTag}".`;
+      return deps.ui.alert(`${prompt} This will update ${count} entries.`, deps.ui.ButtonSet.YES_NO) === deps.ui.Button.YES;
+    },
+    transact: deps.withLock,
+    retag: (oldTag: string, replacement: string) => retagOutgoingRows(deps.repo, oldTag, replacement),
+    savePending,
+  };
+}
+
+function reportSyncResult(ui: SyncUi, result: CategorySyncResult): void {
+  if (result.status === "blocked") ui.alert(result.message);
+  if (result.status === "empty") ui.alert("No pending category sync to retry.");
   if (result.status === "deferred") {
-    deps.ui.alert(LOCK_FAILURE_MESSAGE);
+    ui.alert('Could not acquire the document lock. No Tags were changed by this attempt. Use "Retry last category sync".');
+  }
+  if (result.status === "interrupted") {
+    ui.alert('Category sync was interrupted. Some Tags may already have changed. Use "Retry last category sync" to finish the remaining entries.');
   }
 }
 
@@ -247,35 +218,26 @@ export interface RunCategorySyncDeps {
   stash(pending: PendingCategorySync): void;
 }
 
-/**
- * The full onEdit-fired flow: classify -> (rename) collision guard -> confirm
- * -> on YES, retag under the caller's document lock (ADR-0009).
- */
-export function runCategorySync(deps: RunCategorySyncDeps): void {
-  const classification = classifyCategoryEdit(deps.edit);
-  if (classification.kind === "ignore") return;
+function isSubcategoryCell(edit: CategoryEditInput): boolean {
+  return edit.isCategoriesSheet
+    && edit.column === SHEET_LAYOUT.categories.columns.subcategory
+    && edit.row >= SHEET_LAYOUT.categories.rows.dataFirst
+    && edit.numRows === 1 && edit.numCols === 1;
+}
 
-  const catData = deps.getCatData();
-  const oldValue = classification.oldValue;
-  let newTag: string;
-  let confirmPrompt: string;
-
-  if (classification.kind === "rename") {
-    const collision = findNameCollision(classification.newValue, catData, deps.edit.row);
-    if (collision) {
-      deps.ui.alert(collision.message);
-      return;
-    }
-    newTag = classification.newValue;
-    confirmPrompt = `Rename "${oldValue}" to "${newTag}"?`;
-  } else {
-    newTag = parentCategoryForRow(catData, deps.edit.row) ?? "";
-    confirmPrompt = `Delete "${oldValue}"? Its entries will be reassigned to "${newTag}".`;
-  }
-
-  confirmAndRetag(deps, classification.kind, oldValue, newTag, confirmPrompt, () =>
-    deps.stash({ kind: classification.kind, oldValue, newTag })
-  );
+/** Map sheet coordinates and render the application's outcome. */
+export function runCategorySyncSheet(deps: RunCategorySyncDeps): void {
+  const edit = deps.edit;
+  const result = runCategorySync({
+    ...syncPorts(deps, deps.stash),
+    edit: {
+      isSubcategoryCell: isSubcategoryCell(edit),
+      oldValue: edit.oldValue,
+      value: edit.value,
+    },
+    getCatalog: () => categoryCatalog(deps.getCatData(), edit.row),
+  });
+  reportSyncResult(deps.ui, result);
 }
 
 export interface RetryCategorySyncDeps {
@@ -287,25 +249,10 @@ export interface RetryCategorySyncDeps {
   restash(pending: PendingCategorySync): void;
 }
 
-/**
- * Re-attempts exactly the one stashed pending propagation — not a general
- * re-diff of the Categories sheet (issue #126 explicitly scopes this to a
- * single retry of the last thing that failed to acquire the lock).
- */
-export function retryCategorySync(deps: RetryCategorySyncDeps): void {
-  const pending = deps.pending;
-  if (pending === null) {
-    deps.ui.alert("No pending category sync to retry.");
-    return;
-  }
-
-  confirmAndRetag(
-    deps,
-    pending.kind,
-    pending.oldValue,
-    pending.newTag,
-    `Retry syncing "${pending.oldValue}" to "${pending.newTag}"?`,
-    () => deps.restash(pending),
-    deps.clearStash
-  );
+export function retryCategorySyncSheet(deps: RetryCategorySyncDeps): void {
+  reportSyncResult(deps.ui, retryCategorySync({
+    ...syncPorts(deps, deps.restash),
+    pending: deps.pending,
+    clearPending: deps.clearStash,
+  }));
 }
