@@ -2,6 +2,11 @@ import type { Entry, MasterRow, CategoryMap, Config, StatsData } from './types';
 import { financialScope, scopedKey } from './financialScope';
 
 export interface CachePayload {
+  // Metadata-only records never claim a confirmed financial baseline.
+  financialAvailable?: boolean;
+  categoriesAvailable?: boolean;
+  categoriesFetchedAt?: number;
+  configFetchedAt?: number;
   lastUpdated?: number;
   statsStale?: boolean;
   statsAvailable?: boolean;

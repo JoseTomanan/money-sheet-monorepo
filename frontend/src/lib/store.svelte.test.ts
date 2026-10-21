@@ -1569,7 +1569,9 @@ describe("financial sheet read failures (#232)", () => {
     expect(store.hasStats).toBe(false);
     expect(store.error).toContain('Financial data unavailable');
     expect(store.syncStatus.phase).toBe('waiting');
-    expect(localStorage.getItem(scopedKey('ms_cache', 'https://fake.example'))).toBeNull();
+    const cache = JSON.parse(localStorage.getItem(scopedKey('ms_cache', 'https://fake.example'))!);
+    expect(cache.financialAvailable).toBe(false);
+    expect(cache.config.currency).toBe('\u20b1');
   });
 
   it("keeps core data usable when a legacy spreadsheet has no STATS", async () => {

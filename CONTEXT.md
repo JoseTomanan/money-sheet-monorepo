@@ -109,6 +109,18 @@ response and does not prove that a server write was cancelled. Issue #236 explic
 revises ADR-0018's original delayed-notification/static-header presentation policy.
 
 
+Categories and Config have independent five-minute freshness measured from their
+own successful responses, persisted by exact Connection URL. Startup and routine
+financial reconciliation reuse fresh metadata; Entry saves do not invalidate it.
+Missing/expired metadata is fetched on the next existing refresh trigger, without
+polling. Direct Sheet edits are discovered on that refresh after expiry, or through
+**Refresh data** in the status details, which bypasses freshness and joins pending
+reads. With pending writes it retains that intent through the existing queue owner.
+Failures retain confirmed metadata and expose recovery; previously loaded Categories
+do not block financial reconciliation. An unloaded Categories map is unavailable,
+while a successfully fetched empty map is confirmed. Metadata publication is guarded
+by the Connection lifetime, independently of Entry revisions (ADR-0018, issue #245).
+
 ## Offline Queue
 
 Queues and cached financial snapshots are destination-scoped under `ms_queue:v2:<JSON URL>` and `ms_cache:v2:<JSON URL>`. Returning to the exact URL restores its own work with original Mutation IDs. Mock Mode uses ephemeral work and never consumes real queues or writes real snapshots. Unknown-origin legacy `ms_queue` bytes are retained in one quarantine, excluded from automatic delivery and display; Settings requires explicit confirmation of their original saved URL before association. Unknown-origin legacy cache is never displayed. The `ms_queue_legacy_owner` recovery journal makes confirmed association resumable after interruption (ADR-0017).

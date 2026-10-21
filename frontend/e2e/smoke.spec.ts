@@ -71,7 +71,7 @@ test("Summary tab shows Funds health and Category values", async ({ page }) => {
     await expect(page.getByText(category, { exact: true })).toBeVisible();
   }
   await expect(page.getByText("₱2,351.00", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("₱4,290.00", { exact: true })).toBeVisible();
+  await expect(page.locator(".envelope-row", { hasText: "Food" }).getByText("₱4,290.00", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Spending pace", { exact: true })).toBeVisible();
 });
 

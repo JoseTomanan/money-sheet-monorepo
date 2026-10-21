@@ -2,6 +2,7 @@ import { createMutationId } from './mutationId';
 import { connection, mockMode, onConnectionChange } from './connection.svelte';
 import { captureGateway, isAuthError, isQueueable } from './api';
 import { loadSnapshot, saveSnapshot } from './cacheSync';
+import { metadataIsFresh } from './metadataFreshness';
 import { toast } from './toast.svelte';
 import { buildEntry, getMainCategory } from './domain';
 import { queueFor, QueuePersistenceError, hasLegacyWork, associateLegacyWork } from './queue';
@@ -24,9 +25,18 @@ let readFailed = $state(false);
 let coreReadFailed = $state(false);
 let readFailure = $state('');
 let statsPending = $state(false);
-let configPending = $state(false);
+type MetadataResource = 'categories' | 'config';
+function emptyMetadata() {
+  return {
+    categories: { loaded: false, fetchedAt: undefined as number | undefined, pending: false, failure: '', rejection: null as PromiseRejectedResult | null },
+    config: { loaded: false, fetchedAt: undefined as number | undefined, pending: false, failure: '', rejection: null as PromiseRejectedResult | null },
+  };
+}
+let metadata = $state(emptyMetadata());
+let metadataRequests: Partial<Record<MetadataResource, Promise<void>>> = {};
+let forceMetadata = false;
 function resetSyncStatus() {
-  readFailed = false; coreReadFailed = false; readFailure = ''; statsPending = false; configPending = false;
+  readFailed = false; coreReadFailed = false; readFailure = ''; statsPending = false; metadata = emptyMetadata(); metadataRequests = {}; forceMetadata = false;
 }
 
 let entries = $state<Entry[]>([]);
@@ -48,7 +58,7 @@ let activeRefresh: { lifetime: number; completion: Promise<void> } | null = null
 let refreshDirty = false;
 interface Operation { ids: Set<number>; deletion: boolean; phase: 'delivery' | 'waiting' | 'reconciliation'; failed: boolean; failure?: string; revision: number; }
 let operations = $state(new Map<symbol, Operation>());
-const waiting = $derived(readFailed || [...operations.values()].some(operation => operation.failed));
+const waiting = $derived(readFailed || !!metadata.categories.failure || !!metadata.config.failure || [...operations.values()].some(operation => operation.failed));
 function publishOperations() {
   operations = new Map(operations);
   activeOperations = operations.size;
@@ -129,14 +139,27 @@ function isRejected<T>(result: PromiseSettledResult<T>): result is PromiseReject
   return result.status === 'rejected';
 }
 
-function notifyRefreshFailures(failures: RefreshFailure[]): void {
-  readFailed = true;
-  readFailure = failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ');
+function notifyRefreshFailures(failures: RefreshFailure[], record = true): void {
+  if (record) {
+    readFailed = true;
+    readFailure = failures.map(({ label, rejection }) => `${label}: ${rejectionMessage(rejection)}`).join('; ');
+  }
 
-  if (failures.every(({ rejection }) => isQueueable(rejection.reason) && !isAuthError(rejection.reason))) {
+  // Independently settled metadata still belongs in the shared recovery report.
+  const combined = new Map(failures.map(failure => [failure.label, failure]));
+  for (const resource of ['categories', 'config'] as const) {
+    const rejection = metadata[resource].rejection;
+    if (rejection) {
+      const label = resource === 'config' ? 'settings' : resource;
+      combined.set(label, { label, rejection });
+    }
+  }
+  const order = ['entries', 'balances', 'categories', 'settings', 'statistics'];
+  const reported = [...combined.values()].sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label));
+  if (reported.every(({ rejection }) => isQueueable(rejection.reason) && !isAuthError(rejection.reason))) {
     return;
   }
-  const message = `Not updated: ${failures.map(({ label }) => label).join(', ')}.`;
+  const message = `Not updated: ${reported.map(({ label }) => label).join(', ')}.`;
   toast.show(message, {
     label: 'Retry',
     run: () => {
@@ -145,7 +168,7 @@ function notifyRefreshFailures(failures: RefreshFailure[]): void {
     },
   }, 'destructive', {
     heading: "Couldn't refresh your data",
-    isConnection: failures.some(({ rejection }) => isQueueable(rejection.reason)),
+    isConnection: reported.some(({ rejection }) => isQueueable(rejection.reason)),
   });
 }
 
@@ -263,14 +286,14 @@ function beginSnapshot(silent: boolean) {
   };
 }
 
-function acceptSnapshot(snapshot: { entries: Entry[]; master: MasterRow; categories: CategoryMap }, scope: string | null, revision: number): void {
+function acceptSnapshot(snapshot: { entries: Entry[]; master: MasterRow }, scope: string | null, revision: number): void {
   const queue = readQueue();
   // The cache is the confirmed server baseline, never the presentation overlay.
   baseline = snapshot.entries; acknowledgedEntries.clear(); acknowledgedDeletes.clear(); acknowledgmentsPending = false;
   hasSnapshot = true;
   coreReadFailed = false;
   lastUpdated = Date.now();
-  saveSnapshot({ ...snapshot, config, stats: hasStats ? stats : undefined, lastUpdated, statsStale, statsAvailable: hasStats }, scope);
+  saveSnapshot({ ...snapshot, ...metadataCacheFields(), financialAvailable: true, stats: hasStats ? stats : undefined, lastUpdated, statsStale, statsAvailable: hasStats }, scope);
   for (const [key, operation] of operations) {
     if (operation.phase === 'reconciliation' && operation.revision <= revision) {
       for (const id of operation.ids) { confirmedIds.delete(id); removePending(id); removeDeletePending(id); }
@@ -282,13 +305,56 @@ function acceptSnapshot(snapshot: { entries: Entry[]; master: MasterRow; categor
   const overlayIds = new Set([...operations.values()].filter(op => !op.deletion).flatMap(op => [...op.ids]));
   const hiddenIds = new Set([...operations.values()].filter(op => op.deletion).flatMap(op => [...op.ids]));
   const overlays = entries.filter(entry => overlayIds.has(entry.id));
-  entries = snapshot.entries; master = snapshot.master; categories = snapshot.categories;
+  entries = snapshot.entries; master = snapshot.master;
   injectQueue(queue);
   const byId = new Map(overlays.map(entry => [entry.id, entry]));
   entries = entries.map(entry => byId.get(entry.id) ?? entry);
   entries = [...entries, ...overlays.filter(entry => !entries.some(current => current.id === entry.id))]
     .filter(entry => !hiddenIds.has(entry.id));
   syncLocalIds();
+}
+
+// Metadata is owned by the Connection lifetime, independently of financial revisions.
+function metadataCacheFields() {
+  return {
+    categories, categoriesAvailable: metadata.categories.loaded,
+    categoriesFetchedAt: metadata.categories.fetchedAt,
+    config: metadata.config.loaded ? config : undefined,
+    configFetchedAt: metadata.config.fetchedAt,
+  };
+}
+function persistMetadata(scope: string | null) {
+  const cache = loadSnapshot(scope);
+  saveSnapshot({
+    ...(cache ?? { entries: [], master: { onHand: 0, budgets: {} }, financialAvailable: false }),
+    ...metadataCacheFields(),
+  }, scope);
+}
+function refreshMetadata(resource: MetadataResource, owner: ReturnType<typeof session>, force = false): Promise<void> {
+  if (metadataRequests[resource]) return metadataRequests[resource]!;
+  const state = metadata[resource];
+  if (!force && !state.failure && state.loaded && metadataIsFresh(state.fetchedAt)) return Promise.resolve();
+  state.pending = true;
+  state.failure = ''; state.rejection = null;
+  const request = resource === 'categories' ? owner.api.getCategories() : owner.api.getConfig();
+  const completion = request.then(value => {
+    if (!owner.current()) return;
+    if (resource === 'categories') categories = value as CategoryMap;
+    else config = value as Config;
+    state.loaded = true; state.fetchedAt = Date.now(); state.failure = '';
+    persistMetadata(owner.scope);
+  }, cause => {
+    if (!owner.current()) return;
+    state.rejection = { status: 'rejected', reason: cause };
+    state.failure = `${resource === 'config' ? 'settings' : resource}: ${cause instanceof Error ? cause.message : String(cause)}`;
+    notifyRefreshFailures([{ label: resource === 'config' ? 'settings' : resource, rejection: { status: 'rejected', reason: cause } }], false);
+  }).finally(() => {
+    if (!owner.current()) return;
+    state.pending = false;
+    delete metadataRequests[resource];
+  });
+  metadataRequests[resource] = completion;
+  return completion;
 }
 
 function reconcile(): Promise<void> {
@@ -298,12 +364,22 @@ function reconcile(): Promise<void> {
 
 function refreshAll(silent = false): Promise<void> {
   disposed = false;
-  if (activeRefresh?.lifetime === lifetime) return activeRefresh.completion;
+  if (!mockMode.current && !connection.current) return Promise.resolve();
+  if (activeRefresh?.lifetime === lifetime) {
+    if (forceMetadata) {
+      forceMetadata = false;
+      const owner = session();
+      void refreshMetadata('categories', owner, true);
+      void refreshMetadata('config', owner, true);
+    }
+    return activeRefresh.completion;
+  }
   const generation = lifetime;
+  const metadataAttempted = new Set<MetadataResource>();
   const completion = (async () => {
     do {
       refreshDirty = false;
-      await refreshCycle(silent);
+      await refreshCycle(silent, metadataAttempted);
     } while (generation === lifetime && refreshDirty);
   })().finally(() => { if (generation === lifetime) { activeRefresh = null; syncing = false; } });
   activeRefresh = { lifetime: generation, completion };
@@ -312,7 +388,7 @@ function refreshAll(silent = false): Promise<void> {
   return completion;
 }
 
-async function refreshCycle(silent: boolean): Promise<void> {
+async function refreshCycle(silent: boolean, metadataAttempted: Set<MetadataResource>): Promise<void> {
   const snapshot = beginSnapshot(silent);
   const { owner } = snapshot;
   const cycleFailures: RefreshFailure[] = [];
@@ -325,14 +401,16 @@ async function refreshCycle(silent: boolean): Promise<void> {
 
   };
   // Optional reads have their own publication lifetime and never gate the core.
-  configPending = true;
-  void owner.api.getConfig().then(value => {
-    if (snapshot.current()) configPending = false;
-    if (optionalCurrent()) config = value;
-  }, cause => {
-    if (snapshot.current()) configPending = false;
-    if (optionalCurrent()) report([{ label: 'settings', rejection: { status: 'rejected', reason: cause } }]);
-  });
+  const forced = forceMetadata;
+  forceMetadata = false;
+  const metadataRead = (resource: MetadataResource) => {
+    // A trailing financial revision is not a retry trigger for failed metadata.
+    if (!forced && metadataAttempted.has(resource)) return metadataRequests[resource] ?? Promise.resolve();
+    metadataAttempted.add(resource);
+    return refreshMetadata(resource, owner, forced);
+  };
+  const categoriesRead = metadataRead('categories');
+  void metadataRead('config');
   statsStale = true; statsPending = true;
   void owner.api.getStats().then(value => {
     if (!optionalCurrent()) { releaseObsoleteStats(); return; }
@@ -340,22 +418,25 @@ async function refreshCycle(silent: boolean): Promise<void> {
     if (activeOperations === 0 && localIds.size === 0 && !acknowledgmentsPending) financialDirty = false;
 
     const cache = loadSnapshot(owner.scope);
-    if (cache) saveSnapshot({ ...cache, config, stats, statsStale: false, statsAvailable: true }, owner.scope);
+    if (cache) saveSnapshot({ ...cache, stats, statsStale: false, statsAvailable: true }, owner.scope);
   }, cause => {
     if (!optionalCurrent()) { releaseObsoleteStats(); return; }
     if (optionalCurrent()) { statsPending = false; report([{ label: 'statistics', rejection: { status: 'rejected', reason: cause } }]); }
   });
   try {
-    const [e, m, c] = await Promise.allSettled([owner.api.getEntries(), owner.api.getMaster(), owner.api.getCategories()]);
+    const [e, m] = await Promise.allSettled([owner.api.getEntries(), owner.api.getMaster()]);
+    // Confirmed Categories allow financial reads to publish during metadata failure
+    // or delay. On cold start, wait for an actual successful Categories load.
+    if (!metadata.categories.loaded) await categoriesRead;
     if (!snapshot.current()) return;
     const failures: RefreshFailure[] = [];
     if (isRejected(e)) failures.push({ label: 'entries', rejection: e });
     if (isRejected(m)) failures.push({ label: 'balances', rejection: m });
-    if (isRejected(c)) failures.push({ label: 'categories', rejection: c });
+    if (!metadata.categories.loaded) failures.push({ label: 'categories', rejection: metadata.categories.rejection ?? { status: 'rejected', reason: new Error('Categories unavailable') } });
     if (failures.length) { handleCoreRefreshFailures([...failures, ...cycleFailures], silent || hasSnapshot); return; }
-    if (e.status !== 'fulfilled' || m.status !== 'fulfilled' || c.status !== 'fulfilled') return;
+    if (e.status !== 'fulfilled' || m.status !== 'fulfilled') return;
     if (snapshot.changed()) { refreshDirty = true; return; }
-    acceptSnapshot({ entries: e.value, master: m.value, categories: c.value }, owner.scope, snapshot.revision);
+    acceptSnapshot({ entries: e.value, master: m.value }, owner.scope, snapshot.revision);
     error = null; errorIsConnection = false; readFailed = cycleFailures.length > 0;
   } catch (cause) {
     if (!snapshot.current()) return;
@@ -581,7 +662,7 @@ async function drainCycle(automatic: boolean): Promise<void> {
 }
 
 const offlineHandler = () => { online = false; };
-const onlineHandler = () => { online = true; if (localIds.size > 0) void drainQueue(); else if (readFailed) void refreshAll(true); };
+const onlineHandler = () => { online = true; if (localIds.size > 0) void drainQueue(); else if (readFailed || metadata.categories.failure || metadata.config.failure) void refreshAll(true); };
 let initialization: { lifetime: number; completion: Promise<void> } | null = null;
 let legacyWork = $state(hasLegacyWork());
 async function recoverLegacyWork(): Promise<void> {
@@ -633,8 +714,12 @@ async function initialize(): Promise<void> {
         publishOperations();
       }
       entries = baseline;
-      master = cache.master; categories = cache.categories;
-      hasSnapshot = true; lastUpdated = cache.lastUpdated ?? null; hasStats = cache.statsAvailable ?? !!cache.stats; statsStale = cache.statsStale ?? false;
+      master = cache.master; categories = cache.categories ?? {};
+      metadata.categories.loaded = !!cache.categories && (cache.categoriesAvailable ?? true);
+      metadata.categories.fetchedAt = cache.categoriesFetchedAt;
+      metadata.config.loaded = !!cache.config;
+      metadata.config.fetchedAt = cache.configFetchedAt;
+      hasSnapshot = cache.financialAvailable !== false && metadata.categories.loaded; lastUpdated = cache.lastUpdated ?? null; hasStats = cache.statsAvailable ?? !!cache.stats; statsStale = cache.statsStale ?? false;
       if (cache.config) config = cache.config;
       if (cache.stats) stats = cache.stats;
     }
@@ -688,8 +773,8 @@ function injectQueue(queue: QueueItem[] = readQueue()): void {
 
 function syncStatus(): { phase: 'ready' | 'busy' | 'waiting' | 'inactive'; detail: string; action: string } {
   if (disposed) return { phase: 'inactive', detail: 'Sync is stopped.', action: '' };
-  const busy = syncing || draining || statsPending || configPending || activeOperations > 0 || acknowledgmentsPending || queueCount > 0;
-  const failure = readFailed ? readFailure : [...operations.values()].find(op => op.failed)?.failure;
+  const busy = syncing || draining || statsPending || metadata.categories.pending || metadata.config.pending || activeOperations > 0 || acknowledgmentsPending || queueCount > 0;
+  const failure = [readFailed ? readFailure : '', metadata.categories.failure, metadata.config.failure, [...operations.values()].find(op => op.failed)?.failure].filter(Boolean).join('; ');
   if (mockMode.current) return {
     phase: waiting ? 'waiting' : busy ? 'busy' : 'inactive',
     detail: waiting ? `Demo Mode. Unable to update demo data. ${failure || 'Retry pending work.'} ${queueCount ? `${queueCount} pending demo change${queueCount === 1 ? '' : 's'} for this session.` : ''}`.trim() :
@@ -741,7 +826,15 @@ export const store = {
 
   init,
   refreshAll,
-  retrySync() { return queueCount > 0 ? drainQueue() : refreshAll(true); },
+  async retrySync() {
+    const owner = session();
+    forceMetadata = true;
+    if (queueCount > 0) {
+      await drainQueue();
+      // Definitively rejected work can empty the queue without reconciliation.
+      if (owner.current() && forceMetadata && queueCount === 0) await refreshAll(true);
+    } else await refreshAll(true);
+  },
   addEntry,
   submitAddEntry,
   dispose() {
