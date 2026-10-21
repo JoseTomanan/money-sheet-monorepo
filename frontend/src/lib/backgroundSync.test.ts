@@ -386,7 +386,7 @@ it('settles a failed optional read red with the actual reason and recovers on re
 it('tracks Settings reads beyond core completion and settles after failure', async () => {
   const settings = deferred<Awaited<ReturnType<GatewayAdapter['getConfig']>>>();
   adapter.getConfig = () => settings.promise;
-  await store.refreshAll(true);
+  await store.retrySync();
   expect(store.syncStatus.phase).toBe('busy');
   settings.reject(new Error('Settings unavailable'));
   await vi.waitFor(() => expect(store.syncStatus.phase).toBe('waiting'));

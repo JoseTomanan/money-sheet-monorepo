@@ -18,7 +18,7 @@ test('Settings isolates destinations and requires explicit legacy association ac
     const action = new URL(request.url()).searchParams.get('action');
     const body = request.postDataJSON();
     if (body && body.action !== 'validate') deliveries.push({ url: request.url(), body });
-    await route.fulfill({ json: body
+    await route.fulfill({ json: body?.action === 'validate' ? { ok: true } : body
       ? { ok: true, entry: { ...payload, id: 8, mainCategory: 'FOOD' } }
       : {
         getEntries: { entries: [] },

@@ -146,6 +146,13 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('region', { name: 'Sync details' })).toContainText('Statistics unavailable');
       await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeVisible();
       network.failStats = false;
+      // Transport failures live in status details. Seed a separate actionable
+      // error so this assertion actually verifies recovery leaves it alone.
+      await page.evaluate(async () => {
+        const path = '/money-sheet-monorepo/src/lib/toast.svelte.ts';
+        const { toast } = await import(path);
+        toast.show('Another operation was rejected', undefined, 'destructive');
+      });
       await page.keyboard.press('Tab');
       await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeFocused();
       await page.keyboard.press('Enter');

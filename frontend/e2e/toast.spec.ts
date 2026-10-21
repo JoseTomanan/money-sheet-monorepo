@@ -15,7 +15,7 @@ async function failRefresh(page: Page) {
     const { RealAdapter } = await import(root + 'adapter-real.ts');
     const { store } = await import(root + 'store.svelte.ts');
     setAdapter(new RealAdapter(() => ({ gasUrl: 'https://toast-api.example/exec', apiSecret: 'dummy' })));
-    await store.refreshAll(true);
+    await store.retrySync();
   });
   await expect(page.getByRole('region', { name: 'Notification' })).toContainText(body);
 }

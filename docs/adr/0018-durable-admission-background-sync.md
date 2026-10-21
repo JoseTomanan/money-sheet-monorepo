@@ -1,6 +1,6 @@
 # ADR-0018: Durable Admission Finishes the Interaction
 
-**Status:** Accepted (issue #228); presentation revised by issue #236 (2026-10-15)
+**Status:** Accepted (issue #228); presentation revised by issue #236 (2026-10-15); metadata publication revised by issue #245 (2026-10-21)
 
 ## Context
 
@@ -28,10 +28,15 @@ financial reads. Revision guards retain acknowledged changes and tombstones unti
 a read begun after confirmation can replace them. Later intent supersedes earlier
 presentation ownership; an earlier completion cannot release its guards.
 
-One core refresh runs per lifetime with a trailing dirty request. Entries, MASTER,
-and Categories publish atomically. Config and Stats settle independently; only
-responses from their valid revision/generation publish. Failed reads retain usable
-data and do not schedule an unbounded retry loop. Balances and statistics remain
+One core refresh runs per lifetime with a trailing dirty request. Entries and MASTER
+publish atomically under the financial revision guard. Stats settles independently
+under its revision/generation guard. Issue #245 revises the original requirement
+that Categories publish atomically with every financial snapshot: Categories and
+Config now have independent successful-load state and five-minute freshness from
+their own response times, scoped to the exact saved Connection URL. Entry mutations
+neither invalidate nor extend metadata freshness. Metadata publication requires a
+current Connection lifetime, independently of financial revisions. Failed reads
+retain usable data and do not schedule an unbounded retry loop. Balances and statistics remain
 sheet-sourced. The UI marks stale or unavailable values explicitly, preserving
 normal contrast and the established shimmer only for cold loading.
 
@@ -50,6 +55,42 @@ cannot bypass an older failed item. Automatic replay stops after a network,
 authorization, storage, or definitive failure until reconnect or explicit retry.
 Already dispatched unrelated confirmed-entry requests keep their independent
 delivery semantics. New saves retain the original payload and Mutation ID.
+
+### Metadata freshness revision (issue #245)
+
+Successful Categories/Config responses persist immediately, even before a financial
+snapshot exists or after core/Stats completion. Metadata-only cache writes preserve
+the latest financial baseline, acknowledgments, tombstones, and other resource's
+freshness. A metadata-only record explicitly lacks financial availability. Defaults
+alone are not a successful Config load; a successful empty Categories map is loaded.
+Legacy confirmed values remain usable but missing, invalid, non-finite, and future
+timestamps require revalidation. Financial saves preserve metadata response times.
+
+Startup and routine reconciliation reuse fresh metadata; existing refresh triggers
+revalidate expired resources. There is no polling. Direct edits in Sheets become
+visible on the next refresh after expiry, or immediately through the accessible
+Refresh action in status details, available even while ready. Refresh bypasses both
+metadata ages, joining pending requests. With pending durable writes it latches
+that intent through the existing queue owner's reconciliation.
+
+Each metadata resource has at most one pending request per Connection lifetime,
+including requests spanning multiple financial cycles. Failure retains confirmed
+values and their original timestamps, reports its actual cause in recovery, and
+releases the request for retry/reconnect. Previously loaded Categories allow fresh
+Entries/MASTER to reconcile despite metadata failure or delay. Without any successful
+Categories load the initial snapshot remains unavailable. Pending metadata counts
+as busy; failed metadata counts as waiting. Cache hits are not network work.
+Connection changes, credential rotation, Mock Mode changes, and disposal invalidate
+old requests' publication, cache, and status rights. Same-URL credential rotation can
+rehydrate confirmed metadata but cannot join an old lifetime's request. Mock Mode
+remains ephemeral and no-Connection state sends no real requests. The wire contract,
+financial reads, Stats semantics, and delivery owner are unchanged.
+
+Rejected alternatives include HTTP caching (the adapter deliberately bypasses it),
+polling, treating defaults as confirmed metadata, coupling metadata validity to Entry
+revisions, and persisting a captured older financial snapshot on late Config success.
+Deterministic fake-clock/deferred-adapter tests and intercepted real-adapter browser
+counts establish request reduction; no live latency or quota improvement is claimed.
 
 ### Presentation revision (issue #236)
 
