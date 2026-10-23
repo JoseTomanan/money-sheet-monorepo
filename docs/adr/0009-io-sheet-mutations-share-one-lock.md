@@ -94,3 +94,32 @@ field.
   Sheets API calls per write and narrowing (though not eliminating — see
   ADR-0008's rollback discussion) the window for a partially-written row from
   a mid-sequence failure.
+
+## Formula ownership hardening
+
+Skipping D in field writes alone did not protect its ARRAYFORMULA. Whole-row
+insertion before row 2 moved D2, and deleting the first Entry could delete the
+formula. The live repository now implements logical row insertion/deletion by
+copying the managed B:C and E:I bands and clearing the vacated cells. Copies
+preserve cell formatting; D is never a source or destination. Week Separator
+insertion uses the same repository operation. The shared document lock still
+covers the complete sequence.
+
+Cell-level insert/delete and `moveTo` are also unsuitable: structural changes to
+the input columns can rewrite references inside the sheet-owned formula. Capacity
+is extended only after the final physical grid row when required. Deletion clears
+the last managed slot without shrinking the grid. Row-level metadata (such as
+heights and hidden state) stays at its physical row; the existing Autohide pass
+recomputes visibility from its fresh post-insertion snapshot. Column A and columns
+after I stay fixed too.
+
+Trailing rows with no managed content are excluded from repository snapshots,
+so an otherwise empty row containing only D2 is not mistaken for a separator.
+Existing Week Separators retain their date/label and remain in the snapshot.
+
+`infrastructure/sheets.test.ts` reproduces D2 moving/deletion with a physical-cell
+stand-in and covers single/batch insertion, date reordering, deletion, separators,
+an empty log, and grid capacity. These tests verify adapter calls and stored cells;
+they do not evaluate Google Sheets formulas or replace live deployment validation.
+This change preserves a healthy formula; it does not recreate a formula already
+removed or displaced on an existing spreadsheet.

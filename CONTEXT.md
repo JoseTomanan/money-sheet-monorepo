@@ -47,7 +47,7 @@ A stable, auto-incrementing integer stored in column H of INCOMING/OUTGOING. Wri
 An opaque browser-generated key stored in column I of INCOMING/OUTGOING for a new Entry save operation. Every delivery attempt of one single Entry or atomic batch uses the same key. GAS uses it under the document lock to return the original Entry or ordered batch on a retry, and rejects a reused key with different content. It is not an Entry identifier: GAS alone assigns Entry IDs, and historical rows intentionally retain blank Mutation IDs.
 
 ## Main Category
-Column D of INCOMING/OUTGOING. A VLOOKUP formula that resolves any Tag (Category or Subcategory) to its parent Category. Formula-driven; GAS never writes to it. Used by MASTER sheet SUMIF formulas to aggregate Outgoing Entries by Category.
+Column D of INCOMING/OUTGOING. A VLOOKUP formula that resolves any Tag (Category or Subcategory) to its parent Category. Formula-driven; GAS never writes to it. Its ARRAYFORMULA stays anchored in D2: Entry and Week Separator insertion, deletion, and date reordering copy/clear only B:C and E:I, leaving D fixed. Used by MASTER sheet SUMIF formulas to aggregate Outgoing Entries by Category.
 
 ## Budget
 The net balance for a Category. Computed as: sum of all Incoming Entries whose Tag equals that Category, minus sum of all Outgoing Entries whose Main Category resolves to it. Rolling all-time (no period resets). A Budget can go negative.
