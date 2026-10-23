@@ -102,9 +102,9 @@ export interface IoRepository {
   reserveEntryIds(existingIds: number[], count: number): number;
   /** Writes only the provided fields to the given 1-based sheet row. */
   writeEntryFields(sheetRow: number, fields: Partial<EntryFields>): void;
-  /** Deletes the given 1-based sheet row entirely. */
+  /** Removes managed Entry cells and shifts later Entries up; leaves col D fixed. */
   deleteRow(sheetRow: number): void;
-  /** Inserts a blank row before the given 1-based sheet row, shifting rows down. */
+  /** Makes a blank Entry slot by shifting managed cells down; leaves col D fixed. */
   insertRowBefore(sheetRow: number): void;
   /** Flushes pending writes and reads back the formula-driven Main Category (col D). */
   resolveMainCategory(sheetRow: number): string;

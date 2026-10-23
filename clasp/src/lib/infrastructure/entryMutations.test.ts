@@ -13,8 +13,24 @@ function liveCaller() {
   const properties = new Map<string, string>();
   const sheet = {
     getLastRow: () => { if (persistenceError) throw persistenceError; return rows.length + 1; },
+    getMaxRows: () => 1000,
     getParent: () => ({ getId: () => "test-sheet" }),
     getRange: (row: number, col: number, count = 1, width = 1) => ({
+      row, col,
+      copyTo: (destination: { row: number; col: number }) => {
+        expect(locked).toBe(true);
+        expect(col === 4 || (col < 4 && col + width > 4)).toBe(false);
+        const values = rows.slice(row - 2, row - 2 + count).map((r) => r.slice(col - 2, col - 2 + width));
+        values.forEach((r, i) => {
+          const target = rows[destination.row - 2 + i] ?? (rows[destination.row - 2 + i] = Array(8).fill(""));
+          r.forEach((v, j) => { target[destination.col - 2 + j] = v; });
+        });
+      },
+      clearContent: () => {
+        expect(locked).toBe(true);
+        expect(col === 4 || (col < 4 && col + width > 4)).toBe(false);
+        rows[row - 2]?.fill("", col - 2, col - 2 + width);
+      },
       getValues: () => {
         expect(locked).toBe(true);
         if (persistenceError) throw persistenceError;

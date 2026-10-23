@@ -37,7 +37,7 @@ function applyRowVisibility(sh: GoogleAppsScript.Spreadsheet.Sheet): void {
       )]),
     })),
     insertSeparatorRow: (sheetRow, weekStart, label) => {
-      sh.insertRowBefore(sheetRow);
+      io.insertRowBefore(sheetRow);
       sh.getRange(sheetRow, SHEET_LAYOUT.io.columns.date)
         .setValue(new Date(`${weekStart}T00:00:00Z`));
       const labelRange = sh.getRange(sheetRow, SHEET_LAYOUT.io.columns.description);
