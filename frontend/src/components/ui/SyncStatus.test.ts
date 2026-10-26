@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/svelte';
+import { fireEvent, render, waitFor } from '@testing-library/svelte';
 import type { GatewayAdapter } from '../../lib/types';
 import SyncStatus from './SyncStatus.svelte';
 import { store } from '../../lib/store.svelte';
@@ -8,7 +8,7 @@ import { setConnection } from '../../lib/connection.svelte';
 
 afterEach(() => { store?.dispose(); vi.restoreAllMocks(); });
 
-it('offers compact status details and refresh through a keyboard/touch button', async () => {
+it('opens a named status modal without fetching and offers explicit refresh', async () => {
   localStorage.clear();
 
   const adapter: GatewayAdapter = {
@@ -25,9 +25,14 @@ it('offers compact status details and refresh through a keyboard/touch button', 
   expect(trigger.textContent?.trim()).toBe('');
   expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await fireEvent.click(trigger);
-  expect(view.getByRole('region', { name: 'Sync details' })).toHaveTextContent('Confirmed data from Sheets');
+  const dialog = view.getByRole('dialog', { name: 'Sync status' });
+  expect(dialog).toHaveAttribute('aria-modal', 'true');
+  expect(view.getByRole('heading', { name: 'Up to date' })).toBeVisible();
+  expect(dialog).toHaveTextContent('Confirmed data from Sheets');
+  expect(adapter.getEntries).toHaveBeenCalledTimes(1);
   await fireEvent.click(view.getByRole('button', { name: 'Refresh data' }));
   expect(adapter.getEntries).toHaveBeenCalledTimes(2);
-  await fireEvent.keyDown(trigger, { key: 'Escape' });
-  expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await fireEvent.click(view.getByRole('button', { name: 'Close sync status' }));
+  await waitFor(() => expect(view.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(adapter.getEntries).toHaveBeenCalledTimes(2);
 });

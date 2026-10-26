@@ -1,6 +1,6 @@
 # ADR-0018: Durable Admission Finishes the Interaction
 
-**Status:** Accepted (issue #228); presentation revised by issue #236 (2026-10-15); metadata publication revised by issue #245 (2026-10-21)
+**Status:** Accepted (issue #228); presentation revised by issue #236 (2026-10-15) and issue #259 (2026-10-27); metadata publication revised by issue #245 (2026-10-21)
 
 ## Context
 
@@ -124,6 +124,28 @@ consumption and parsing; timeout does not establish server-side cancellation.
 Connection changes, credential rotation, Mock Mode transitions, and teardown
 invalidate publication and status lifetimes. Admission-time add scrolling
 also checks the initiating route and Connection before changing scroll position.
+
+### Status modal revision (issue #259)
+
+Issue #259 explicitly supersedes #236's pastel glyph and nonmodal status-details
+presentation. The compact 7px dot, 44px touch target, and safe-area-aware upper-left
+placement remain. Saturated green, blue, and red replace the white-mixed tints;
+sync-specific light/dark tokens keep the matching modal status heading readable
+without changing the global palette. The dot uses Tailwind `shadow-xs` in both themes.
+
+User activation opens a bits-ui Dialog (ADR-0007), with an accessible title, visible
+close control, focus containment, Escape dismissal, and focus restoration. The
+color-coded status heading appears inside the modal only; the explanation retains
+actual errors, locally saved intent, Sheets acknowledgments, and pending reads.
+Inactive Demo/no-Connection copy never implies real-sheet confirmation. Long errors
+wrap within the viewport. State changes update the open modal without dismissing it
+or moving focus; opening/closing sends no requests. Recovery still delegates to
+`store.retrySync()` for queued delivery and forced metadata/read refresh.
+
+This revision preserves the preceding sync, notification, Connection, and motion
+semantics. Browser evidence covers keyboard/touch, live recovery, original Mutation
+IDs, text contrast, reduced motion, and screenshots at 320px, 390px, and desktop in
+both themes. It uses intercepted HTTP/Mock Mode without live spreadsheet writes.
 
 ## Consequences and alternatives
 
