@@ -1,62 +1,56 @@
 <script lang="ts">
-  import { Popover } from 'bits-ui';
+  import { Dialog } from 'bits-ui';
   import { store } from '../../lib/store.svelte';
 
   const status = $derived(store.syncStatus);
   let open = $state(false);
-  let trigger: HTMLButtonElement | null = $state(null);
-  let recovery: HTMLButtonElement | undefined = $state();
+  const label = $derived(status.phase === 'ready' ? 'Up to date' :
+    status.phase === 'busy' ? 'Syncing' : status.phase === 'waiting' ? 'Waiting to sync' : 'Sync inactive');
+  const color = $derived(status.phase === 'ready' ? 'text-[var(--sync-ready)]' :
+    status.phase === 'busy' ? 'text-[var(--sync-busy)]' :
+    status.phase === 'waiting' ? 'text-[var(--sync-waiting)]' : 'text-muted-foreground');
 </script>
 
-<Popover.Root bind:open>
-  <Popover.Trigger
-    bind:ref={trigger}
+<Dialog.Root bind:open>
+  <Dialog.Trigger
     class="sync-status fixed top-[env(safe-area-inset-top,0px)] left-[env(safe-area-inset-left,0px)] z-[601] size-11 flex items-center justify-center rounded-[var(--radius-sm)] bg-transparent border-0 p-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
     aria-label={`Sync status. ${status.detail} Show details.`}
     title={status.detail}
     data-sync-phase={status.phase}
-    onkeydown={event => {
-      if (open && recovery && event.key === 'Tab' && !event.shiftKey) {
-        event.preventDefault();
-        recovery.focus();
-      }
-    }}
   >
     <span
       aria-hidden="true"
       data-sync-dot
       class={[
-        'size-[7px] shrink-0 rounded-full shadow-[0_1px_4px_rgb(0_0_0/0.22)] dark:shadow-[0_1px_4px_rgb(0_0_0/0.4)]',
-        status.phase === 'ready' ? 'bg-[color-mix(in_srgb,rgb(var(--positive-rgb))_65%,white)]' :
-        status.phase === 'busy' ? 'bg-[color-mix(in_srgb,rgb(var(--local-rgb))_65%,white)] motion-safe:animate-[shimmer_1s_ease-in-out_infinite]' :
-        status.phase === 'waiting' ? 'bg-[color-mix(in_srgb,rgb(var(--destructive-rgb))_65%,white)]' : 'bg-muted-foreground',
+        'size-[7px] shrink-0 rounded-full bg-current shadow-xs', color,
+        status.phase === 'busy' && 'motion-safe:animate-[shimmer_1s_ease-in-out_infinite]',
       ]}
     ></span>
-  </Popover.Trigger>
-  <Popover.Portal>
-    <Popover.Content
-      align="start"
-      sideOffset={4}
-      trapFocus={false}
-      onOpenAutoFocus={event => event.preventDefault()}
-      class="z-[602] w-64 max-w-[calc(100vw-2rem)] rounded-[var(--radius-md)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-3 font-sans text-xs"
+  </Dialog.Trigger>
+  <Dialog.Portal>
+    <Dialog.Overlay class="fixed inset-0 z-[602] bg-[var(--overlay-bg)]" />
+    <Dialog.Content
+      class="fixed left-1/2 top-1/2 z-[603] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-5 font-sans"
     >
-      <section aria-label="Sync details">
-        <p role="status" class="m-0 leading-relaxed">{status.detail}</p>
-        {#if status.action}
-          <button
-            bind:this={recovery}
-            class="mt-2 min-h-11 rounded-[var(--radius-sm)] border-0 bg-transparent px-2 text-accent font-medium cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8"
-            onclick={() => { void store.retrySync(); }}
-            onkeydown={event => {
-              if (event.key === 'Tab' && event.shiftKey) {
-                event.preventDefault();
-                trigger?.focus();
-              }
-            }}
-          >{status.action}</button>
-        {/if}
+      <div class="flex items-center justify-between gap-3">
+        <Dialog.Title class="font-display text-lg font-semibold">Sync status</Dialog.Title>
+        <Dialog.Close
+          aria-label="Close sync status"
+          class="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M6 18 18 6" /></svg>
+        </Dialog.Close>
+      </div>
+      <section aria-label="Sync details" role="status" class="mt-3 [overflow-wrap:anywhere]">
+        <h3 class={['m-0 text-base font-semibold', color]}>{label}</h3>
+        <Dialog.Description class="mt-2 mb-0 text-sm leading-relaxed">{status.detail}</Dialog.Description>
       </section>
-    </Popover.Content>
-  </Popover.Portal>
-</Popover.Root>
+      {#if status.action}
+        <button
+          class="mt-5 min-h-11 rounded-[var(--radius-sm)] border border-border bg-muted px-4 text-sm text-foreground font-medium cursor-pointer hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          onclick={() => { void store.retrySync(); }}
+        >{status.action}</button>
+      {/if}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>

@@ -91,9 +91,13 @@ reload without replaying confirmed writes. Online startup, reconnection, success
 the existing queue owner. Delivery runs only while the app is open.
 
 One small floating status dot stays in the viewport's upper-left corner, respecting
-device safe areas, with pastel tints of the existing positive/local/destructive colors,
-a soft shadow, and keyboard/touch-accessible details and
-recovery: static green means usable confirmed data with no unresolved work; blue
+device safe areas, with saturated green/blue/red colors, a minimal `shadow-xs`, and
+a keyboard/touch-accessible status modal (bits-ui Dialog). Color-coded status text
+appears only inside the modal, alongside the full explanation and recovery action.
+The modal contains focus, closes with Escape or its close button, and restores focus
+to the dot; opening or closing it sends no requests. Background transitions update
+its contents without opening/closing it or moving focus. Static green means usable
+confirmed data with no unresolved work; blue
 shimmer means active delivery or reads (including Config and Stats); static red
 means offline or failed waiting work, which takes precedence over blue. Details
 distinguish intent saved on this device from confirmation in Sheets and expose
@@ -106,7 +110,8 @@ Routine saved/syncing/refreshing/loading/waiting toasts are absent, including af
 five seconds. Actionable errors remain immediate and status transitions do not
 dismiss unrelated errors. The fifteen-second transport deadline covers the whole
 response and does not prove that a server write was cancelled. Issue #236 explicitly
-revises ADR-0018's original delayed-notification/static-header presentation policy.
+revises ADR-0018's original delayed-notification/static-header presentation policy;
+issue #259 revises its pastel dot and nonmodal status details, preserving sync semantics.
 
 
 Categories and Config have independent five-minute freshness measured from their

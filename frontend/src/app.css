@@ -82,6 +82,11 @@
   --local-rgb:         99 102 241;
   --local:             rgb(var(--local-rgb) / var(--semantic-foreground-alpha));
 
+  /* Sync control only: saturated glyphs and readable modal status text (#259). */
+  --sync-ready:        #15803d;
+  --sync-busy:         #2563eb;
+  --sync-waiting:      #b91c1c;
+
   /* shadcn-svelte token aliases — map onto our palette */
   --primary:              var(--accent);
   --primary-foreground:   var(--accent-foreground);
@@ -143,6 +148,9 @@
   --dark-destructive-fill: color-mix(in srgb, rgb(var(--destructive-rgb)) 65%, #000);
   --dark-positive-rgb: 115 174 131;
   --dark-local-rgb: 153 158 205;
+  --dark-sync-ready: #4ade80;
+  --dark-sync-busy: #60a5fa;
+  --dark-sync-waiting: #f87171;
   --dark-overlay-bg: rgba(0, 0, 0, 0.75);
   --dark-shadow-card: 0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
   --dark-shadow-sheet: 0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
@@ -177,6 +185,9 @@
     --destructive-fill: var(--dark-destructive-fill);
     --positive-rgb: var(--dark-positive-rgb);
     --local-rgb: var(--dark-local-rgb);
+    --sync-ready: var(--dark-sync-ready);
+    --sync-busy: var(--dark-sync-busy);
+    --sync-waiting: var(--dark-sync-waiting);
     --overlay-bg: var(--dark-overlay-bg);
     --shadow-card: var(--dark-shadow-card);
     --shadow-sheet: var(--dark-shadow-sheet);
@@ -209,6 +220,9 @@
   --destructive-fill: var(--dark-destructive-fill);
   --positive-rgb: var(--dark-positive-rgb);
   --local-rgb: var(--dark-local-rgb);
+  --sync-ready: var(--dark-sync-ready);
+  --sync-busy: var(--dark-sync-busy);
+  --sync-waiting: var(--dark-sync-waiting);
   --overlay-bg: var(--dark-overlay-bg);
   --shadow-card: var(--dark-shadow-card);
   --shadow-sheet: var(--dark-shadow-sheet);
