@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Popover } from 'bits-ui';
   import { cn } from '$lib/utils';
+  import { guardEscape } from '$lib/keyboard';
 
   interface Week { key: string; label: string; }
 
@@ -38,6 +39,7 @@
 
   <Popover.Portal>
     <Popover.Content
+      onEscapeKeydown={guardEscape}
       class={cn(
         'z-50 min-w-[220px] rounded-[var(--radius-md)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-1',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95'
