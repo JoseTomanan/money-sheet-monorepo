@@ -313,8 +313,9 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(await carousel.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     expect(await carousel.evaluate((el) => getComputedStyle(el).scrollSnapType)).toContain('x');
 
-    const categoryTags = legCards.locator('.tag-pill');
-    expect(await categoryTags.evaluateAll((tags) => tags.every((tag) => (tag as HTMLElement).tabIndex >= 0))).toBe(true);
+    const categoryGroups = legCards.getByRole('group', { name: 'Category', exact: true });
+    await expect(categoryGroups).toHaveCount(3);
+    expect(await categoryGroups.evaluateAll(groups => groups.every(group => group.querySelectorAll('button[tabindex="0"]').length === 1))).toBe(true);
 
     const lastLegTag = legCards.last().locator('.tag-pill').last();
     await lastLegTag.evaluate((element) => (element as HTMLElement).focus({ preventScroll: true }));
