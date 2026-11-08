@@ -43,6 +43,7 @@
           <dt class="font-mono">Enter / Space</dt><dd>Activate the focused choice; Subcategory is optional on Outgoing</dd>
         {/if}
         {#if page}
+          <dt class="font-mono">{modifier}+K</dt><dd>Open command menu, or use its header button; available outside editable fields and popups</dd>
           {#if context !== 'bulk'}<dt class="font-mono">Shift+N</dt><dd>Add Entry when available; focus Amount</dd>{/if}
           <dt class="font-mono">G then H / E / S</dt><dd>Home / Entries / Summary within one second</dd>
         {/if}

@@ -81,6 +81,15 @@ key stores this browser/device preference (`false` disables; absent defaults on)
 independently of the Connection and Config sheet. Visible help and ordinary
 traversal/Ctrl/Cmd shortcuts remain usable. See README for the complete bindings.
 
+The Command Menu exposes existing Actions, Navigation, and the current Sync action
+through a searchable palette (Ctrl/Cmd+K or the visible main-view header button).
+It opens only outside editable fields and existing overlays, including on Deeper
+Statistics, and never over a draft or the no-Connection Settings gate. Unavailable
+commands remain visible with reasons. Action availability and Connection lifetime
+are rechecked on activation; navigation and sync remain owned by the existing
+router and `store.retrySync()`. Opening, searching, and dismissing send no requests.
+The non-character binding remains available when character shortcuts are disabled.
+
 ## Mock Mode
 A runtime demo state in which the app runs entirely on in-memory fixture data (see `mock.ts`) rather than a real spreadsheet. Mock Mode activates automatically for first-time visitors who have no Connection saved — serving as a portfolio showcase. It is suppressed permanently once the user opts out (see Mock Dismissal). All CRUD operations work in Mock Mode but mutations are ephemeral: they live only for the current page session and are discarded on exit or reload.
 

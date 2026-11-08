@@ -3,6 +3,8 @@
   import { KEYBOARD_CONTEXT, type KeyboardContext } from '$lib/keyboard';
   import KeyboardHelp from './KeyboardHelp.svelte';
   import SyncStatus from './SyncStatus.svelte';
+  import { COMMAND_MENU } from '$lib/commandMenu';
+  import { isMac } from '$lib/keyboard';
 
   interface Props {
     context: Snippet;
@@ -14,6 +16,7 @@
 
   let { context, title, meta, actions, onsettings = () => {} }: Props = $props();
   const keyboardContext = getContext<() => KeyboardContext>(KEYBOARD_CONTEXT) ?? (() => 'home');
+  const openCommands = getContext<() => void>(COMMAND_MENU);
 </script>
 
 <header class="page-header px-4 pt-4 pb-2 lg:px-6 lg:pt-6 lg:pb-3">
@@ -23,6 +26,13 @@
     </div>
     <div class="flex shrink-0 items-center gap-1">
     <SyncStatus />
+    {#if openCommands}
+      <button aria-label="Open command menu" title={`Open command menu (${isMac() ? 'Cmd' : 'Ctrl'}+K)`}
+        onclick={openCommands}
+        class="min-h-11 min-w-11 flex shrink-0 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent px-2 text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8 lg:min-w-8">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
+      </button>
+    {/if}
     <KeyboardHelp context={keyboardContext()} />
     <button
       class="header-settings min-h-11 min-w-11 -mr-2 flex items-center justify-center gap-[6px] rounded-[var(--radius-sm)] border-0 bg-transparent px-2 font-sans text-[12px] font-medium text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8 lg:min-w-0 lg:mr-0"
