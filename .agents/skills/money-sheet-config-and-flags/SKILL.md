@@ -39,6 +39,7 @@ Also gates the live `store-sync.test.ts` (skips without `VITE_GAS_URL`, requires
 | `ms_queue` | JSON `QueueItem[]` — Offline Queue ops `add \| addBatch \| edit \| delete` | `frontend/src/lib/queue.ts` |
 | `ms_cache` | JSON `CachePayload` = `{ entries, master, categories, config? }`; removed by `exitMockMode()` | `frontend/src/lib/cache.ts` |
 | `theme-preference` | `'system' \| 'light' \| 'dark'` | `frontend/src/lib/darkMode.svelte.ts` |
+| `ms_character_shortcuts` | `'false'` disables Shift+N, ?, and G sequences; absent defaults on. Settings and contextual help own this browser/device preference; traversal and Ctrl/Cmd shortcuts remain enabled. | `frontend/src/lib/keyboardPreferences.svelte.ts` |
 
 Mock Mode predicate: `envMock || (connection == null && !ms_mock_dismissed)` — first visit with clean storage is Mock Mode.
 
