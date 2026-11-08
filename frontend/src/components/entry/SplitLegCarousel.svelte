@@ -1,5 +1,6 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { SplitState, Leg } from '../../lib/splitEntry';
   import { entryAmount } from '../../lib/amountField';
   import type { Direction, CategoryMap } from '../../lib/types';
@@ -25,47 +26,38 @@
   }
 
   let { split, direction, categories, onupdate, onremove, onadd, showAddCard = true, initialTags }: Props = $props();
+  let rail: HTMLDivElement;
+  async function add() {
+    onadd();
+    await tick();
+    rail.querySelectorAll<HTMLInputElement>('.amount-input').item(split.legs.length - 1)?.focus();
+  }
+  async function remove(index: number) {
+    onremove(index);
+    await tick();
+    rail.querySelectorAll<HTMLInputElement>('.amount-input').item(Math.min(index, split.legs.length - 1))?.focus();
+  }
 
   function revealFocusedLeg(event: FocusEvent) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    target.scrollIntoView({
+    target.scrollIntoView?.({
       block: 'nearest',
       inline: 'nearest',
     });
   }
 </script>
 
-<div class="split-rail min-w-0">
-  {#if showAddCard}
-    <div class="flex items-center justify-between gap-3 px-4 pt-[10px] lg:px-0 lg:pt-0">
-      <span class="font-sans text-xs text-muted-foreground">
-        {split.legs.length} {split.legs.length === 1 ? 'leg' : 'legs'}
-      </span>
-      <button
-        class="add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] lg:min-h-8"
-        onclick={onadd}
-      >
-        <span class="text-lg leading-none" aria-hidden="true">+</span>
-        <span>Add leg</span>
-      </button>
-    </div>
-  {/if}
-
+<div bind:this={rail} class="split-rail min-w-0">
   <div
     class="carousel flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 gap-[10px] py-[10px] lg:scroll-pl-0 lg:gap-3 lg:py-2"
     aria-label="Entry legs"
     onfocusin={revealFocusedLeg}
   >
     {#each split.legs as leg, i}
-      <div class="leg-card shrink-0 {split.legs.length === 1 ? 'w-[calc(100%-32px)] lg:w-full' : 'w-[85%] lg:w-[calc(50%-6px)]'} snap-start bg-card border border-border rounded-[var(--radius-lg)] py-3 px-[14px] first:ml-4 last:mr-4 lg:first:ml-0 lg:last:mr-0">
+      <div class="leg-card relative shrink-0 {split.legs.length === 1 ? 'w-[calc(100%-32px)] lg:w-full' : 'w-[85%] lg:w-[calc(50%-6px)]'} snap-start bg-card border border-border rounded-[var(--radius-lg)] py-3 px-[14px] first:ml-4 last:mr-4 lg:first:ml-0 lg:last:mr-0">
         <div class="leg-head flex items-center justify-between mb-2">
           <span class="leg-label text-[10px] font-sans font-semibold tracking-[1px] uppercase text-muted-foreground">Leg {i + 1} of {split.legs.length}</span>
-          <button
-            class="leg-remove bg-transparent border-0 font-sans text-xs text-destructive cursor-pointer p-0 disabled:opacity-30 disabled:cursor-not-allowed"
-            disabled={split.legs.length <= 1}
-            onclick={() => onremove(i)}
-          >Remove</button>
         </div>
         <div class="amount-row flex items-baseline gap-[3px] mb-[10px]">
           <span class="peso font-mono text-[36px] font-medium text-muted-foreground">{store.config.currency}</span>
@@ -97,7 +89,20 @@
           compact
           onselect={(t) => onupdate(i, { tag: t })}
         />
+        <button
+          class="leg-remove absolute top-3 right-[14px] bg-transparent border-0 font-sans text-xs text-destructive cursor-pointer p-0 disabled:opacity-30 disabled:cursor-not-allowed"
+          disabled={split.legs.length <= 1}
+          onclick={() => remove(i)}
+        >Remove</button>
       </div>
     {/each}
   </div>
+  {#if showAddCard}
+    <div class="flex items-center justify-between gap-3 px-4 pb-2 lg:px-0">
+      <span class="font-sans text-xs text-muted-foreground">{split.legs.length} {split.legs.length === 1 ? 'leg' : 'legs'}</span>
+      <button class="add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] lg:min-h-8" onclick={add}>
+        <span class="text-lg leading-none" aria-hidden="true">+</span><span>Add leg</span>
+      </button>
+    </div>
+  {/if}
 </div>
