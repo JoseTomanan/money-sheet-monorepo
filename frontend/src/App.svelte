@@ -5,7 +5,9 @@
   import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
   import { createRouter, routeTab, type Route } from './lib/router.svelte';
   import { currentWeekKey } from './lib/entriesFilter.svelte';
-  import { installPageShortcuts, KEYBOARD_CONTEXT, type KeyboardContext } from './lib/keyboard';
+  import { installPageShortcuts, openOverlays, KEYBOARD_CONTEXT, type KeyboardContext } from './lib/keyboard';
+  import { appCommands, COMMAND_MENU, type CommandId } from './lib/commandMenu';
+  import CommandMenu from './components/ui/CommandMenu.svelte';
   import { keyboardPreferences } from './lib/keyboardPreferences.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
@@ -25,6 +27,15 @@
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
   const router = createRouter();
+  let entriesView = $state<EntriesView | null>(null);
+  let commandOpen = $state(false);
+  let commandSession = $state<{
+    opener: HTMLElement | null;
+    connection: typeof connection.current;
+    mock: boolean;
+    route: string;
+  } | null>(null);
+  setContext(COMMAND_MENU, openCommandMenu);
   setContext<() => KeyboardContext>(KEYBOARD_CONTEXT, () => entriesSelectMode ? 'bulk' : router.current.kind);
   const routeScrollPositions = new Map<string, number>();
 
@@ -39,6 +50,7 @@
   }
 
   function closeRouteOverlays() {
+    commandOpen = false;
     sheetOpen = false;
     settingsOpen = false;
     entriesSelectMode = false;
@@ -103,6 +115,44 @@
   // Settings overlay state
   let settingsOpen = $state(false);
 
+  const commands = $derived(appCommands({
+    loading: store.loading, error: store.error, selecting: entriesSelectMode,
+    entries: router.current.kind === 'entries',
+    redistributionAvailable: entriesView?.canRedistribute() ?? false,
+    syncAction: store.syncStatus.action,
+  }));
+
+  function openCommandMenu() {
+    if (commandOpen || !(connection.current || mockMode.current) || sheetOpen || settingsOpen || openOverlays().length) return;
+    commandSession = {
+      opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
+      connection: connection.current, mock: mockMode.current, route: router.key,
+    };
+    commandOpen = true;
+  }
+
+  function runCommand(id: CommandId): boolean {
+    const session = commandSession;
+    // Recheck the live context and availability after dismissal, including credential
+    // rotation. No captured callback may dispatch to an obsolete Connection.
+    if (!session || session.connection !== connection.current || session.mock !== mockMode.current || session.route !== router.key ||
+      !(connection.current || mockMode.current) || sheetOpen || settingsOpen || openOverlays().length ||
+      commands.find(command => command.id === id)?.reason !== '') return false;
+    if (id === 'add') openAdd();
+    else if (id === 'redistribute') entriesView?.openRedistribution();
+    else if (id === 'settings') settingsOpen = true;
+    else {
+      if (id === 'sync') void store.retrySync();
+      else navigateTab(id);
+      void tick().then(() => document.querySelector<HTMLElement>('.tab-btn[aria-current="page"]')?.focus());
+    }
+    return true;
+  }
+
+  $effect(() => {
+    if (commandOpen && commandSession && (commandSession.connection !== connection.current || commandSession.mock !== mockMode.current || commandSession.route !== router.key)) commandOpen = false;
+  });
+
   onMount(() => {
     const removeShortcuts = installPageShortcuts({
       context: () => `${router.key}:${entriesSelectMode}:${sheetOpen}:${settingsOpen}`,
@@ -111,6 +161,7 @@
       charactersEnabled: () => keyboardPreferences.enabled,
       add: openAdd,
       navigate: navigateTab,
+      commandMenu: openCommandMenu,
     });
     const syncToastVisibility = () => document.hidden ? toast.pause('hidden') : toast.resume('hidden');
     syncToastVisibility();
@@ -159,6 +210,7 @@
             <HomeScreen onnavigate={navigateTab} onsettings={() => (settingsOpen = true)} />
           {:else if router.current.kind === 'entries'}
             <EntriesView
+              bind:this={entriesView}
               onopenedit={openEdit}
               onadd={openAdd}
               selectedWeek={router.current.week}
@@ -208,6 +260,8 @@
     />
 
     <TabBar active={routeTab(router.current)} onchange={navigateTab} />
+
+    <CommandMenu open={commandOpen} {commands} opener={commandSession?.opener ?? null} onclose={() => (commandOpen = false)} onselect={runCommand} />
 
     <EntrySheet
       open={sheetOpen}

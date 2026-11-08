@@ -28,6 +28,10 @@
   let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false), onsettings = () => {} }: Props = $props();
 
   let redistOpen = $state(false);
+  export function canRedistribute() { return !store.loading && store.hasSnapshot !== false; }
+  export function openRedistribution() {
+    if (canRedistribute()) redistOpen = true;
+  }
 
   const filter = createEntriesFilter(() => store.entries, () => selectedWeek);
 
@@ -135,7 +139,7 @@
     {#snippet actions()}
       <button
         class="redistribute-btn min-h-11 min-w-11 flex items-center justify-center gap-[6px] font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer px-1 self-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent rounded-[var(--radius-sm)] lg:min-h-8 lg:min-w-0"
-        onclick={() => (redistOpen = true)}
+        onclick={openRedistribution}
         aria-label="Redistribute"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -70,6 +70,7 @@ Use the visible **?** button in a page header, Entry sheet, or Settings for cont
 |---|---|
 | Tab / Shift+Tab | Next / previous field or control |
 | Shift+N | Open Add Entry and focus Amount, when Add is available |
+| Ctrl+K (Cmd+K on Mac) | Open the searchable command menu from a main view |
 | Ctrl+Enter (Cmd+Enter on Mac) | Save the active Add/Edit sheet, including all split legs and unblurred arithmetic |
 | Left / Right | Focus Category or optional Subcategory choices; Enter / Space activates |
 | Up / Down in Entries | Focus previous / next visible Entry; Enter edits an available Entry |
@@ -91,6 +92,17 @@ Shift+N, ?, and G sequences together. This browser/device preference persists un
 `ms_character_shortcuts`, independently of your Connection or spreadsheet. The
 visible help button, Tab, arrows, and Ctrl/Cmd shortcuts remain available. The same
 preference is also reachable from the help dialog.
+
+Use the **Open command menu** button (magnifying glass) in any main-view header,
+including Deeper statistics, for the same menu by touch or keyboard. Search actions,
+navigation, and the current sync/recovery action; Up/Down navigates and Enter chooses.
+Unavailable commands show why, including Fund Redistribution outside Entries.
+Escape, Close, or clicking outside returns focus to the opener. Commands that open a
+sheet hand focus to that sheet. The menu pauses in editable fields and existing
+popups to protect drafts, and is unavailable at the no-Connection Settings gate.
+Ctrl/Cmd+K and the visible button work with character shortcuts disabled. Opening,
+searching, and dismissing the menu do not refresh data; choose the displayed Sync
+action explicitly to retry queued work or refresh through the existing sync owner.
 
 ---
 

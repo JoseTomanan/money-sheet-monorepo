@@ -37,11 +37,18 @@ export function installPageShortcuts(actions: {
   charactersEnabled: () => boolean;
   add: () => void;
   navigate: (tab: 'home' | 'entries' | 'summary') => void;
+  commandMenu?: () => void;
 }) {
   let pending: { until: number; context: string } | null = null;
   let composing = false;
   const reset = () => { pending = null; };
   function keydown(event: KeyboardEvent) {
+    if (actions.available() && !composing && pageKeyboardAvailable(event) && !event.repeat && !event.shiftKey && primaryModifier(event) && event.key.toLowerCase() === 'k' && actions.commandMenu) {
+      reset();
+      event.preventDefault();
+      actions.commandMenu();
+      return;
+    }
     if (!actions.available() || !actions.charactersEnabled() || composing || !pageKeyboardAvailable(event) || event.repeat || event.altKey || event.ctrlKey || event.metaKey) { reset(); return; }
     const sequence = pending;
     reset();
