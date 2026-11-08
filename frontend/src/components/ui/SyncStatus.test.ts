@@ -34,5 +34,8 @@ it('opens a named status modal without fetching and offers explicit refresh', as
   expect(adapter.getEntries).toHaveBeenCalledTimes(2);
   await fireEvent.click(view.getByRole('button', { name: 'Close sync status' }));
   await waitFor(() => expect(view.queryByRole('dialog')).not.toBeInTheDocument());
+  // The dialog disappears before bits-ui's delayed scroll-lock restoration.
+  // Await that observable cleanup while this test still owns its document.
+  await waitFor(() => expect(document.body.style.overflow).not.toBe('hidden'));
   expect(adapter.getEntries).toHaveBeenCalledTimes(2);
 });
