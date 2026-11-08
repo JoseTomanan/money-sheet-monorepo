@@ -13,7 +13,7 @@ for (const width of [390, 1440]) {
 
     // Wrap both ends of the tab order; background controls must remain unreachable.
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByRole('button').last()).toBeFocused();
+    await expect(dialog.getByRole('group', { name: 'Category', exact: true }).last().locator('button[tabindex="0"]')).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
 
