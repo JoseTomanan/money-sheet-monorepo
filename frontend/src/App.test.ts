@@ -72,6 +72,34 @@ describe("App settings sheet", () => {
     expect(queryByRole("dialog")).toBeNull();
   });
 
+  it('opens Add with Shift+N and navigates with G then S', async () => {
+    const view = render(App);
+    await fireEvent.keyDown(window, { key: 'N', shiftKey: true });
+    expect(view.getByRole('dialog')).toBeInTheDocument();
+    await fireEvent.click(view.getByRole('button', { name: 'Cancel' }));
+    await fireEvent.keyDown(window, { key: 'g' });
+    await fireEvent.keyDown(window, { key: 's' });
+    expect(window.location.hash).toBe('#/summary');
+  });
+
+  it('keeps contextual help discoverable and disables character commands through Settings', async () => {
+    const view = render(App);
+    await fireEvent.click(view.getByRole('button', { name: 'Keyboard shortcuts' }));
+    expect(view.getByRole('dialog')).toHaveTextContent('Shift+N');
+    await fireEvent.click(view.getByRole('button', { name: 'Close keyboard shortcuts' }));
+    await fireEvent.click(view.getByRole('button', { name: /open settings/i }));
+    await fireEvent.click(view.getByRole('checkbox', { name: 'Enable character shortcuts' }));
+    expect(localStorage.getItem('ms_character_shortcuts')).toBe('false');
+    await fireEvent.click(view.getByRole('button', { name: 'Done' }));
+    await fireEvent.keyDown(window, { key: 'N', shiftKey: true });
+    await fireEvent.keyDown(window, { key: '?' });
+    expect(view.queryByRole('dialog')).not.toBeInTheDocument();
+    await fireEvent.click(view.getByRole('button', { name: 'Keyboard shortcuts' }));
+    expect(view.getByRole('dialog')).toHaveTextContent('Character shortcuts are off');
+    // Restore the device setting for the remaining App tests.
+    await fireEvent.click(view.getByRole('checkbox', { name: 'Enable character shortcuts' }));
+  });
+
   it("clicking the gear button opens the settings dialog", async () => {
     const { getByRole } = render(App);
     await fireEvent.click(getByRole("button", { name: /open settings/i }));
