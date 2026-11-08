@@ -2,6 +2,8 @@
   import { connection, setConnection, generateSetupUrl } from '../../lib/connection.svelte';
   import { gateway, userMessage } from '../../lib/api';
   import { darkMode, type ThemePreference } from '../../lib/darkMode.svelte';
+  import KeyboardPreference from './KeyboardPreference.svelte';
+  import KeyboardHelp from '../ui/KeyboardHelp.svelte';
 
   const themeOptions: { value: ThemePreference; label: string }[] = [
     { value: 'system', label: 'System' },
@@ -139,6 +141,10 @@
 
   </section>
   <div class="settings-preferences min-w-0">
+  <section class="mb-6">
+    <div class="flex items-center justify-between gap-3"><h2 class="font-display text-base font-semibold">Keyboard</h2><KeyboardHelp context="settings" /></div>
+    <KeyboardPreference />
+  </section>
 
   <div class="appearance-section pt-8 lg:pt-0">
     <h2 class="font-display text-base font-semibold text-foreground tracking-[-0.2px] mb-3">Appearance</h2>
