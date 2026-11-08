@@ -31,6 +31,37 @@ function makeEntry(overrides: Partial<Entry> = {}): Entry {
   };
 }
 
+it('keyboard save submits an unblurred expression once through the existing Edit save', async () => {
+  const props = baseProps({ entry: makeEntry() });
+  const view = render(EntrySheet, props);
+  const amount = view.getByPlaceholderText('0.00');
+  await fireEvent.input(amount, { target: { value: '100-30' } });
+  await fireEvent.keyDown(amount, { key: 'Enter', ctrlKey: true });
+  await fireEvent.keyDown(amount, { key: 'Enter', ctrlKey: true, repeat: true });
+  expect(props.onsave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: 'edit', patch: expect.objectContaining({ amount: 70 }) }));
+  expect(props.onclose).toHaveBeenCalledOnce();
+});
+
+it('starts Entry focus at Amount and moves to the added and surviving legs', async () => {
+  const view = render(EntrySheet, baseProps());
+  await waitFor(() => expect(view.getByPlaceholderText('0.00')).toHaveFocus());
+  await fireEvent.click(view.getByText('Add leg'));
+  await waitFor(() => expect(view.getAllByPlaceholderText('0.00')[1]).toHaveFocus());
+  await fireEvent.click(view.getAllByRole('button', { name: 'Remove' })[1]);
+  await waitFor(() => expect(view.getByPlaceholderText('0.00')).toHaveFocus());
+});
+
+it('keeps the sheet open for IME cancellation and held Escape key events', async () => {
+  const props = baseProps();
+  const view = render(EntrySheet, props);
+  const amount = view.getByPlaceholderText('0.00');
+  await fireEvent.keyDown(amount, { key: 'Escape', isComposing: true });
+  await fireEvent.keyDown(amount, { key: 'Escape', repeat: true });
+  expect(props.onclose).not.toHaveBeenCalled();
+  await fireEvent.keyDown(amount, { key: 'Escape' });
+  expect(props.onclose).toHaveBeenCalledOnce();
+});
+
 describe('EntrySheet — amount interpretation through submission', () => {
   for (const mode of ['Add', 'Edit', 'Split'] as const) {
     it(`${mode} never emits an invalid amount before or after blur`, async () => {
