@@ -45,6 +45,41 @@ function getWeekTrigger(container: HTMLElement) {
   return container.querySelector("[data-week-trigger]") as HTMLElement;
 }
 
+it('navigates displayed rows with arrows and prevents scrolling when toggling bulk selection', async () => {
+  mockStore.entries = [makeEntry(1, '2026-05-24'), makeEntry(2, '2026-05-25')];
+  const view = render(EntriesView, baseProps({ selectedWeek: '2026-05-24', selectMode: true }));
+  const rows = view.getAllByRole('checkbox');
+  await fireEvent.keyDown(window, { key: 'ArrowDown' });
+  expect(rows[0]).toHaveFocus();
+  await fireEvent.keyDown(rows[0], { key: 'ArrowDown' });
+  expect(rows[1]).toHaveFocus();
+  const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+  rows[1].dispatchEvent(space);
+  await waitFor(() => expect(rows[1]).toHaveAttribute('aria-checked', 'true'));
+  expect(space.defaultPrevented).toBe(true);
+  const heldSpace = new KeyboardEvent('keydown', { key: ' ', repeat: true, bubbles: true, cancelable: true });
+  rows[1].dispatchEvent(heldSpace);
+  expect(heldSpace.defaultPrevented).toBe(true);
+  expect(rows[1]).toHaveAttribute('aria-checked', 'true');
+});
+
+it('bulk shortcuts select eligible entries once and open confirmation without deleting', async () => {
+  mockStore.entries = [makeEntry(1, '2026-05-24'), makeEntry(2, '2026-05-25'), makeEntry(3, '2026-05-10')];
+  mockStore.pendingIds = new Set([2]);
+  mockStore.submitDeleteEntries.mockClear();
+  const view = render(EntriesView, baseProps({ selectedWeek: '2026-05-24', selectMode: true }));
+  await fireEvent.keyDown(window, { key: 'Delete' });
+  expect(view.queryByRole('dialog')).not.toBeInTheDocument();
+  await fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
+  await fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
+  expect(view.getAllByRole('checkbox')[0]).toHaveAttribute('aria-checked', 'true');
+  expect(view.getAllByRole('checkbox')[1]).toHaveAttribute('aria-checked', 'false');
+  await fireEvent.keyDown(window, { key: 'Delete' });
+  expect(view.getByRole('dialog')).toHaveTextContent('Delete 1 entry?');
+  expect(mockStore.submitDeleteEntries).not.toHaveBeenCalled();
+  mockStore.pendingIds = new Set();
+});
+
 describe("EntriesView week selector", () => {
   beforeEach(() => {
     vi.useFakeTimers();
