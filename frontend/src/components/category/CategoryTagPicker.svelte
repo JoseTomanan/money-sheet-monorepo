@@ -2,7 +2,8 @@
      Outgoing: Category row always visible; tapping a Category expands its Subcategory row.
      Incoming: Category row only; tapping a Category calls onselect immediately. -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, tick } from 'svelte';
+  import { choiceGroup } from '$lib/choiceGroup';
   import { resolveCategoryStyle, CATEGORY_ORDER } from '../../lib/theme';
   import { darkMode } from '../../lib/darkMode.svelte';
   import { getMainCategory } from '../../lib/domain';
@@ -41,22 +42,24 @@
     activeCategory ? (categories[activeCategory] ?? []) : []
   );
 
-  function handleCategoryClick(cat: string) {
+  let picker: HTMLDivElement;
+  async function handleCategoryClick(cat: string) {
+    const restore = picker?.contains(document.activeElement);
     if (direction === 'I') {
       onselect(cat);
-      return;
-    }
-    if (activeCategory === cat) {
+    } else if (activeCategory === cat) {
       // Re-tapping the pinned pill collapses back to the Category row;
       // the already-committed tag (bare Category or a chosen Subcategory) is kept.
       activeCategory = '';
-      return;
+    } else {
+      // A Category commits the valid bare Tag; Subcategory remains optional.
+      activeCategory = cat;
+      onselect(cat);
     }
-    // Tapping a Category expands its Subcategory row AND commits the bare
-    // Category itself as the default "no subcategory" tag (#123) — a
-    // Subcategory tap below refines it further.
-    activeCategory = cat;
-    onselect(cat);
+    if (restore) {
+      await tick();
+      [...picker.querySelectorAll<HTMLButtonElement>('[data-category]')].find(button => button.dataset.category === cat)?.focus();
+    }
   }
 
   // Pill size classes (full vs compact)
@@ -76,7 +79,7 @@
 {/if}
 
 <!-- Single row: drill-in on Outgoing, flat list on Incoming / uncollapsed -->
-<div class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible">
+<div bind:this={picker} class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible">
   {#if direction === 'O' && activeCategory}
     {@const s = resolveCategoryStyle(activeCategory)}
     {@const isBareCategoryActive = tag === activeCategory}
@@ -85,7 +88,9 @@
          commit target — Subcategory is optional on Outgoing (#123) — so it reflects
          selection like a Subcategory pill: solid when the bare Category is the tag,
          soft once a Subcategory has been chosen instead. -->
+    <div role="group" aria-label="Category" use:choiceGroup class="flex shrink-0">
     <button
+      data-category={activeCategory}
       class={catPillClass}
       aria-pressed={isBareCategoryActive}
       aria-label={activeCategory}
@@ -95,9 +100,11 @@
       <span class={dotClass} style="background: {isBareCategoryActive ? '#fff' : inactivePinnedColor}"></span>
       ‹ {activeCategory}
     </button>
+    </div>
     <!-- Vertical divider -->
     <span class="w-px self-stretch bg-border shrink-0"></span>
     <!-- Subcategory pills -->
+    <div role="group" aria-label="Optional Subcategory" use:choiceGroup class="flex gap-2 lg:flex-wrap">
     {#each subcategories as sub}
       {@const isActive = tag === sub}
       {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
@@ -111,13 +118,16 @@
         {sub}
       </button>
     {/each}
+    </div>
   {:else}
     <!-- All category pills (collapsed / Incoming) -->
+    <div role="group" aria-label="Category" use:choiceGroup class="flex gap-2 lg:flex-wrap">
     {#each sortedCategories as cat}
       {@const s = resolveCategoryStyle(cat)}
       {@const isActive = direction === 'I' ? tag === cat : (activeCategory === cat || tag === cat)}
       {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
+        data-category={cat}
         class={catPillClass}
         aria-pressed={isActive}
         style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
@@ -127,5 +137,6 @@
         {cat}
       </button>
     {/each}
+    </div>
   {/if}
 </div>

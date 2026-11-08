@@ -6,6 +6,8 @@
   import { startDrag, moveDrag, endDrag, type DragState, type Snap } from '$lib/dragGesture';
   import { createEntryForm } from '$lib/entryForm.svelte';
   import SplitLegCarousel from './SplitLegCarousel.svelte';
+  import { ownsKeyboard, primaryModifier } from '$lib/keyboard';
+  import KeyboardHelp from '../ui/KeyboardHelp.svelte';
 
   interface Props {
     open: boolean;
@@ -130,7 +132,13 @@
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} class="pb-0">
+<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} initialFocus=".amount-input" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')} class="pb-0" onkeydown={(event) => {
+  if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) handleSave();
+  }
+}}>
   {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
   <!-- handle — drag down to dismiss, drag up to reveal Delete button -->
   <div
@@ -148,6 +156,7 @@
   <Sheet.Header>
     <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={onclose}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
+    <KeyboardHelp context="entry" />
     <button
       class="header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed lg:min-h-8 lg:min-w-0"
       onclick={handleSave}
@@ -223,6 +232,11 @@
       <button
         class="delete-btn block mx-4 mt-5 mb-2 w-[calc(100%-32px)] py-[13px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[15px] font-semibold cursor-pointer"
         onclick={handleDelete}
+        onfocus={(event) => {
+          snap = 'expanded';
+          const target = event.currentTarget;
+          void tick().then(() => target.scrollIntoView?.({ block: 'nearest' }));
+        }}
         disabled={saving}
       >Delete entry</button>
     </div>

@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, setContext } from 'svelte';
   import { store } from './lib/store.svelte';
   import { toast } from './lib/toast.svelte';
   import { connection, mockMode, exitMockMode } from './lib/connection.svelte';
   import { createRouter, routeTab, type Route } from './lib/router.svelte';
   import { currentWeekKey } from './lib/entriesFilter.svelte';
+  import { installPageShortcuts, KEYBOARD_CONTEXT, type KeyboardContext } from './lib/keyboard';
+  import { keyboardPreferences } from './lib/keyboardPreferences.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
   import TabBar, { type TabId } from './components/ui/TabBar.svelte';
@@ -23,6 +25,7 @@
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
   const router = createRouter();
+  setContext<() => KeyboardContext>(KEYBOARD_CONTEXT, () => entriesSelectMode ? 'bulk' : router.current.kind);
   const routeScrollPositions = new Map<string, number>();
 
   function handleScroll() {
@@ -101,11 +104,20 @@
   let settingsOpen = $state(false);
 
   onMount(() => {
+    const removeShortcuts = installPageShortcuts({
+      context: () => `${router.key}:${entriesSelectMode}:${sheetOpen}:${settingsOpen}`,
+      available: () => !!(mockMode.current || connection.current) && !sheetOpen && !settingsOpen,
+      canAdd: () => !store.loading && !store.error && !entriesSelectMode,
+      charactersEnabled: () => keyboardPreferences.enabled,
+      add: openAdd,
+      navigate: navigateTab,
+    });
     const syncToastVisibility = () => document.hidden ? toast.pause('hidden') : toast.resume('hidden');
     syncToastVisibility();
     document.addEventListener('visibilitychange', syncToastVisibility);
     if (mockMode.current || connection.current) store.init();
     return () => {
+      removeShortcuts();
       document.removeEventListener('visibilitychange', syncToastVisibility);
       toast.resume('hidden');
       store.dispose();

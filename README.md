@@ -62,6 +62,36 @@ Open the **Config** sheet in your spreadsheet and change the value in the `curre
 
 Edit the **Categories** sheet directly — add a row under the relevant category heading or delete an existing subcategory row. Changes are picked up automatically; no app restart needed.
 
+### Keyboard shortcuts
+
+Use the visible **?** button in a page header, Entry sheet, or Settings for contextual help.
+
+| Shortcut | Action |
+|---|---|
+| Tab / Shift+Tab | Next / previous field or control |
+| Shift+N | Open Add Entry and focus Amount, when Add is available |
+| Ctrl+Enter (Cmd+Enter on Mac) | Save the active Add/Edit sheet, including all split legs and unblurred arithmetic |
+| Left / Right | Focus Category or optional Subcategory choices; Enter / Space activates |
+| Up / Down in Entries | Focus previous / next visible Entry; Enter edits an available Entry |
+| Enter / Space in bulk selection | Toggle an eligible focused Entry |
+| Ctrl+A (Cmd+A on Mac) in bulk selection | Select all eligible Entries in the filtered week |
+| Delete in bulk selection | Open the existing confirmation for selected Entries |
+| Esc | Close the innermost popup, then cancel the sheet; exit bulk selection after popups close |
+| G then H / E / S | Go to Home / Entries / Summary within one second |
+| ? | Show shortcuts for the current page or sheet |
+
+Entry focus starts at Amount. Each Category/Subcategory group has one Tab stop;
+arrows move focus without changing the Tag. An Outgoing Entry may use a bare
+Category without a Subcategory. Add leg, Remove, direction, Save, and Cancel remain
+keyboard-accessible. Page shortcuts pause while typing, composing text, or using
+another popup. Browser shortcuts and text selection retain their usual behavior.
+
+In **Settings → Keyboard**, turn off **Enable character shortcuts** to disable
+Shift+N, ?, and G sequences together. This browser/device preference persists under
+`ms_character_shortcuts`, independently of your Connection or spreadsheet. The
+visible help button, Tab, arrows, and Ctrl/Cmd shortcuts remain available. The same
+preference is also reachable from the help dialog.
+
 ---
 
 ## Stack

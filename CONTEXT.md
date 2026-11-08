@@ -65,6 +65,22 @@ The exact saved URL owns its financial snapshot and pending work; secrets are cr
 
 Each copied template provisions its own API secret from the bound script's `onOpen()` lifecycle. Newly provisioned and deliberately rotated secrets are memorable four-word PascalCase phrases with an adjective/adjective/adjective/noun structure; existing secrets remain opaque and are never rewritten solely to match that format. Script Properties hold both `API_SECRET` and the spreadsheet ID it belongs to: reopening the same spreadsheet preserves the secret, while a copied script carrying source properties detects the new spreadsheet identity and generates a different secret. Existing spreadsheets that predate the identity property adopt their existing secret without invalidating saved Connections. Editors retrieve the secret from **Connection → Show connection details**; it is never exposed by `doGet`, `getConfig`, or another unauthenticated API response. **Connection → Rotate API secret** is an explicit recovery action, not an onboarding step.
 
+## Keyboard shortcuts
+
+Contextual shortcuts delegate to existing Entry submission, bulk selection, and
+canonical navigation actions. Ctrl+Enter (Cmd on Mac) saves the active Add/Edit
+sheet through Save, including every Split Entry leg and unblurred arithmetic.
+Local admission refusal retains the draft or bulk selection. Nested popups own
+their interaction before their parent sheet. Category/Subcategory arrows move
+focus without committing a Tag; native activation preserves optional Subcategory
+and bare Outgoing Category semantics.
+
+Character shortcuts (Shift+N, ?, G sequences) default on and can be disabled
+together in Settings or contextual help. The `ms_character_shortcuts` localStorage
+key stores this browser/device preference (`false` disables; absent defaults on),
+independently of the Connection and Config sheet. Visible help and ordinary
+traversal/Ctrl/Cmd shortcuts remain usable. See README for the complete bindings.
+
 ## Mock Mode
 A runtime demo state in which the app runs entirely on in-memory fixture data (see `mock.ts`) rather than a real spreadsheet. Mock Mode activates automatically for first-time visitors who have no Connection saved — serving as a portfolio showcase. It is suppressed permanently once the user opts out (see Mock Dismissal). All CRUD operations work in Mock Mode but mutations are ephemeral: they live only for the current page session and are discarded on exit or reload.
 

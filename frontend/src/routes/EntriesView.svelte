@@ -12,6 +12,7 @@
   import RedistributeSheet from '../components/category/RedistributeSheet.svelte';
   import PageHeader from '../components/ui/PageHeader.svelte';
   import * as Sheet from '$lib/components/ui/sheet';
+  import { pageKeyboardAvailable, primaryModifier } from '$lib/keyboard';
 
   interface Props {
     onopenedit: (entry: Entry) => void;
@@ -42,9 +43,35 @@
 
   // Clear selection whenever select mode exits.
   $effect(() => { if (!selectMode) bulk.clear(); });
+  let entryList = $state<HTMLDivElement | null>(null);
+  function handleKeyboard(event: KeyboardEvent) {
+    if (!pageKeyboardAvailable(event)) return;
+    if (selectMode && primaryModifier(event) && !event.shiftKey && event.key.toLowerCase() === 'a') {
+      event.preventDefault(); if (!event.repeat) bulk.selectAll(); return;
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (selectMode && event.key === 'Delete') {
+      event.preventDefault();
+      if (!event.repeat && bulk.selectedIds.size) bulk.confirmOpen = true;
+      return;
+    }
+    if (selectMode && event.key === 'Escape') {
+      event.preventDefault(); if (!event.repeat) selectMode = false; return;
+    }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    const rows = [...(entryList?.querySelectorAll<HTMLElement>('[data-entry-row]') ?? [])];
+    if (!rows.length) return;
+    event.preventDefault();
+    if (event.repeat) return;
+    const index = rows.indexOf(document.activeElement as HTMLElement);
+    const next = index < 0 ? (event.key === 'ArrowDown' ? 0 : rows.length - 1)
+      : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+    rows[next].focus();
+    rows[next].scrollIntoView?.({ block: 'nearest' });
+  }
 </script>
 
-
+<svelte:window onkeydown={handleKeyboard} />
 
 <div class="entries-view p-0">
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
@@ -200,7 +227,7 @@
   </div>
 
   <!-- Entry list -->
-  <div class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0">
+  <div bind:this={entryList} class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0">
     {#if filter.filtered.length === 0}
       {#if !selectMode}
         <button
@@ -221,10 +248,11 @@
                 {@const local = store.localIds.has(entry.id)}
                 {@const pending = (store.busyIds ?? store.pendingIds).has(entry.id) || (local && entry.id < 0)}
                 {@const deletePending = store.deletePendingIds.has(entry.id)}
-                {@const selectable = selectMode && !pending && !deletePending}
+                {@const selectable = selectMode && entry.id >= 0 && !pending && !deletePending}
                 {@const checked = bulk.selectedIds.has(entry.id)}
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <div
+                  data-entry-row={entry.id}
                   class="entry-card flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card rounded-none cursor-pointer"
                   class:pointer-events-none={pending || deletePending}
                   class:cursor-default={pending || deletePending}
@@ -243,9 +271,10 @@
                   title={local && entry.id < 0 ? 'This Local Entry must sync before it can be edited or deleted.' : pending || deletePending ? 'This entry is being saved. Other entries remain available.' : undefined}
                   tabindex="0"
                   onkeydown={(e) => {
+                    if (!pageKeyboardAvailable(e) || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
                     const intent = rowIntent(selectMode, selectable, pending, deletePending);
-                    if (intent === 'toggle' && (e.key === 'Enter' || e.key === ' ')) bulk.toggle(entry.id);
-                    else if (intent === 'edit' && e.key === 'Enter') onopenedit(entry);
+                    if (intent === 'toggle' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (!e.repeat) bulk.toggle(entry.id); }
+                    else if (intent === 'edit' && e.key === 'Enter') { e.preventDefault(); if (!e.repeat) onopenedit(entry); }
                   }}
                 >
                   <!-- Checkbox indicator in select mode -->
@@ -285,7 +314,7 @@
 </div>
 
 <!-- Confirm-delete dialog -->
-<Sheet.Root open={bulk.confirmOpen} onOpenChange={(v) => { if (!v) bulk.confirmOpen = false; }}>
+<Sheet.Root open={bulk.confirmOpen} onOpenChange={(v) => { if (!v) bulk.confirmOpen = false; }} fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Enter bulk-select mode"], [data-entry-row]')}>
   <div class="flex justify-center pt-[14px] pb-[10px]">
     <div class="w-9 h-1 rounded-[2px] bg-border"></div>
   </div>

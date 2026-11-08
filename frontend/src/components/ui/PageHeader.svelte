@@ -1,5 +1,7 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { getContext, type Snippet } from 'svelte';
+  import { KEYBOARD_CONTEXT, type KeyboardContext } from '$lib/keyboard';
+  import KeyboardHelp from './KeyboardHelp.svelte';
   import SyncStatus from './SyncStatus.svelte';
 
   interface Props {
@@ -11,6 +13,7 @@
   }
 
   let { context, title, meta, actions, onsettings = () => {} }: Props = $props();
+  const keyboardContext = getContext<() => KeyboardContext>(KEYBOARD_CONTEXT) ?? (() => 'home');
 </script>
 
 <header class="page-header px-4 pt-4 pb-2 lg:px-6 lg:pt-6 lg:pb-3">
@@ -20,6 +23,7 @@
     </div>
     <div class="flex shrink-0 items-center gap-1">
     <SyncStatus />
+    <KeyboardHelp context={keyboardContext()} />
     <button
       class="header-settings min-h-11 min-w-11 -mr-2 flex items-center justify-center gap-[6px] rounded-[var(--radius-sm)] border-0 bg-transparent px-2 font-sans text-[12px] font-medium text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:min-h-8 lg:min-w-0 lg:mr-0"
       onclick={onsettings}

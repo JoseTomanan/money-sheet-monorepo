@@ -1,6 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/svelte";
 import CategoryTagPicker from "./CategoryTagPicker.svelte";
+
+it('groups choices into one Tab stop and moves focus without committing a Tag', async () => {
+  const onselect = vi.fn();
+  const view = render(CategoryTagPicker, { direction: 'I', categories: { FOOD: [], TRANSIT: [] }, tag: '', onselect });
+  const food = view.getByRole('button', { name: 'FOOD' });
+  const transit = view.getByRole('button', { name: 'TRANSIT' });
+  expect(food.tabIndex).toBe(0);
+  expect(transit.tabIndex).toBe(-1);
+  food.focus();
+  await fireEvent.keyDown(food, { key: 'ArrowRight' });
+  expect(transit).toHaveFocus();
+  expect(transit.tabIndex).toBe(0);
+  expect(food.tabIndex).toBe(-1);
+  expect(onselect).not.toHaveBeenCalled();
+});
 import type { CategoryMap } from "../../lib/types";
 
 const CATEGORIES: CategoryMap = {
