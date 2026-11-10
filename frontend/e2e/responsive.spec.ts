@@ -1,4 +1,13 @@
-import { test, expect, type Page } from "./fixtures";
+import { test, expect, type Page, type Locator } from "./fixtures";
+
+// Relative layout must be sampled in one browser task. Separate boundingBox()
+// calls can observe different frames of the sheet's shared slide-in transform.
+async function layoutBoxes(root: Locator, selectors: string[]) {
+  return root.evaluate((element, selectors) => selectors.map(selector => {
+    const box = element.querySelector(selector)?.getBoundingClientRect();
+    return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
+  }), selectors);
+}
 
 async function expectTouchTarget(locator: { boundingBox(): Promise<{ width: number; height: number } | null> }) {
   const box = await locator.boundingBox();
@@ -485,13 +494,8 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     await page.getByRole("button", { name: "Add entry", exact: true }).click();
 
     const sheet = page.locator('.sheet[data-state="open"]');
-    const primary = sheet.locator(".entry-sheet-primary");
-    const details = sheet.locator(".entry-sheet-details");
-    const leg = sheet.locator(".leg-card").first();
-    const [primaryBox, detailsBox, legBox] = await Promise.all([
-      primary.boundingBox(),
-      details.boundingBox(),
-      leg.boundingBox(),
+    const [primaryBox, detailsBox, legBox] = await layoutBoxes(sheet, [
+      '.entry-sheet-primary', '.entry-sheet-details', '.leg-card',
     ]);
 
     expect(primaryBox).not.toBeNull();
@@ -544,9 +548,9 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     await page.getByRole("button", { name: "Redistribute" }).click();
 
     const sheet = page.getByRole("dialog", { name: "Redistribute Funds" });
-    const amount = await sheet.locator(".redistribution-amount").boundingBox();
-    const source = await sheet.locator(".redistribution-source").boundingBox();
-    const target = await sheet.locator(".redistribution-target").boundingBox();
+    const [amount, source, target] = await layoutBoxes(sheet, [
+      '.redistribution-amount', '.redistribution-source', '.redistribution-target',
+    ]);
     expect(amount).not.toBeNull();
     expect(source).not.toBeNull();
     expect(target).not.toBeNull();
