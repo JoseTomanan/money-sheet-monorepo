@@ -38,6 +38,21 @@ beforeEach(async () => {
 
 afterEach(() => { store?.dispose(); vi.restoreAllMocks(); });
 
+async function unmountSheet(view: { unmount: () => void }) {
+  // Bits UI schedules body-scroll restoration 24ms after the last lock unmounts.
+  // Install the clock BEFORE manual unmount: the shared afterEach cannot drain a
+  // real timer that was already scheduled before it switched to fake timers.
+  vi.useFakeTimers();
+  try {
+    view.unmount();
+    await vi.runAllTimersAsync();
+    expect(document.body.style.overflow).not.toBe('hidden');
+    expect(document.body.style.pointerEvents).not.toBe('none');
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
 async function draft(mode: 'Add' | 'Split' | 'Edit') {
   const submissions: EntrySubmission[] = [];
   const onclose = vi.fn();
@@ -103,7 +118,7 @@ it.each(['Add', 'Split', 'Edit'] as const)('%s retries a refused draft, closes b
     expect.objectContaining({ tag: 'Groceries', amount: 8, description: '^^' }),
   ], expect.any(String));
   else if (mode === 'Edit') expect(adapter.updateEntry).toHaveBeenCalledWith(original.id, expect.objectContaining({ amount: 42 }));
-  view.unmount();
+  await unmountSheet(view);
   const rejection = new Error('Save rejected');
   if (mode === 'Split') batch.reject(rejection);
   else if (mode === 'Edit') edit.reject(rejection);
@@ -128,7 +143,7 @@ it.each(['Add', 'Split', 'Edit'] as const)('%s retains ambiguous delivery after 
   expect(view.onclose).toHaveBeenCalledOnce();
   const { readQueue } = await import('../../lib/queue');
   const admitted = structuredClone(readQueue());
-  view.unmount();
+  await unmountSheet(view);
 
   const { ConnectionError } = await import('../../lib/api');
   const timeout = new ConnectionError('Delivery timed out');

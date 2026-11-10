@@ -25,14 +25,21 @@
   let { direction, categories, tag, onselect, compact = false, initialTag }: Props = $props();
 
   // When editing an Outgoing entry that already has a tag, pre-expand its parent category.
-  // untrack() because we intentionally want the mount-time value only — the parent uses
-  // {#key direction} to re-mount this component when direction changes.
+  // The initial Tag is a mount-time seed. Direction changes reset expansion
+  // explicitly, independently of whether the rendering adapter remounts us.
   let activeCategory = $state(
     untrack(() => {
       const seed = initialTag !== undefined ? initialTag : tag;
       return direction === 'O' && seed ? getMainCategory(seed, categories) : '';
     })
   );
+  let previousDirection = untrack(() => direction);
+  $effect(() => {
+    if (direction !== previousDirection) {
+      activeCategory = '';
+      previousDirection = direction;
+    }
+  });
 
   const sortedCategories = $derived([
     ...CATEGORY_ORDER.filter(k => k in categories),

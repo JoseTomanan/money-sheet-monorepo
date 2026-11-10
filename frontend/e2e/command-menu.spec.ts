@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 test.use({ hasTouch: true });
 
@@ -75,9 +75,10 @@ test('dismissal preserves week, filters, bulk selection; explicit navigation fol
   await choose(page, 'Entries');
   expect(await page.evaluate(() => window.history.length)).toBe(history);
   await expect(page.locator('.select-bar')).toHaveText(count);
+  await page.locator('.tab-btn').evaluateAll(buttons => buttons.forEach(button => button.classList.remove('tab-btn')));
   await choose(page, 'Home');
   await expect(page).toHaveURL(/#\/home$/);
-  await expect(page.locator('.tab-btn[aria-current=page]')).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Home', exact: true })).toBeFocused();
   await choose(page, 'Entries');
   await expect(page).not.toHaveURL(/2026-09-06$/);
   await expect(page.getByRole('button', { name: 'Enter bulk-select mode' })).toBeVisible();
@@ -189,7 +190,8 @@ test('Escape guards repeats and restores a surviving control if the opener disap
   await expect(menu(page)).toBeVisible();
   await menu(page).dispatchEvent('keydown', { key: 'Escape', isComposing: true });
   await expect(menu(page)).toBeVisible();
+  await page.locator('.tab-btn').evaluateAll(buttons => buttons.forEach(button => button.classList.remove('tab-btn')));
   await opener(page).evaluate(el => el.remove());
   await page.keyboard.press('Escape');
-  await expect(page.locator('.tab-btn[aria-current=page]')).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Home', exact: true })).toBeFocused();
 });

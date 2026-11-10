@@ -103,6 +103,26 @@ describe("Settings form", () => {
     await waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
   });
 
+  it('keeps Connection uncommitted during validation and after refusal, then commits a successful retry', async () => {
+    let reject!: (error: Error) => void;
+    mockValidateConnection.mockReturnValueOnce(new Promise<void>((_resolve, no) => { reject = no; }));
+    const props = baseProps();
+    const view = render(Settings, props);
+    await fireEvent.input(view.getByLabelText(/GAS URL/i), { target: { value: 'https://validation.example/exec' } });
+    await fireEvent.input(view.getByLabelText(/API Secret/i), { target: { value: 'test' } });
+    await fireEvent.click(view.getByRole('button', { name: /save/i }));
+    expect(mockSetConnection).not.toHaveBeenCalled();
+    expect(props.onsaved).not.toHaveBeenCalled();
+    reject(new UnauthorizedError('Secret rejected'));
+    await view.findByText(/Secret rejected/);
+    expect(mockSetConnection).not.toHaveBeenCalled();
+    expect(props.onsaved).not.toHaveBeenCalled();
+    expect(view.getByLabelText(/GAS URL/i)).toHaveValue('https://validation.example/exec');
+    await fireEvent.click(view.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(props.onsaved).toHaveBeenCalledOnce());
+    expect(mockSetConnection).toHaveBeenCalledExactlyOnceWith({ gasUrl: 'https://validation.example/exec', apiSecret: 'test' });
+  });
+
   it("prefills inputs from connection.current when set", () => {
     mockConnection.current = { gasUrl: "https://existing.url", apiSecret: "existing-secret" };
     const { getByLabelText } = render(Settings, baseProps());

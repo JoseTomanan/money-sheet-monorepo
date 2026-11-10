@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 async function ready(page: Page, route = '/#/entries/') {
   await page.goto(route);
@@ -162,6 +162,11 @@ test('Mac uses Cmd to save and contextual help displays the matching modifier', 
 });
 
 test('keyboard-opened Entry restores focus to Add when there was no focused opener', async ({ page }) => {
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      document.querySelectorAll('input.amount-input').forEach(input => input.classList.remove('amount-input'));
+    }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
   await ready(page);
   await page.keyboard.press('Shift+N');
   await expect(page.getByPlaceholder('0.00')).toBeFocused();
@@ -208,7 +213,9 @@ test('G sequences preserve the current Entries week and cancel on timeout or unr
   await expect(page).toHaveURL(/#\/summary$/);
 });
 
-test('Entries arrows follow filters and endpoints; keyboard Edit rejects invalid amounts and saves expressions', async ({ page }) => {
+for (const [day, foodRows] of [['2026-11-08', 1], ['2026-11-10', 3]] as const) {
+test(`Entries arrows follow filters and endpoints; keyboard Edit rejects invalid amounts and saves expressions on ${day}`, async ({ page }) => {
+  await page.clock.setFixedTime(new Date(`${day}T12:00:00+08:00`));
   await ready(page);
   await page.getByRole('radio', { name: 'Incoming', exact: true }).click();
   await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp');
@@ -216,8 +223,14 @@ test('Entries arrows follow filters and endpoints; keyboard Edit rejects invalid
   await page.getByRole('radio', { name: 'Outgoing', exact: true }).click();
   await page.getByRole('button', { name: /^Food \d+$/ }).click();
   const rows = page.locator('[data-entry-row]');
-  await expect(rows).toHaveCount(1);
-  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp');
+  await expect(rows).toHaveCount(foodRows);
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.first()).toBeFocused();
+  await page.keyboard.press('ArrowUp'); // clamp at the first endpoint
+  await expect(rows.first()).toBeFocused();
+  for (let i = 0; i < foodRows; i++) await page.keyboard.press('ArrowDown');
+  await expect(rows.last()).toBeFocused(); // clamp at the last endpoint
+  for (let i = 1; i < foodRows; i++) await page.keyboard.press('ArrowUp');
   await expect(rows.first()).toBeFocused();
   await page.keyboard.press('Enter');
   const sheet = page.locator('.sheet[data-state="open"]');
@@ -230,5 +243,6 @@ test('Entries arrows follow filters and endpoints; keyboard Edit rejects invalid
   await page.keyboard.press('Control+a'); await page.keyboard.type('20+5');
   await page.keyboard.press('Control+Enter');
   await expect(sheet).toHaveCount(0);
-  await expect(rows).toContainText('₱25.00');
+  await expect(rows.first()).toContainText('₱25.00');
 });
+}

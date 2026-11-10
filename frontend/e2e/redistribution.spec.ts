@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 for (const width of [390, 1440]) {
   test(`redistribution contains keyboard focus, dismisses and resets at ${width}px`, async ({ page }) => {

@@ -132,7 +132,7 @@
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} initialFocus=".amount-input" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')} class="pb-0" onkeydown={(event) => {
+<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} initialFocus="[data-entry-amount]" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')} class="pb-0" onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {
     event.preventDefault();
     event.stopPropagation();

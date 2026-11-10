@@ -20,7 +20,7 @@
 
   function restoreFocus() {
     const target = opener?.isConnected && opener !== document.body && !opener.matches(':disabled')
-      ? opener : document.querySelector<HTMLElement>('[aria-label="Open command menu"], .tab-btn[aria-current="page"]');
+      ? opener : document.querySelector<HTMLElement>('[aria-label="Open command menu"], [data-app-navigation][aria-current="page"]');
     target?.focus();
   }
 

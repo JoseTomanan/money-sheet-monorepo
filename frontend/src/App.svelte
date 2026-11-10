@@ -144,7 +144,7 @@
     else {
       if (id === 'sync') void store.retrySync();
       else navigateTab(id);
-      void tick().then(() => document.querySelector<HTMLElement>('.tab-btn[aria-current="page"]')?.focus());
+      void tick().then(() => document.querySelector<HTMLElement>('[data-app-navigation][aria-current="page"]')?.focus());
     }
     return true;
   }

@@ -30,12 +30,12 @@
   async function add() {
     onadd();
     await tick();
-    rail.querySelectorAll<HTMLInputElement>('.amount-input').item(split.legs.length - 1)?.focus();
+    rail.querySelectorAll<HTMLInputElement>('[data-entry-amount]').item(split.legs.length - 1)?.focus();
   }
   async function remove(index: number) {
     onremove(index);
     await tick();
-    rail.querySelectorAll<HTMLInputElement>('.amount-input').item(Math.min(index, split.legs.length - 1))?.focus();
+    rail.querySelectorAll<HTMLInputElement>('[data-entry-amount]').item(Math.min(index, split.legs.length - 1))?.focus();
   }
 
   function revealFocusedLeg(event: FocusEvent) {
@@ -62,6 +62,8 @@
         <div class="amount-row flex items-baseline gap-[3px] mb-[10px]">
           <span class="peso font-mono text-[36px] font-medium text-muted-foreground">{store.config.currency}</span>
           <input
+            data-entry-amount
+            aria-label={`Amount for leg ${i + 1}`}
             type="text"
             inputmode="decimal"
             class="amount-input bg-transparent border-0 outline-none font-mono text-[36px] font-medium text-foreground tracking-[-0.8px] w-full text-right placeholder:text-muted-foreground"

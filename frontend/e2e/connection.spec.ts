@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test('Settings isolates destinations and requires explicit legacy association across reload', async ({ page }) => {
   const A = { gasUrl: 'https://a.example/exec', apiSecret: 'a-secret' };

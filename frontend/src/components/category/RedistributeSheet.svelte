@@ -7,7 +7,7 @@
   import CategoryTagPicker from './CategoryTagPicker.svelte';
   import { redistributionAmount } from '../../lib/amountField';
   import { store } from '../../lib/store.svelte';
-  import { today as todayStr } from '../../lib/format';
+  import { createRedistributionForm } from '../../lib/redistributionForm.svelte';
   import type { CategoryMap, AddEntryPayload, EntrySubmission } from '../../lib/types';
 
   interface Props {
@@ -19,43 +19,24 @@
 
   let { open, categories, onclose, onsubmit }: Props = $props();
 
-  const today = todayStr();
+  const form = createRedistributionForm();
 
   let saving = $state(false);
   let admissionError = $state('');
-  let source      = $state('');
-  let target      = $state('');
-  let amount      = $state('');
   let amountError = $state('');
 
   $effect(() => {
     if (open) {
       saving = false; admissionError = '';
-      source      = '';
-      target      = '';
-      amount      = '';
+      form.reset();
       amountError = '';
     }
   });
 
-  const evaluatedAmount = $derived(redistributionAmount.validate(amount));
-
-  // Single source of truth for "is the typed amount acceptable" — reactive over the
-  // raw string, so it catches a non-positive or malformed amount immediately, not
-  // only after blur (see splitEntry.ts's validateSplit for the entry-form analogue).
-  const submitDisabled = $derived(
-    !source || !target || source === target || 'error' in evaluatedAmount
-  );
-
   function handleSubmit() {
-    if (saving || submitDisabled || 'error' in evaluatedAmount) return;
+    if (saving || form.submitDisabled) return;
     saving = true;
-    const parsedAmount = evaluatedAmount.value;
-    const legs: AddEntryPayload[] = [
-      { date: today, tag: source, description: '[REDISTRIBUTE]', direction: 'I', amount: -parsedAmount },
-      { date: today, tag: target, description: '[REDISTRIBUTE]', direction: 'I', amount: parsedAmount },
-    ];
-    const submission = onsubmit(legs);
+    const submission = onsubmit(form.buildPayloads());
     if (submission.accepted) onclose();
     else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
   }
@@ -78,7 +59,7 @@
     <button
       class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
       onclick={handleSubmit}
-      disabled={saving || submitDisabled}
+      disabled={saving || form.submitDisabled}
     >Redistribute</button>
   </Sheet.Header>
 
@@ -92,14 +73,14 @@
           type="text"
           inputmode="decimal"
           class="w-[200px] bg-transparent border-0 outline-none font-mono text-[44px] font-medium text-foreground tracking-[-1.2px] text-center tabular-nums placeholder:text-muted-foreground"
-          bind:value={amount}
+          bind:value={form.amount}
           oninput={(e) => {
             const v = (e.target as HTMLInputElement).value;
-            amount = redistributionAmount.sanitize(v);
+            form.amount = redistributionAmount.sanitize(v);
           }}
           onblur={() => {
-            const result = redistributionAmount.resolve(amount);
-            if (result.amount !== null) amount = result.amount;
+            const result = redistributionAmount.resolve(form.amount);
+            if (result.amount !== null) form.amount = result.amount;
             amountError = result.error ?? '';
           }}
           placeholder="0.00"
@@ -118,8 +99,8 @@
           <CategoryTagPicker
             direction="I"
             {categories}
-            tag={source}
-            onselect={(t) => (source = t)}
+            tag={form.source}
+            onselect={(t) => (form.source = t)}
           />
         {/key}
       </section>
@@ -131,8 +112,8 @@
           <CategoryTagPicker
             direction="I"
             {categories}
-            tag={target}
-            onselect={(t) => (target = t)}
+            tag={form.target}
+            onselect={(t) => (form.target = t)}
           />
         {/key}
       </section>

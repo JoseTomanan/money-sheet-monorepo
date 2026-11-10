@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 const palette = (page: Page) => page.getByRole('dialog', { name: 'Command menu', exact: true });
 const open = (page: Page) => page.getByRole('button', { name: 'Open command menu' }).click();

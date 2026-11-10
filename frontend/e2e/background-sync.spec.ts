@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import type { AddEntryPayload, Entry } from '../src/lib/types';
 
 async function deferredNetwork(page: Page) {
@@ -111,7 +111,6 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.locator('.sync-status')).toHaveAttribute('data-sync-phase', 'busy');
       await page.getByRole('button', { name: 'Summary', exact: true }).click();
       await page.screenshot({ path: testInfo.outputPath(`background-${theme}-${width}.png`), fullPage: true });
-      await page.screenshot({ path: `../docs/pr/236/background-${theme}-${width}.png`, fullPage: true });
       const before = await page.locator('.scroll-area').evaluate(element => element.scrollTop);
       network.release();
       await expect(page.getByText('Balances awaiting sync', { exact: true })).toHaveCount(0);
