@@ -23,7 +23,8 @@ jobs:
       - run: npm run test:run
 
   browser:
-    runs-on: ubuntu-latest
+    # Keep the host supported by the locked Playwright browser/dependency bundle.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
@@ -37,11 +38,12 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+        id: browser_build
       # Both suites own port 1111; keep these steps sequential.
       - name: Mock Mode browser workflows
         run: npm run test:e2e
       - name: Intercepted Connection browser workflows
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.browser_build.outcome == 'success' }}
         run: npm run test:e2e:connection
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
