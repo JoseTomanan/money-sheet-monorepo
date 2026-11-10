@@ -151,10 +151,10 @@ test.describe("desktop 1024px — responsive reflow", () => {
     }
   });
 
-  test("App and sheet chrome use desktop pointer density", async ({ page }) => {
+  test("shared header keeps touch targets while unmigrated sheet chrome remains usable", async ({ page }) => {
+    await expectTouchTarget(page.getByRole('button', { name: 'Open settings' }));
     const appControls = [
       page.getByRole("button", { name: "Exit" }),
-      page.getByRole("button", { name: "Open settings" }),
     ];
     for (const control of appControls) {
       const box = await control.boundingBox();
@@ -363,8 +363,8 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(cats!.y).toBeGreaterThan(hero!.y + hero!.height * 0.5);
   });
 
-  // AC: mobile HomeScreen — chips stay in a single horizontal row
-  test("HomeScreen: category chips are in a single horizontal scroll row", async ({ page }) => {
+  // #248 replaces horizontal chips with a flat, complete Budget list.
+  test("HomeScreen: category budgets stack without horizontal scrolling", async ({ page }) => {
     const chips = page.locator(".cat-chip");
     await expect(chips.first()).toBeVisible();
 
@@ -373,8 +373,8 @@ test.describe("mobile 390px — layout unchanged", () => {
     expect(first).not.toBeNull();
     expect(fourth).not.toBeNull();
 
-    // All chips are at the same vertical position (within a few pixels)
-    expect(Math.abs(fourth!.y - first!.y)).toBeLessThan(10);
+    expect(fourth!.y).toBeGreaterThan(first!.y + first!.height);
+    expect(fourth!.x).toBe(first!.x);
   });
 
   // AC: mobile EntriesView — filter bar is above the entry list
@@ -579,7 +579,7 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     });
 
     expect(tokens).toEqual({
-      canvas: "#161616",
+      canvas: "#1c1c1c",
       surface: "#1c1c1c",
       elevated: "#232323",
       border: "#393939",

@@ -68,7 +68,7 @@ test('status colors are strong, consistent and readable in both themes', async (
     async function expectColor(label: string, channel: number) {
       const heading = dialog.getByRole('heading', { name: label, exact: true });
       await expect(heading).toBeVisible();
-      const colors = await heading.evaluate(el => {
+      const readColors = () => heading.evaluate(el => {
         const rgb = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
         const luminance = (channels: number[]) => channels.map(c => {
           c /= 255;
@@ -81,6 +81,13 @@ test('status colors are strong, consistent and readable in both themes', async (
         return { foreground, channels, saturation: (Math.max(...channels) - Math.min(...channels)) / Math.max(...channels),
           contrast: (Math.max(...luminances) + 0.05) / (Math.min(...luminances) + 0.05) };
       });
+      // Offline phase text can publish before the browser paints its new hue.
+      // Wait for that observable paint before sampling contrast and dot parity.
+      await expect.poll(async () => {
+        const colors = await readColors();
+        return colors.channels[channel] === Math.max(...colors.channels);
+      }).toBe(true);
+      const colors = await readColors();
       expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
       expect(colors.saturation).toBeGreaterThan(0.5);
       expect(colors.channels[channel]).toBe(Math.max(...colors.channels));

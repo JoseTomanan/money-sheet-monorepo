@@ -23,31 +23,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-input:             var(--input);
   --color-ring:              var(--ring);
-  --font-display:            var(--font-display);
-}
-
-@font-face {
-  font-family: 'Manrope';
-  src: url('./fonts/Manrope-VariableFont_wght.woff2') format('woff2');
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('./fonts/Inter-VariableFont_opsz,wght.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Inter';
-  src: url('./fonts/Inter-Italic.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: italic;
-  font-display: swap;
+  --font-sans:               var(--font-sans);
+  --font-mono:               var(--font-mono);
+  --font-display:            var(--font-sans);
 }
 
 @font-face {
@@ -59,15 +37,15 @@
 }
 
 :root {
-  --background:        #f4f4f5;
+  --background:        #ffffff;
   --foreground:        #18181b;
   --card:              #ffffff;
   --card-foreground:   #18181b;
   --muted:             #f0f0f1;
-  --muted-foreground:  #737373;
+  --muted-foreground:  #666666;
   --border:            #e5e5e5;
-  --accent:            #0d9488;
-  --accent-fill:       #0d9488;
+  --accent:            #404040;
+  --accent-fill:       #404040;
   --accent-foreground: #ffffff;
   --destructive-rgb:   193 74 50;
   --semantic-foreground-alpha: 1;
@@ -95,30 +73,45 @@
   --popover:              var(--card);
   --popover-foreground:   var(--card-foreground);
   --input:                var(--border);
-  --ring:                 var(--accent);
+  --ring:                 #2563eb;
   --radius:               var(--radius-md);
 
-  --font-sans:    'Inter', -apple-system, system-ui, sans-serif;
-  --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-sans:    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: var(--font-sans); /* compatibility for unmigrated consumers */
   --font-mono:    'Roboto Mono', ui-monospace, monospace;
 
-  --radius-sm:   8px;
-  --radius-md:   14px;
-  --radius-lg:   18px;
-  --radius-xl:   22px;
+  /* One scale at every width; reflow content rather than reducing density. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --text-secondary: 12px;
+  --text-body: 14px;
+  --text-field: 16px;
+  --text-title: 28px;
+  --text-balance: 36px;
+  --control-size: 44px;
+  --focus-width: 2px;
+
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
   --radius-pill: 999px;
 
-  --shadow-card:   0 1px 2px rgba(20, 18, 14, 0.04), 0 4px 12px rgba(20, 18, 14, 0.06);
-  --shadow-sheet:  0 -4px 10px rgba(20, 18, 14, 0.08), 0 -12px 40px rgba(20, 18, 14, 0.18);
-  --shadow-fab:    0 4px 10px rgba(0, 0, 0, 0.18), 0 10px 28px rgba(13, 148, 136, 0.30);
-  --shadow-tabbar: 0 -2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card:   none;
+  --shadow-sheet:  0 8px 32px rgba(0, 0, 0, 0.16);
+  --shadow-fab:    0 2px 8px rgba(0, 0, 0, 0.16);
+  --shadow-tabbar: 0 -1px 0 var(--border);
 
-  --app-bg: #f4f5f6;
+  --app-bg: var(--background);
 
-  /* hero card depth: subtle gradient + bright inset ring */
-  --gradient-hero: linear-gradient(160deg, #ffffff 0%, #f5f6f7 100%);
-  --shadow-hero:   0 1px 2px rgba(20, 18, 14, 0.04), 0 8px 24px rgba(20, 18, 14, 0.06);
-  --ring-inset:    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  /* Compatibility roles for older card-hero consumers; Home is a flat section. */
+  --gradient-hero: none;
+  --shadow-hero:   none;
+  --ring-inset:    0 0 #0000;
 
   /* destructive tint surfaces — used for error cards, delete buttons, selected rows */
   --destructive-tint-bg:            rgb(var(--destructive-rgb) / 0.06);
@@ -152,14 +145,14 @@
   --dark-sync-busy: #60a5fa;
   --dark-sync-waiting: #f87171;
   --dark-overlay-bg: rgba(0, 0, 0, 0.75);
-  --dark-shadow-card: 0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
-  --dark-shadow-sheet: 0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
+  --dark-shadow-card: none;
+  --dark-shadow-sheet: 0 8px 32px rgba(0, 0, 0, 0.40);
   --dark-shadow-fab: 0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(212, 212, 216, 0.14);
   --dark-shadow-tabbar: 0 -1px 0 var(--border);
-  --dark-shadow-hero: 0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
-  --dark-gradient-hero: linear-gradient(160deg, #2a2a2a 0%, #232323 100%);
-  --dark-ring-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --dark-app-bg: #161616;
+  --dark-shadow-hero: none;
+  --dark-gradient-hero: none;
+  --dark-ring-inset: 0 0 #0000;
+  --dark-app-bg: var(--background);
   --dark-semantic-foreground-alpha: 0.9;
   --dark-destructive-border-alpha: 0.18;
   --dark-destructive-border-strong-alpha: 0.26;
@@ -254,20 +247,26 @@ html, body {
   background: var(--app-bg);
   color: var(--foreground);
   font-family: var(--font-sans);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
 }
 
-/* Grain overlay — SVG feTurbulence noise at 3% opacity for tactile depth */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+body { font-size: var(--text-body); }
+
+/* Focus remains visible on neutral surfaces in either theme. */
+:focus-visible { outline: var(--focus-width) solid var(--ring); outline-offset: 2px; }
+@layer base {
+  input, textarea, select { font-size: var(--text-field); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 ::-webkit-scrollbar { display: none; }
@@ -319,7 +318,11 @@ body::before {
 }
 
 @utility label-overline {
-  @apply text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground;
+  @apply text-xs font-sans font-medium text-muted-foreground;
+}
+
+@utility control-link {
+  @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent px-2 text-sm font-medium text-foreground cursor-pointer hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring;
 }
 
 @utility btn-pill {

@@ -65,11 +65,12 @@ async function paint(locator: Locator, role: 'text' | 'background' | 'border' = 
 }
 
 for (const width of [390, 1024]) {
-  test(`light rendering is preserved at ${width}px`, async ({ page }) => {
+  test(`neutral light reference stays consistent at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await boot(page, 'light', 'dark');
     for (const view of ['Home', 'Entries', 'Summary'] as const) {
       await page.locator('.tab-bar-pill').getByRole('button', { name: view }).click();
+      // #248 updates these baselines for the accepted shared palette/type redesign.
       // Windows Chromium baselines: other hosts still run rendered color checks below.
       if (process.platform === 'win32') {
         await expect(page).toHaveScreenshot(`light-${width}-${view}.png`, { animations: 'disabled', maxDiffPixels: 0, threshold: 0 });
@@ -142,7 +143,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   await boot(page, 'system', 'light');
   const read = () => page.locator('.hero-card').evaluate(el => ({
     foreground: getComputedStyle(el).color,
-    background: getComputedStyle(el).backgroundImage,
+    background: getComputedStyle(el).backgroundColor,
     category: getComputedStyle(document.querySelector('.entry-stripe')!).backgroundColor,
   }));
   const light = await read();
@@ -223,7 +224,8 @@ for (const preference of ['dark', 'system'] as const) {
   test(`FINANCE stays muted yellow and readable with ${preference} preference`, async ({ page }) => {
     await boot(page, preference, 'dark');
     const chip = page.locator('.cat-chip', { hasText: 'Finance' });
-    await expect(chip).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.06)');
+    // #248 keeps the Category signal in the dot on a neutral Budget row.
+    await expect(chip).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(chip.locator('.cat-dot')).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.65)');
     await page.getByRole('button', { name: 'Add entry', exact: true }).click();
     await page.getByRole('button', { name: 'Incoming', exact: true }).click();
