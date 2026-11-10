@@ -25,7 +25,7 @@
 
 <Dialog.Root bind:open>
   <Dialog.Trigger bind:ref={trigger} onkeydown={consumeSave} aria-label="Keyboard shortcuts" title="Keyboard shortcuts"
-    class="min-h-11 min-w-11 flex shrink-0 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent px-2 text-sm font-semibold text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent lg:min-h-8 lg:min-w-8">?</Dialog.Trigger>
+    class="min-h-11 min-w-11 flex shrink-0 items-center justify-center rounded-[var(--radius-sm)] border-0 bg-transparent px-2 text-sm font-semibold text-muted-foreground cursor-pointer hover:text-foreground focus-visible:outline-2 focus-visible:outline-accent">?</Dialog.Trigger>
   <Dialog.Portal>
     <Dialog.Overlay class="fixed inset-0 z-[610] bg-[var(--overlay-bg)]" />
     <Dialog.Content onEscapeKeydown={guardEscape} onkeydowncapture={consumeSave} class="fixed left-1/2 top-1/2 z-[611] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-5 font-sans">

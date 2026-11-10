@@ -2,13 +2,14 @@
   import { store } from '../lib/store.svelte';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
   import { darkMode } from '../lib/darkMode.svelte';
-  import { peso, fmtDate, dayOfWeek } from '../lib/format';
+  import { fmtDate, dayOfWeek } from '../lib/format';
   import { recentForDisplay, splitRunPositions } from '../lib/groupEntries';
   import { latestEntryDate } from '../lib/aggregations';
   import SectionHeader from '../components/ui/SectionHeader.svelte';
   import BalanceStatus from '../components/ui/BalanceStatus.svelte';
   import PageHeader from '../components/ui/PageHeader.svelte';
   import EntryRow from '../components/entry/EntryRow.svelte';
+  import Money from '../components/ui/Money.svelte';
 
   interface Props {
     onnavigate: (tab: 'entries' | 'summary') => void;
@@ -43,16 +44,16 @@
     {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
     {#snippet title()}<div class="h-[36px] w-[200px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
   </PageHeader>
-  <div class="home-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
-    <div class="home-left">
-      <div class="hero-card card mx-4 mt-[14px] pt-5 pb-5 px-[22px] lg:mx-0">
+  <div class="home-cols grid grid-cols-1 gap-8 px-4 pt-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:px-6" aria-hidden="true">
+    <div class="home-left min-w-0">
+      <div class="hero-card pb-8">
         <div class="h-[8px] w-[60px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
         <div class="h-[44px] w-[180px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] mt-2"></div>
       </div>
-      <div class="px-5 pt-5 pb-2">
+      <div class="py-3">
         <div class="h-[10px] w-[120px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-      <div class="card mx-4 overflow-hidden lg:mx-0">
+      <div class="border-y border-border">
         {#each [0, 1] as _}
           <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
             <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
@@ -62,54 +63,55 @@
         {/each}
       </div>
     </div>
-    <div class="home-right lg:min-h-full">
-      <div class="px-5 pt-5 pb-2">
+    <div class="home-right min-w-0">
+      <div class="py-3">
         <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
-      <div class="flex gap-2 pl-4 py-[2px]">
-        {#each [0, 1, 2, 3, 4] as _}
-          <div class="h-[60px] w-[96px] shrink-0 rounded-[var(--radius-md)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="border-t border-border">
+        {#each CATEGORY_ORDER as _}
+          <div class="flex justify-between py-3 border-b border-border">
+            <div class="h-[21px] w-[96px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="h-[21px] w-[64px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+          </div>
         {/each}
       </div>
     </div>
   </div>
 {:else}
-  <!-- Month header -->
+  <!-- Greeting and date remain secondary to the financial anchor. -->
   <PageHeader {onsettings}>
     {#snippet context()}{monthLabel}{/snippet}
-    {#snippet title()}{greeting}{/snippet}
+    {#snippet title()}Home{/snippet}
   </PageHeader>
-
+  <p class="mx-4 mt-2 mb-0 text-sm text-muted-foreground lg:mx-6 wrap-anywhere">{greeting}</p>
   <BalanceStatus />
-  <div class="home-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
-    <!-- Left: hero + latest -->
-    <div class="home-left">
-      <!-- On Hand hero card -->
-      <div class="hero-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden lg:mx-0">
-        <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
-        <div
-          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
-        >
-          {peso(store.master.onHand, store.config.currency)}
+  <div class="home-cols grid grid-cols-1 gap-8 px-4 pt-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:px-6">
+    <!-- Primary column: sheet-sourced balance and unchanged latest selection. -->
+    <div class="home-left min-w-0">
+      <section class="hero-card bg-background text-foreground pb-8" aria-labelledby="on-hand-title">
+        <h2 id="on-hand-title" class="m-0 text-sm font-medium text-muted-foreground">On hand</h2>
+        <div class="hero-amount mt-2 text-left leading-tight">
+          <Money value={store.master.onHand} size={36} />
         </div>
-      </div>
+      </section>
 
-      <!-- Latest-day outgoing -->
-      <SectionHeader>
-        {#snippet children()}Latest · {latestLabel}{/snippet}
+      <section aria-labelledby="latest-title">
+      <SectionHeader flush>
+        {#snippet children()}<h2 id="latest-title" class="m-0 text-sm font-semibold">Latest entries</h2>{/snippet}
         {#snippet right()}
-          <button class="see-all bg-transparent border-0 p-0 cursor-pointer font-sans text-[13px] font-medium text-accent" onclick={() => onnavigate('entries')}>All entries →</button>
+          <button class="see-all control-link" onclick={() => onnavigate('entries')}>All entries</button>
         {/snippet}
       </SectionHeader>
+      <p class="m-0 pb-3 text-xs text-muted-foreground">{latestLabel}</p>
 
-      <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section card bg-background mx-4 overflow-hidden space-y-0.5 lg:mx-0">
+      <button class="today-teaser block w-full min-h-11 rounded-[var(--radius-sm)] bg-transparent border-0 p-0 cursor-pointer text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onclick={() => onnavigate('entries')} aria-label="Go to entries">
+        <div class="today-section border-y border-border">
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
           {#each todayEntries as entry, i (entry.id)}
             <div
-              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card"
+              class="today-row flex min-h-11 items-center gap-[10px] py-3 px-3 border-b border-border last:border-0"
             >
               <EntryRow {entry} splitPos={todaySplitPos[i]} local={store.localIds?.has(entry.id) ?? false} />
             </div>
@@ -117,50 +119,40 @@
         {/if}
         </div>
       </button>
+      </section>
     </div>
 
-    <!-- Right: category chips -->
-    <div class="home-right lg:min-h-full">
-      <SectionHeader>
-        {#snippet children()}By Category{/snippet}
+    <!-- All Category budgets remain visible at every width. -->
+    <section class="home-right min-w-0" aria-labelledby="budgets-title">
+      <SectionHeader flush>
+        {#snippet children()}<h2 id="budgets-title" class="m-0 text-sm font-semibold">Category budgets</h2>{/snippet}
         {#snippet right()}
-          <button class="see-all bg-transparent border-0 p-0 cursor-pointer font-sans text-[13px] font-medium text-accent" onclick={() => onnavigate('summary')}>See all →</button>
+          <button class="see-all control-link" onclick={() => onnavigate('summary')}>See summary</button>
         {/snippet}
       </SectionHeader>
 
-      <div class="category-scroll-wrap overflow-x-auto pb-[10px] -mb-[10px] lg:overflow-x-visible lg:pb-2 lg:mb-0">
-      <div class="category-scroll flex gap-2 py-[2px] pl-4 lg:grid lg:grid-cols-2 lg:px-0 lg:py-[2px]">
+      <div class="category-scroll-wrap border-t border-border">
+      <dl class="category-scroll m-0">
         {#each CATEGORY_ORDER as key}
           {@const c = CATEGORIES[key]}
-          {@const budget = store.master.budgets[key] ?? 0}
-          <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] lg:shrink"
-            style="background: {darkMode.current ? (c.darkSoft ?? c.soft) : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
-            <div class="cat-chip-header flex items-center gap-[6px]">
-              <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
-              <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
-            </div>
-            <div
-              class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right whitespace-nowrap"
-                      style="color: {c.color};"
-            >
-              {peso(budget, store.config.currency)}
-            </div>
+          {@const budget = store.master.budgets[key]}
+          <div class="cat-chip flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3 border-b border-border">
+            <dt class="cat-chip-header flex min-w-0 items-center gap-2">
+              <span class="cat-dot size-[6px] rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};" aria-hidden="true"></span>
+              <span class="cat-name text-sm wrap-anywhere">{c.label}</span>
+            </dt>
+            <dd class="cat-amount m-0 ml-auto min-w-0 max-w-full text-right">
+              {#if Number.isFinite(budget)}
+                <Money value={budget} size={14} />
+              {:else}
+                <span class="text-xs text-muted-foreground" aria-label="Budget unavailable">Unavailable</span>
+              {/if}
+            </dd>
           </div>
         {/each}
+      </dl>
       </div>
-      </div>
-    </div>
+    </section>
   </div>
 {/if}
 </div>
-
-<style>
-  .category-scroll::after {
-    content: '';
-    flex-shrink: 0;
-    width: 8px;
-  }
-  @media (min-width: 1024px) {
-    .category-scroll::after { display: none; }
-  }
-</style>
