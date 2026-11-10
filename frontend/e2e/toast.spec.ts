@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 const body = 'Not updated: entries, balances, categories, settings, statistics.';
 

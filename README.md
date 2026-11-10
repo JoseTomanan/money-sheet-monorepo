@@ -128,6 +128,22 @@ money-sheet-monorepo/
 
 Each package is independent with its own `package.json`. For development instructions, see [CLAUDE.md](CLAUDE.md).
 
+From `frontend/`, run `npm run check`, `npm run test:run`, and `npm run build`.
+The PR browser gate runs `npm run test:e2e`, then
+`npm run test:e2e:connection`. Install Chromium
+first with `npx playwright install chromium`. Both suites own port 1111 and must
+run sequentially with the dev server stopped. They clear Vite Connection
+credentials, block unhandled external HTTP, and exclude the optional live API
+spec. The second suite intercepts fake HTTP destinations; neither requires a real
+spreadsheet. Failure traces and screenshots are uploaded as `browser-evidence`
+in CI; routine screenshots stay in `frontend/test-results/`.
+
+The behavior baseline for the redesign includes admission/refusal and deferred
+delivery, atomic Redistribution, picker reset, semantic focus, keyboard row
+activation, Connection validation, responsive lifetime ownership, and canonical
+route/week/scroll behavior. These checks do not certify the installed-iPhone
+report in #242. See [CONTEXT.md](CONTEXT.md) for the behavior owners.
+
 ## License
 
 [MIT](LICENSE)

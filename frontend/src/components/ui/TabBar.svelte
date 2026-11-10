@@ -20,6 +20,7 @@
   <div class="tab-bar-pill flex items-center justify-around w-full max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 h-[60px] px-2 pb-[env(safe-area-inset-bottom,0px)] bg-card/90 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto">
     {#each tabs as tab}
       <button
+        data-app-navigation={tab.id}
         class="tab-btn flex-1 flex flex-col items-center justify-center gap-[2px] py-[6px] bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150"
         class:text-accent={active === tab.id}
         class:text-muted-foreground={active !== tab.id}

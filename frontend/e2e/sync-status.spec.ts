@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 
 test.use({ hasTouch: true, timezoneId: 'Asia/Manila' });
 const testTime = new Date('2026-10-27T12:00:00+08:00');
@@ -142,7 +142,6 @@ for (const theme of ['light', 'dark'] as const) {
       const refresh = dialog.getByRole('button', { name: 'Refresh data', exact: true });
       await expect(dialog).toBeVisible();
       await expect(close).toBeFocused();
-      await page.screenshot({ path: `../docs/pr/259/ready-${theme}-${width}.png`, fullPage: true });
       await close.click();
       await expect(trigger).toBeFocused();
       expect(network.reads).toBe(readsBeforeOpen);
@@ -189,7 +188,6 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(dialog.getByRole('heading', { name: 'Waiting to sync' })).toBeVisible();
       expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      await page.screenshot({ path: `../docs/pr/259/waiting-${theme}-${width}.png`, fullPage: true });
       await expect(page.getByRole('button', { name: 'Refresh data', exact: true })).toBeVisible();
       network.failStats = false;
       // Transport failures live in status details. Seed a separate actionable

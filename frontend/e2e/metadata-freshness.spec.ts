@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // The real adapter sends intercepted HTTP requests; never contacts Sheets.
 test('cold startup, ten reconciliations, reload, and accessible force refresh have bounded read counts', async ({ page }) => {

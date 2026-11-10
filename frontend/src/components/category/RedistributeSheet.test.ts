@@ -64,6 +64,9 @@ it('retains the redistribution draft after refused admission and permits retry',
   expect(onsubmit).toHaveBeenCalledTimes(2);
   expect(onsubmit.mock.calls[1][0]).toEqual(onsubmit.mock.calls[0][0]);
   expect(onclose).toHaveBeenCalledOnce();
+  await fireEvent.click(getByRole('button', { name: /^Redistribute$/ }));
+  expect(onsubmit).toHaveBeenCalledTimes(2);
+  expect(onclose).toHaveBeenCalledOnce();
 });
 
 // --- Cycle 1: submit disabled initially ---

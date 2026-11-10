@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import type { Entry } from '../src/lib/types';
 
 test('keyboard saves and bulk deletion retain intent when actual localStorage admission is refused', async ({ page }) => {

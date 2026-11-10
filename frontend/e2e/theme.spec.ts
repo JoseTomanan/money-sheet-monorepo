@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { test, expect, type Page, type Locator } from './fixtures';
 
 async function boot(page: Page, preference: 'light' | 'dark' | 'system', os: 'light' | 'dark' = 'light') {
   await page.emulateMedia({ colorScheme: os, reducedMotion: 'reduce' });

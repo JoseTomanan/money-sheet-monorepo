@@ -42,9 +42,10 @@ it('keyboard save submits an unblurred expression once through the existing Edit
   expect(props.onclose).toHaveBeenCalledOnce();
 });
 
-it('starts Entry focus at Amount and moves to the added and surviving legs', async () => {
+it('starts Entry focus at Amount and moves to added/surviving legs without decorative classes', async () => {
   const view = render(EntrySheet, baseProps());
   await waitFor(() => expect(view.getByPlaceholderText('0.00')).toHaveFocus());
+  view.getByPlaceholderText('0.00').className = '';
   await fireEvent.click(view.getByText('Add leg'));
   await waitFor(() => expect(view.getAllByPlaceholderText('0.00')[1]).toHaveFocus());
   await fireEvent.click(view.getAllByRole('button', { name: 'Remove' })[1]);
@@ -378,6 +379,21 @@ describe("EntrySheet — two-step tag picker (new Outgoing entry)", () => {
 });
 
 describe("EntrySheet — two-step picker edit prefill", () => {
+  it('clears picker expansion and Tag when Direction changes, then accepts a bare Category', async () => {
+    const props = baseProps({ entry: makeEntry() });
+    const view = render(EntrySheet, props);
+    expect(view.getByRole('button', { name: 'Dining' })).toBeInTheDocument();
+    await fireEvent.click(view.getByRole('button', { name: 'Incoming' }));
+    expect(view.queryByRole('button', { name: 'Dining' })).not.toBeInTheDocument();
+    await fireEvent.click(view.getByRole('button', { name: 'Outgoing' }));
+    expect(view.queryByRole('button', { name: 'Dining' })).not.toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Food' })).toHaveAttribute('aria-pressed', 'false');
+    await fireEvent.click(view.getByRole('button', { name: 'Food' }));
+    await fireEvent.input(view.getByPlaceholderText('0.00'), { target: { value: '10' } });
+    await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    expect(props.onsave).toHaveBeenCalledWith(expect.objectContaining({ patch: expect.objectContaining({ tag: 'Food', direction: 'O' }) }));
+  });
+
   it("pre-expands the parent Category when editing an Outgoing entry", () => {
     const { getByRole } = render(
       EntrySheet,

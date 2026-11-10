@@ -151,6 +151,21 @@ do not block financial reconciliation. An unloaded Categories map is unavailable
 while a successfully fetched empty map is confirmed. Metadata publication is guarded
 by the Connection lifetime, independently of Entry revisions (ADR-0018, issue #245).
 
+## Frontend workflows
+
+Frontend workflow state follows the existing Svelte rune factories:
+`createEntryForm` owns Entry drafts and `EntryMutation` construction;
+`createRedistributionForm` owns Fund Redistribution draft reset, validity, and
+the ordered negative-source/positive-target Incoming pair. The rendering adapters
+own DOM focus, amount-input blur feedback, and admission-time dismissal. Focus
+uses semantic `data-entry-amount` and `data-app-navigation` hooks. The Tag picker
+seeds Outgoing expansion from the initial Tag and clears expansion on a Direction
+change without relying on a parent remount. Filtering, `rowIntent`, and bulk
+selection retain the existing row eligibility policy. App alone initializes and
+disposes the financial lifetime across routes and responsive changes. Settings
+validates a Connection before committing it. These are behavior seams for #246,
+not a new ViewModel framework; store/queue ownership and ADR-0018 remain unchanged.
+
 ## Offline Queue
 
 Queues and cached financial snapshots are destination-scoped under `ms_queue:v2:<JSON URL>` and `ms_cache:v2:<JSON URL>`. Returning to the exact URL restores its own work with original Mutation IDs. Mock Mode uses ephemeral work and never consumes real queues or writes real snapshots. Unknown-origin legacy `ms_queue` bytes are retained in one quarantine, excluded from automatic delivery and display; Settings requires explicit confirmation of their original saved URL before association. Unknown-origin legacy cache is never displayed. The `ms_queue_legacy_owner` recovery journal makes confirmed association resumable after interruption (ADR-0017).

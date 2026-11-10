@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./fixtures";
 
 async function expectTouchTarget(locator: { boundingBox(): Promise<{ width: number; height: number } | null> }) {
   const box = await locator.boundingBox();
