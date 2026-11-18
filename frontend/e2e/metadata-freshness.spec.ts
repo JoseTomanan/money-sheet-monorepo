@@ -35,8 +35,12 @@ test('cold startup, ten reconciliations, reload, and accessible force refresh ha
   await expect(status).toHaveAttribute('data-sync-phase', 'ready');
   expect(reads).toEqual({ getEntries: 12, getMaster: 12, getStats: 12, getCategories: 1, getConfig: 1 });
   currency = 'USD'; categories = { FOOD: ['New category'] };
-  await status.focus(); await page.keyboard.press('Enter'); await page.keyboard.press('Tab');
-  const refresh = page.getByRole('button', { name: 'Refresh data', exact: true });
+  await status.focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Sync status', exact: true });
+  await expect(dialog.getByRole('button', { name: 'Close sync status' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  const refresh = dialog.getByRole('button', { name: 'Refresh data', exact: true });
   await expect(refresh).toBeFocused(); await page.keyboard.press('Enter');
   await expect(status).toHaveAttribute('data-sync-phase', 'ready');
   expect(reads).toEqual({ getEntries: 13, getMaster: 13, getStats: 13, getCategories: 2, getConfig: 2 });

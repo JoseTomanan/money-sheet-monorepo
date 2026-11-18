@@ -93,9 +93,14 @@ test('bulk keyboard selection confirms deletion, preserves selection on Escape, 
   const help = page.getByRole('dialog', { name: 'Keyboard shortcuts', exact: true });
   await expect(help).toContainText('Ctrl+A');
   await expect(help.getByText('Shift+N', { exact: true })).toHaveCount(0);
+  await expect(help.getByRole('button', { name: 'Close keyboard shortcuts' })).toBeFocused();
+  await page.clock.install();
+  // Keep the closing help node mounted while opening the next dialog.
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.keyboard.press('Escape');
   await page.keyboard.press('Delete');
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveAccessibleName(`Delete ${count} entries?`);
+  await page.clock.resume();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText(`${count} selected`, { exact: true })).toBeVisible();
