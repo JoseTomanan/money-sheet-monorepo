@@ -2,7 +2,7 @@
      Outgoing: Category row always visible; tapping a Category expands its Subcategory row.
      Incoming: Category row only; tapping a Category calls onselect immediately. -->
 <script lang="ts">
-  import { untrack, tick } from 'svelte';
+  import { untrack, tick, onMount } from 'svelte';
   import { choiceGroup } from '$lib/choiceGroup';
   import { resolveCategoryStyle, CATEGORY_ORDER } from '../../lib/theme';
   import { darkMode } from '../../lib/darkMode.svelte';
@@ -36,6 +36,7 @@
   let previousDirection = untrack(() => direction);
   $effect(() => {
     if (direction !== previousDirection) {
+      settleEntrance();
       activeCategory = '';
       previousDirection = direction;
     }
@@ -50,8 +51,36 @@
   );
 
   let picker: HTMLDivElement;
-  async function handleCategoryClick(cat: string) {
+  let frame = 0;
+  let entering = false;
+  function settleEntrance() {
+    cancelAnimationFrame(frame);
+    entering = false;
+    if (picker) {
+      picker.classList.remove('picker-entrance');
+      picker.style.opacity = '';
+    }
+  }
+  function enterRow() {
+    if (entering) return;
+    entering = true;
+    picker.classList.remove('picker-entrance');
+    picker.style.opacity = '0';
+    void picker.offsetWidth;
+    picker.classList.add('picker-entrance');
+    frame = requestAnimationFrame(() => { picker.style.opacity = '1'; });
+  }
+  onMount(() => {
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    motion?.addEventListener?.('change', settleEntrance);
+    return () => { motion?.removeEventListener?.('change', settleEntrance); settleEntrance(); };
+  });
+  async function handleCategoryClick(cat: string, event: MouseEvent) {
     const restore = picker?.contains(document.activeElement);
+    if (direction === 'O') {
+      if (event.detail > 0 && !!(event as PointerEvent).pointerType) enterRow();
+      else settleEntrance();
+    }
     if (direction === 'I') {
       onselect(cat);
     } else if (activeCategory === cat) {
@@ -86,7 +115,10 @@
 {/if}
 
 <!-- Single row: drill-in on Outgoing, flat list on Incoming / uncollapsed -->
-<div bind:this={picker} class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible">
+<!-- svelte-ignore a11y_no_static_element_interactions: listens to keyboard events from the buttons within -->
+<div bind:this={picker} class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible"
+  onkeydown={settleEntrance}
+  ontransitionend={(event) => { if (event.target === picker && event.propertyName === 'opacity') settleEntrance(); }}>
   {#if direction === 'O' && activeCategory}
     {@const s = resolveCategoryStyle(activeCategory)}
     {@const isBareCategoryActive = tag === activeCategory}
@@ -102,7 +134,7 @@
       aria-pressed={isBareCategoryActive}
       aria-label={activeCategory}
       style="background: {isBareCategoryActive ? s.color : s.soft}; color: {isBareCategoryActive ? '#fff' : inactivePinnedColor};"
-      onclick={() => handleCategoryClick(activeCategory)}
+      onclick={(event) => handleCategoryClick(activeCategory, event)}
     >
       <span class={dotClass} style="background: {isBareCategoryActive ? '#fff' : inactivePinnedColor}"></span>
       ‹ {activeCategory}
@@ -138,7 +170,7 @@
         class={catPillClass}
         aria-pressed={isActive}
         style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
-        onclick={() => handleCategoryClick(cat)}
+        onclick={(event) => handleCategoryClick(cat, event)}
       >
         <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
         {cat}
