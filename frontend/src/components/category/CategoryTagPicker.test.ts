@@ -33,6 +33,35 @@ function baseProps(overrides = {}) {
   };
 }
 
+it('starts an entrance on pointer activation while committing the Category immediately', async () => {
+  const props = baseProps();
+  const view = render(CategoryTagPicker, props);
+  const food = view.getByRole('button', { name: 'FOOD' });
+  const click = new MouseEvent('click', { bubbles: true, detail: 1 });
+  Object.defineProperty(click, 'pointerType', { value: 'mouse' });
+  await fireEvent(food, click);
+  expect(props.onselect).toHaveBeenCalledExactlyOnceWith('FOOD');
+  expect(view.getByRole('button', { name: 'Dining' })).toBeInTheDocument();
+  expect(view.container.querySelector('.picker-row')).toHaveStyle({ opacity: '0' });
+});
+
+it('settles a pointer entrance as soon as keyboard interaction begins', async () => {
+  const view = render(CategoryTagPicker, baseProps());
+  const click = new MouseEvent('click', { bubbles: true, detail: 1 });
+  Object.defineProperty(click, 'pointerType', { value: 'mouse' });
+  await fireEvent(view.getByRole('button', { name: 'FOOD' }), click);
+  const row = view.container.querySelector('.picker-row') as HTMLElement;
+  expect(row).toHaveStyle({ opacity: '0' });
+  await fireEvent.keyDown(view.getByRole('button', { name: 'Dining' }), { key: 'ArrowLeft' });
+  expect(row.style.opacity).toBe('');
+});
+
+it('keeps activation without pointer provenance fully visible', async () => {
+  const view = render(CategoryTagPicker, baseProps());
+  await fireEvent.click(view.getByRole('button', { name: 'FOOD' }));
+  expect((view.container.querySelector('.picker-row') as HTMLElement).style.opacity).toBe('');
+});
+
 // ---------------------------------------------------------------------------
 // Outgoing — two-step picker
 // ---------------------------------------------------------------------------
