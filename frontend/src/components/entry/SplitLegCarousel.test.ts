@@ -23,6 +23,67 @@ function baseProps(overrides = {}) {
 }
 
 describe("SplitLegCarousel", () => {
+  it("keeps the surviving middle-removal draft and focus attached to its leg", async () => {
+    const split = { legs: [{ tag: '', amount: '10' }, { tag: '', amount: '20' }, { tag: '', amount: '30' }] };
+    const props = baseProps({ split });
+    const view = render(SplitLegCarousel, props);
+    const last = view.getByLabelText('Amount for leg 3');
+    props.onremove.mockImplementation((index: number) => {
+      void view.rerender({ split: { legs: split.legs.filter((_, i) => i !== index) } });
+    });
+    await fireEvent.click(view.getAllByText('Remove')[1]);
+    expect(view.getByLabelText('Amount for leg 2')).toBe(last);
+    expect(last).toHaveValue('30');
+    expect(last).toHaveFocus();
+  });
+
+  it("does not animate keyboard removal", async () => {
+    const animate = vi.fn();
+    const original = Element.prototype.animate;
+    Element.prototype.animate = animate as unknown as typeof Element.prototype.animate;
+    try {
+      const props = baseProps({ split: addLeg(initSplitState()) });
+      const view = render(SplitLegCarousel, props);
+      await fireEvent.click(view.getAllByText('Remove')[1], { detail: 0 });
+      expect(props.onremove).toHaveBeenCalledWith(1);
+      expect(animate).not.toHaveBeenCalled();
+    } finally {
+      Element.prototype.animate = original;
+    }
+  });
+  it("animates a pointer-added leg and focuses its amount", async () => {
+    const animate = vi.fn(() => ({ finished: Promise.resolve() }));
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    const original = Element.prototype.animate;
+    Element.prototype.animate = animate as unknown as typeof Element.prototype.animate;
+    try {
+      const props = baseProps();
+      const view = render(SplitLegCarousel, props);
+      props.onadd.mockImplementation(() => { void view.rerender({ split: addLeg(props.split) }); });
+      await fireEvent.click(view.getByText('Add leg'), { detail: 1 });
+      expect(view.getByLabelText('Amount for leg 2')).toHaveFocus();
+      expect(animate).toHaveBeenCalledOnce();
+    } finally {
+      Element.prototype.animate = original;
+      vi.unstubAllGlobals();
+    }
+  });
+  it("animates a pointer removal without delaying the removal callback", async () => {
+    const animate = vi.fn(() => ({ finished: Promise.resolve() }));
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    const original = Element.prototype.animate;
+    Element.prototype.animate = animate as unknown as typeof Element.prototype.animate;
+    try {
+      const props = baseProps({ split: addLeg(initSplitState()) });
+      const view = render(SplitLegCarousel, props);
+      await fireEvent.click(view.getAllByText('Remove')[1], { detail: 1 });
+      expect(props.onremove).toHaveBeenCalledWith(1);
+      expect(animate).toHaveBeenCalledOnce();
+    } finally {
+      Element.prototype.animate = original;
+      vi.unstubAllGlobals();
+    }
+  });
   it("renders one card per leg plus an Add leg button when showAddCard=true", () => {
     // initSplitState now gives 1 leg
     const { getAllByText, getByText } = render(SplitLegCarousel, baseProps());
