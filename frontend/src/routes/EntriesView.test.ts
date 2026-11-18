@@ -45,6 +45,18 @@ function getWeekTrigger(container: HTMLElement) {
   return container.querySelector("[data-week-trigger]") as HTMLElement;
 }
 
+it('keeps keyboard focus on the selection action when entering and leaving selection', async () => {
+  mockStore.entries = [makeEntry(1, '2026-05-24')];
+  const view = render(EntriesView, baseProps({ selectedWeek: '2026-05-24' }));
+  const select = view.getByRole('button', { name: 'Enter bulk-select mode' });
+  select.focus();
+  await fireEvent.click(select, { detail: 0 });
+  const cancel = view.getByRole('button', { name: 'Cancel' });
+  await waitFor(() => expect(cancel).toHaveFocus());
+  await fireEvent.click(cancel, { detail: 0 });
+  await waitFor(() => expect(view.getByRole('button', { name: 'Enter bulk-select mode' })).toHaveFocus());
+});
+
 it('navigates displayed rows with arrows and prevents scrolling when toggling bulk selection', async () => {
   mockStore.entries = [makeEntry(1, '2026-05-24'), makeEntry(2, '2026-05-25')];
   const view = render(EntriesView, baseProps({ selectedWeek: '2026-05-24', selectMode: true }));

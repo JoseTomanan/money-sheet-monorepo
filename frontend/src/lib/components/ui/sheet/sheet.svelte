@@ -34,7 +34,7 @@
         if (target) { event.preventDefault(); target.focus(); }
       }}
       onCloseAutoFocus={(event) => {
-        if (opener?.isConnected && opener !== document.body && !opener.matches(':disabled')) return;
+        if (opener?.isConnected && opener !== document.body && !opener.matches(':disabled') && !opener.closest('[inert], [aria-hidden="true"]')) return;
         const target = fallbackFocus?.();
         if (target) { event.preventDefault(); target.focus(); }
       }}

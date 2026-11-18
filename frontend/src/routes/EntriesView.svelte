@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import { store } from '../lib/store.svelte';
   import type { Entry, AddEntryPayload } from '../lib/types';
   import { CATEGORIES, CATEGORY_ORDER } from '../lib/theme';
@@ -48,7 +49,83 @@
   // Clear selection whenever select mode exits.
   $effect(() => { if (!selectMode) bulk.clear(); });
   let entryList = $state<HTMLDivElement | null>(null);
+  let selectAction = $state<HTMLButtonElement | null>(null);
+  let cancelAction = $state<HTMLButtonElement | null>(null);
+  let barPresent = $state(selectMode);
+  let barShown = $state(selectMode);
+  let barMotion = $state(false);
+  let knownMode = selectMode;
+  let barElement = $state<HTMLDivElement | null>(null);
+  let pointerTarget: EventTarget | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let generation = 0;
+
+  function pointerDown(event: PointerEvent) {
+    pointerTarget = event.isTrusted ? event.currentTarget : null;
+  }
+  function pointerClick(event?: MouseEvent) {
+    const result = !!event && event.isTrusted && event.detail > 0 && pointerTarget === event.currentTarget;
+    pointerTarget = null;
+    return result;
+  }
+  function settleBar() {
+    generation++;
+    clearTimeout(timer);
+    barMotion = false;
+    barPresent = selectMode;
+    barShown = selectMode;
+  }
+  $effect(() => {
+    if (selectMode !== knownMode) {
+      knownMode = selectMode;
+      settleBar();
+    }
+  });
+  onMount(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const settle = () => settleBar();
+    window.addEventListener('resize', settle);
+    reduced.addEventListener('change', settle);
+    return () => { window.removeEventListener('resize', settle); reduced.removeEventListener('change', settle); clearTimeout(timer); generation++; };
+  });
+  async function changeSelectionMode(value: boolean, event?: MouseEvent) {
+    const animate = pointerClick(event) && window.innerWidth < 1024;
+    const moveFocus = value
+      ? event?.detail === 0 && document.activeElement === selectAction
+      : document.activeElement === cancelAction || !!document.activeElement?.closest('.select-bar');
+    clearTimeout(timer);
+    const current = ++generation;
+    knownMode = value;
+    selectMode = value;
+    if (!value) bulk.clear();
+    if (!animate) {
+      settleBar();
+    } else if (value) {
+      const wasPresent = barPresent;
+      barPresent = true;
+      barMotion = true;
+      if (!wasPresent) {
+        barShown = false;
+        await tick();
+        if (current !== generation) return;
+        // Establish the starting style before retargeting the transition.
+        barElement?.getBoundingClientRect();
+      }
+      barShown = true;
+    } else {
+      barMotion = true;
+      barShown = false;
+      const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 80 : 140;
+      timer = setTimeout(() => { if (generation === current) barPresent = false; }, duration);
+    }
+    if (moveFocus) {
+      await tick();
+      if (selectMode === value) (value ? cancelAction : selectAction ?? entryList?.querySelector<HTMLElement>('[data-entry-row]'))?.focus({ preventScroll: true });
+    }
+  }
   function handleKeyboard(event: KeyboardEvent) {
+    pointerTarget = null;
+    if (selectMode && barMotion) settleBar();
     if (!pageKeyboardAvailable(event)) return;
     if (selectMode && primaryModifier(event) && !event.shiftKey && event.key.toLowerCase() === 'a') {
       event.preventDefault(); if (!event.repeat) bulk.selectAll(); return;
@@ -60,7 +137,7 @@
       return;
     }
     if (selectMode && event.key === 'Escape') {
-      event.preventDefault(); if (!event.repeat) selectMode = false; return;
+      event.preventDefault(); if (!event.repeat) void changeSelectionMode(false); return;
     }
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     const rows = [...(entryList?.querySelectorAll<HTMLElement>('[data-entry-row]') ?? [])];
@@ -79,15 +156,15 @@
 
 <div class="entries-view p-0">
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
-{#if selectMode}
-  <div class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
+{#if barPresent}
+  <div bind:this={barElement} inert={!selectMode} aria-hidden={!selectMode} data-shown={barShown} data-motion={barMotion} class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
     <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
       {bulk.selectedIds.size} selected
     </span>
     <button
       class="delete-sel-btn flex items-center gap-[6px] py-[8px] px-[16px] rounded-[var(--radius-md)] border border-[var(--destructive-tint-border-strong)] bg-[var(--destructive-tint-strong)] text-destructive font-sans text-[13px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
       disabled={bulk.selectedIds.size === 0}
-      onclick={() => (bulk.confirmOpen = true)}
+      onclick={() => { if (selectMode) bulk.confirmOpen = true; }}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="3 6 5 6 21 6"/>
@@ -150,13 +227,17 @@
       </button>
       {#if selectMode}
         <button
+          bind:this={cancelAction}
+          onpointerdown={pointerDown}
           class="min-h-11 min-w-11 font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
-          onclick={() => (selectMode = false)}
+          onclick={(event) => changeSelectionMode(false, event)}
         >Cancel</button>
       {:else}
         <button
+          bind:this={selectAction}
+          onpointerdown={pointerDown}
           class="min-h-11 min-w-11 flex items-center justify-center font-sans text-[13px] font-medium text-accent bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
-          onclick={() => (selectMode = true)}
+          onclick={(event) => changeSelectionMode(true, event)}
           aria-label="Enter bulk-select mode"
         >Select</button>
       {/if}
@@ -231,7 +312,7 @@
   </div>
 
   <!-- Entry list -->
-  <div bind:this={entryList} class="entry-list mt-2 mx-4 pb-[72px] flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0">
+  <div bind:this={entryList} class="entry-list mt-2 mx-4 flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0" class:pb-[140px]={selectMode} class:pb-[72px]={!selectMode}>
     {#if filter.filtered.length === 0}
       {#if !selectMode}
         <button
@@ -331,7 +412,8 @@
   <div class="px-5 pb-6 flex flex-col gap-2 mt-2">
     <button
       class="w-full py-3 rounded-[var(--radius-md)] border-0 bg-destructive-fill text-white font-sans text-[15px] font-semibold cursor-pointer"
-      onclick={() => bulk.confirmDelete(() => { selectMode = false; })}
+      onpointerdown={pointerDown}
+      onclick={(event) => bulk.confirmDelete(() => { void changeSelectionMode(false, event); })}
     >Delete {bulk.selectedIds.size === 1 ? 'entry' : `${bulk.selectedIds.size} entries`}</button>
     <button
       class="w-full py-3 rounded-[var(--radius-md)] border border-border bg-transparent text-foreground font-sans text-[15px] font-medium cursor-pointer"
