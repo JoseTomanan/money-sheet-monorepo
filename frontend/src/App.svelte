@@ -186,7 +186,7 @@
   {/if}
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 lg:pt-8' : ''}">
     <!-- Scrollable content area -->
-    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip pb-[calc(60px+env(safe-area-inset-bottom,0px))]" bind:this={scrollArea} onscroll={handleScroll}>
+    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip {entriesSelectMode && router.current.kind === 'entries' ? 'pb-[calc(210px+env(safe-area-inset-bottom,0px))] lg:pb-[150px]' : 'pb-[calc(150px+env(safe-area-inset-bottom,0px))] lg:pb-[60px]'}" bind:this={scrollArea} onscroll={handleScroll}>
       {#if store.legacyWork && !mockMode.current}
         <div class="mx-4 my-4 p-4 rounded-lg border border-border bg-background">
           <p class="text-sm text-foreground">Older pending saves have no known destination. They are retained on this device and will not sync automatically.</p>
@@ -231,7 +231,7 @@
     {#if !store.loading && !store.error}
       {#if scrollTop > 200}
         <button
-          class="scroll-top-btn fixed bottom-20 w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-[background,transform] duration-150 hover:bg-muted hover:-translate-y-px right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
+          class="scroll-top-btn fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))] lg:bottom-36' : 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20'} w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-[background,transform] duration-150 hover:bg-muted hover:-translate-y-px right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
           onclick={scrollToTop}
           aria-label="Scroll to top"
         >
@@ -246,7 +246,7 @@
     {/if}
 
     <Toast
-      class="toast fixed bottom-[calc(92px+env(safe-area-inset-bottom,0px))] inset-x-0 mx-auto max-w-[420px] w-[calc(100%-32px)]"
+      class="toast fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(216px+env(safe-area-inset-bottom,0px))] lg:bottom-[200px]' : 'bottom-[calc(144px+env(safe-area-inset-bottom,0px))] lg:bottom-[calc(92px+env(safe-area-inset-bottom,0px))]'} inset-x-0 mx-auto max-w-[420px] w-[calc(100%-32px)]"
       message={toast.msg}
       presentation={toast.presentation}
       variant={toast.variant}
