@@ -1,5 +1,6 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
+  import { pressFeedback } from '../../lib/pressFeedback';
   import { tick, untrack } from 'svelte';
   import type { SplitState, Leg } from '../../lib/splitEntry';
   import { entryAmount } from '../../lib/amountField';
@@ -138,7 +139,7 @@
   {#if showAddCard}
     <div class="flex items-center justify-between gap-3 px-4 pb-2 lg:px-0">
       <span class="font-sans text-xs text-muted-foreground">{split.legs.length} {split.legs.length === 1 ? 'leg' : 'legs'}</span>
-      <button class="add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] lg:min-h-8" onclick={add}>
+      <button class="press-feedback add-card min-h-11 shrink-0 flex items-center gap-2 rounded-[var(--radius-pill)] border border-accent bg-transparent px-[14px] font-sans text-[13px] font-semibold text-accent cursor-pointer hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] lg:min-h-8" use:pressFeedback onclick={add}>
         <span class="text-lg leading-none" aria-hidden="true">+</span><span>Add leg</span>
       </button>
     </div>
