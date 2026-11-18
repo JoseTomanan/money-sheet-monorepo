@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "gestures": {
+      "source": "emilkowalski/skills",
+      "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+      "sourceType": "github",
+      "skillPath": "skills/gestures/SKILL.md",
+      "computedHash": "f17aa90d244bed37d09a608f9b8f58cd7a8dd6b9ff1a06fe2217f6f242c624f7"
+    }
+  }
+}
