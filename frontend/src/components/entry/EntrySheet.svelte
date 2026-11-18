@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { pressFeedback } from '../../lib/pressFeedback';
   import { tick } from 'svelte';
   import * as Sheet from '$lib/components/ui/sheet';
   import { fmtDate, dayOfWeek } from '$lib/format';
@@ -158,7 +159,8 @@
     <Sheet.Title>{form.title}</Sheet.Title>
     <KeyboardHelp context="entry" />
     <button
-      class="header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed lg:min-h-8 lg:min-w-0"
+      class="press-feedback header-btn save min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed lg:min-h-8 lg:min-w-0"
+      use:pressFeedback
       onclick={handleSave}
       disabled={form.saveDisabled || saving}
     >{saving ? 'Saving…' : 'Save'}</button>
@@ -177,12 +179,14 @@
   <!-- direction toggle -->
   <div class="flex gap-2 px-4 pt-[10px] pb-1 lg:px-0 lg:pt-0">
     <button
-      class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
+      class="press-feedback dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer"
+      use:pressFeedback
       class:active-out={form.direction === 'O'}
       onclick={() => form.setDirection('O')}
     >Outgoing</button>
     <button
-      class="dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer transition-[background,color] duration-150"
+      class="press-feedback dir-btn flex-1 py-[10px] rounded-[var(--radius-md)] border border-border bg-muted text-muted-foreground font-sans text-sm font-medium cursor-pointer"
+      use:pressFeedback
       class:active-in={form.direction === 'I'}
       onclick={() => form.setDirection('I')}
     >Incoming</button>

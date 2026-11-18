@@ -316,6 +316,17 @@ body::before {
 
 /* ─── Shared utility classes ─────────────────────────────────────────────── */
 
+@utility press-feedback {
+  transform-origin: center;
+  transition: transform 120ms var(--ease-out), background-color 150ms ease, color 150ms ease;
+  &:enabled[data-pressed] { transform: scale(0.98); }
+  &:disabled { transition: none; }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 80ms var(--ease-out), background-color 150ms ease, color 150ms ease;
+    &:enabled[data-pressed] { transform: none; opacity: 0.85; }
+  }
+}
+
 @utility card {
   @apply bg-card rounded-[var(--radius-lg)] shadow-[var(--shadow-card)];
 }
