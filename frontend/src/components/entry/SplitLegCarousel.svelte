@@ -66,7 +66,7 @@
             aria-label={`Amount for leg ${i + 1}`}
             type="text"
             inputmode="decimal"
-            class="amount-input bg-transparent border-0 outline-none font-mono text-[36px] font-medium text-foreground tracking-[-0.8px] w-full text-right placeholder:text-muted-foreground"
+            class="amount-input bg-transparent border-0 outline-none font-mono tabular-nums text-[36px] font-medium text-foreground tracking-[-0.8px] w-full text-right placeholder:text-muted-foreground"
             value={leg.amount}
             oninput={(e) => {
               const v = (e.target as HTMLInputElement).value;

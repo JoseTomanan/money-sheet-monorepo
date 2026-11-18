@@ -95,6 +95,8 @@ selection; do not introduce SvelteKit or browser-path routing.
 - GAS URL and API secret stored as Vite env vars (`VITE_GAS_URL`, `VITE_API_SECRET`)
 - **CSS rule**: Use Tailwind for everything — see `docs/adr/0006` for the full rules. Short version: component `<style>` blocks should be empty or near-empty; `app.css` is the home for all `@keyframes`, `@utility` blocks (shared Tailwind combos extracted via `@apply`), `:root` tokens, and global resets. Use `group-*`/`peer-*` variants for parent→child hover/state instead of reactive JS variables. Inline `style=` is only permitted for runtime-computed values (colors from data, animation transforms, chart dimensions).
 
+The shared neutral visual roles and Home reference live in [docs/design-system.md](docs/design-system.md), with screenshots and state examples linked there.
+
 ## Deployment
 
 - **GAS**: after a PR with `clasp/**` changes is merged into `main`, GitHub Actions builds, tests, pushes, redeploys, and smoke-tests both the personal and template-bound Apps Script projects. Target IDs come from the `gas-personal` and `gas-template` GitHub environments; both use the `CLASP_CREDENTIALS` secret. Direct pushes and manual dispatch do not deploy (ADR-0015).

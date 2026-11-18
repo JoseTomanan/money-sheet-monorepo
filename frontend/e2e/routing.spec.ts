@@ -43,7 +43,7 @@ test('browser Back restores the prior route scroll position', async ({ page }) =
   });
   await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(120);
 
-  await page.getByRole('button', { name: 'Summary' }).click();
+  await page.getByRole('button', { name: 'Summary', exact: true }).click();
   await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(0);
 
   await page.goBack();

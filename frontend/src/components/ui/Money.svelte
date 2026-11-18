@@ -25,7 +25,7 @@
   const effectiveWeight = $derived(weight + (positive || (negColor && value < 0) ? 100 : 0));
 </script>
 
-<span style="
+<span class="min-w-0 [overflow-wrap:anywhere]" style="
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: {size}px;

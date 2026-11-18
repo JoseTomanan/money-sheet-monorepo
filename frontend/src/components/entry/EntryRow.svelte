@@ -27,7 +27,7 @@
   const resolvedDot   = $derived(darkMode.current ? catStyle.darkDot   : catStyle.dot);
 </script>
 
-<span class="entry-date-lead w-10 font-mono text-[11px] font-normal tabular-nums text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
+<span class="entry-date-lead w-11 font-sans text-xs font-normal text-muted-foreground whitespace-nowrap shrink-0">{fmtDateShort(entry.date)}</span>
 
 {#if entry.direction === 'O'}
   <span
@@ -46,7 +46,7 @@
   {splitPos}
 />
 
-<div class="entry-amount-wrap shrink-0 ml-auto flex items-center gap-1">
+<div class="entry-amount-wrap shrink-0 max-w-[50%] min-w-0 ml-auto flex items-center gap-1 text-right">
   {#if local}
     <span class="text-[11px] text-muted-foreground leading-none" data-local-indicator aria-label="Not yet synced">↑</span>
   {/if}
