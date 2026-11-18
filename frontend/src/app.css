@@ -347,3 +347,11 @@ body::before {
   background: var(--gradient-hero);
   box-shadow: var(--shadow-hero), var(--ring-inset);
 }
+/* The selection surface can reverse while its logical state changes immediately. */
+.select-bar[data-shown="false"] { opacity: 0; transform: translateY(8px); }
+.select-bar[data-motion="true"] { transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out); }
+.select-bar[data-motion="true"][data-shown="true"] { transition-duration: 180ms; }
+@media (prefers-reduced-motion: reduce) {
+  .select-bar[data-shown="false"] { transform: none; }
+  .select-bar[data-motion="true"] { transition: opacity 80ms var(--ease-out); }
+}
