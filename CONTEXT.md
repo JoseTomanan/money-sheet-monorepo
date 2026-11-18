@@ -153,6 +153,13 @@ by the Connection lifetime, independently of Entry revisions (ADR-0018, issue #2
 
 ## Frontend workflows
 
+The Sync status details dialog uses a centered scale and fade for completed
+pointer activation, with its backdrop fading at the same time. Keyboard and
+unprovenanced activations are immediate; keyboard input interrupts motion.
+Reduced motion replaces scale with an 80 ms fade. A mouse or pen backdrop
+press dismisses only after the click completes; cancelled presses do not dismiss.
+Bits UI retains modal focus, isolation, and scroll-lock ownership (#272).
+
 Frontend workflow state follows the existing Svelte rune factories:
 `createEntryForm` owns Entry drafts and `EntryMutation` construction;
 `createRedistributionForm` owns Fund Redistribution draft reset, validity, and
