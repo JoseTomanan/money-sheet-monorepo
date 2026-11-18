@@ -7,33 +7,26 @@
   let pointerMotion = $state(false);
   let pendingPointer = false;
   let pointerTarget: EventTarget | null = null;
-  let outsidePending = false;
-  let outsideCompleted = false;
   let content: HTMLElement | null = $state(null);
   let overlay: HTMLElement | null = $state(null);
   let activationTimer: ReturnType<typeof setTimeout> | undefined;
 
   function pointerDown(event: PointerEvent) {
-    outsidePending = false;
-    outsideCompleted = false;
     pointerTarget = event.isTrusted && event.button === 0 ? event.target : null;
   }
-  function pointerCancel() { pointerTarget = null; outsidePending = false; outsideCompleted = false; }
+  function pointerCancel() { pointerTarget = null; }
   function activation(event: MouseEvent) {
     const target = event.target instanceof Element ? event.target : null;
     const origin = pointerTarget instanceof Element ? pointerTarget : null;
-    const completed = !!pointerTarget && event.isTrusted && event.detail > 0;
-    if (completed && target?.closest('[data-sync-overlay]') && pointerTarget === event.target) {
-      outsideCompleted = true;
-      if (outsidePending && open) {
-        pendingPointer = true;
-        outsidePending = false;
-        changeOpen(false);
-      }
+    pointerTarget = null;
+    const completed = !!origin && event.isTrusted && event.detail > 0;
+    if (open && completed && origin === overlay && target === overlay) {
+      pendingPointer = true;
+      changeOpen(false);
+      return;
     }
     const activationTarget = target?.closest('[data-sync-activation]');
     pendingPointer = completed && !!activationTarget && origin?.closest('[data-sync-activation]') === activationTarget;
-    pointerTarget = null;
     // Bits' target handler runs after capture; discard unused provenance after this event.
     clearTimeout(activationTimer);
     activationTimer = setTimeout(() => { pendingPointer = false; }, 0);
@@ -46,8 +39,6 @@
   function keyboard() {
     pendingPointer = false;
     pointerTarget = null;
-    outsidePending = false;
-    outsideCompleted = false;
     settleMotion();
   }
   function settleMotion() {
@@ -86,20 +77,13 @@
     ></span>
   </Dialog.Trigger>
   <Dialog.Portal>
-    <Dialog.Overlay bind:ref={overlay} data-sync-overlay data-sync-motion={pointerMotion ? '' : undefined} class="sync-modal-overlay fixed inset-0 z-[602] bg-[var(--overlay-bg)]" />
+    <Dialog.Overlay bind:ref={overlay} data-sync-motion={pointerMotion ? '' : undefined} class="sync-modal-overlay fixed inset-0 z-[602] bg-[var(--overlay-bg)]" />
     <Dialog.Content
       bind:ref={content}
       data-sync-motion={pointerMotion ? '' : undefined}
       onInteractOutside={(event) => {
-        // Bits reports mouse/pen outside interaction on pointerdown. Wait for a
-        // completed click so a cancelled gesture cannot dismiss the dialog.
-        if (event.type === 'pointerdown' && !outsideCompleted) {
-          event.preventDefault();
-          outsidePending = true;
-        } else {
-          pendingPointer = event.isTrusted && (!!event.pointerType || event.detail > 0);
-          outsideCompleted = false;
-        }
+        // Dismiss from the completed backdrop click, which also supplies the motion origin.
+        event.preventDefault();
       }}
       class="sync-modal-content fixed left-1/2 top-1/2 z-[603] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] p-5 font-sans"
     >
