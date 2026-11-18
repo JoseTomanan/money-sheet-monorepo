@@ -1,6 +1,6 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { SplitState, Leg } from '../../lib/splitEntry';
   import { entryAmount } from '../../lib/amountField';
   import type { Direction, CategoryMap } from '../../lib/types';
@@ -27,12 +27,48 @@
 
   let { split, direction, categories, onupdate, onremove, onadd, showAddCard = true, initialTags }: Props = $props();
   let rail: HTMLDivElement;
-  async function add() {
+  let nextKey = untrack(() => split.legs.length);
+  let keys = $state(untrack(() => split.legs.map((_, i) => i)));
+  function easing() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--ease-out').trim() || 'cubic-bezier(0.23, 1, 0.32, 1)';
+  }
+  async function add(event: MouseEvent) {
+    const oldLength = split.legs.length;
+    const key = nextKey++;
+    keys.push(key);
     onadd();
     await tick();
-    rail.querySelectorAll<HTMLInputElement>('[data-entry-amount]').item(split.legs.length - 1)?.focus();
+    const index = keys.indexOf(key);
+    const input = index < 0 ? null : rail.querySelectorAll<HTMLInputElement>('[data-entry-amount]').item(index);
+    input?.focus();
+    const card = input?.closest<HTMLElement>('.leg-card');
+    if (event.detail > 0 && split.legs.length > oldLength && card && typeof card.animate === 'function') {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      card.animate(
+        reduced ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateX(12px)' }, { opacity: 1, transform: 'translateX(0)' }],
+        { duration: reduced ? 80 : 160, easing: easing() },
+      );
+    }
   }
-  async function remove(index: number) {
+  async function remove(index: number, event: MouseEvent) {
+    if (event.detail > 0) {
+      const card = (event.currentTarget as HTMLElement).closest<HTMLElement>('.leg-card');
+      if (card && typeof card.animate === 'function') {
+        const rect = card.getBoundingClientRect();
+        const ghost = card.cloneNode(true) as HTMLElement;
+        ghost.inert = true;
+        ghost.setAttribute('aria-hidden', 'true');
+        ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;z-index:100;`;
+        document.body.appendChild(ghost);
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const animation = ghost.animate(
+          reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-8px)' }],
+          { duration: reduced ? 80 : 100, easing: easing() },
+        );
+        animation.finished.catch(() => {}).finally(() => ghost.remove());
+      }
+    }
+    keys.splice(index, 1);
     onremove(index);
     await tick();
     rail.querySelectorAll<HTMLInputElement>('[data-entry-amount]').item(Math.min(index, split.legs.length - 1))?.focus();
@@ -54,7 +90,7 @@
     aria-label="Entry legs"
     onfocusin={revealFocusedLeg}
   >
-    {#each split.legs as leg, i}
+    {#each split.legs as leg, i (keys[i])}
       <div class="leg-card relative shrink-0 {split.legs.length === 1 ? 'w-[calc(100%-32px)] lg:w-full' : 'w-[85%] lg:w-[calc(50%-6px)]'} snap-start bg-card border border-border rounded-[var(--radius-lg)] py-3 px-[14px] first:ml-4 last:mr-4 lg:first:ml-0 lg:last:mr-0">
         <div class="leg-head flex items-center justify-between mb-2">
           <span class="leg-label text-[10px] font-sans font-semibold tracking-[1px] uppercase text-muted-foreground">Leg {i + 1} of {split.legs.length}</span>
@@ -94,7 +130,7 @@
         <button
           class="leg-remove absolute top-3 right-[14px] bg-transparent border-0 font-sans text-xs text-destructive cursor-pointer p-0 disabled:opacity-30 disabled:cursor-not-allowed"
           disabled={split.legs.length <= 1}
-          onclick={() => remove(i)}
+          onclick={(event) => remove(i, event)}
         >Remove</button>
       </div>
     {/each}
