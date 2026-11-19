@@ -5,6 +5,33 @@ async function ready(page: Page, route = '/#/entries/') {
   await expect(page.getByRole('button', { name: 'Add entry', exact: true })).toBeVisible();
 }
 
+test.describe('touch Add Entry', () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
+
+  test('leaves Amount unfocused until tapped and preserves the keyboard shortcut', async ({ page }) => {
+    await ready(page);
+    const add = page.getByRole('button', { name: 'Add entry', exact: true });
+    const sheet = page.locator('.sheet[data-state="open"]');
+    const cancel = sheet.getByRole('button', { name: 'Cancel' });
+    const amount = sheet.getByPlaceholder('0.00');
+
+    await add.tap();
+    await expect(cancel).toBeFocused();
+    await amount.tap();
+    await expect(amount).toBeFocused();
+
+    await cancel.tap();
+    await expect(add).toBeFocused();
+    await add.tap();
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(add).toBeFocused();
+
+    await page.keyboard.press('Shift+N');
+    await expect(amount).toBeFocused();
+  });
+});
+
 test('keyboard-only Split Entry traverses grouped choices, adds a leg, and saves unblurred arithmetic', async ({ page }) => {
   await ready(page);
   await page.keyboard.press('Shift+N');
