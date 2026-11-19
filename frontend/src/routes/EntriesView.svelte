@@ -17,7 +17,7 @@
 
   interface Props {
     onopenedit: (entry: Entry) => void;
-    onadd: () => void;
+    onadd: (event: MouseEvent) => void;
     selectedWeek: string;
     onweekchange: (week: string) => void;
     scrollEl: HTMLElement | null;

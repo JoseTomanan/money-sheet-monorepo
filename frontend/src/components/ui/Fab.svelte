@@ -1,7 +1,7 @@
 <!-- App-specific floating action button; no direct shadcn equivalent. -->
 <script lang="ts">
   interface Props {
-    onclick: () => void;
+    onclick: (event: MouseEvent) => void;
   }
 
   let { onclick }: Props = $props();

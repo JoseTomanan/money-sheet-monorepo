@@ -87,13 +87,20 @@
   // Entry sheet state
   let sheetOpen = $state(false);
   let sheetEntry = $state<Entry | null>(null);
+  let focusEntryAmount = $state(true);
 
-  function openAdd() {
+  function openAdd(event?: MouseEvent) {
+    const pointerType = event && 'pointerType' in event ? event.pointerType : '';
+    // WebKit can report a touch tap as a mouse click. Keyboard clicks have detail 0.
+    const touch = pointerType === 'touch' ||
+      (!!event?.detail && window.matchMedia('(pointer: coarse)').matches);
+    focusEntryAmount = !touch;
     sheetEntry = null;
     sheetOpen = true;
   }
 
   function openEdit(entry: Entry) {
+    focusEntryAmount = true;
     sheetEntry = entry;
     sheetOpen = true;
   }
@@ -267,6 +274,7 @@
       open={sheetOpen}
       categories={store.categories}
       entry={sheetEntry}
+      focusAmountOnOpen={focusEntryAmount}
       onclose={() => (sheetOpen = false)}
       onsave={handleSave}
       ondelete={store.submitDeleteEntry}

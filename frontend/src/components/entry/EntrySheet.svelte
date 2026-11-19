@@ -15,6 +15,7 @@
 
   interface Props {
     open: boolean;
+    focusAmountOnOpen?: boolean;
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
@@ -23,7 +24,7 @@
     defaultDirection?: Direction;
   }
 
-  let { open, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
+  let { open, focusAmountOnOpen = true, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
   const form = createEntryForm(() => categories);
   const mobile = new MediaQuery('(width < 1024px)');
@@ -157,8 +158,10 @@
 
 <Sheet.Root {open} onOpenChange={(v) => !v && closeEntry()} {contentStyle}
   bind:content={sheetNode} bind:overlay={backdrop} managedMotion={mobileAdd}
-  initialFocus="[data-entry-amount]" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
-  class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'} onkeydown={(event) => {
+  initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
+  fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
+  class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0 motion-reduce:data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:fade-out-0 motion-reduce:data-[state=open]:[--tw-enter-translate-y:0] motion-reduce:data-[state=closed]:[--tw-exit-translate-y:0]'}
+  onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {
     event.preventDefault();
     event.stopPropagation();
@@ -188,7 +191,7 @@
   </div>
 
   <Sheet.Header>
-    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={closeEntry}>Cancel</button>
+    <button data-entry-cancel class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={closeEntry}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <KeyboardHelp context="entry" />
     <button
