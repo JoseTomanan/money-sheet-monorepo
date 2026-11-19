@@ -157,7 +157,7 @@
 <div class="entries-view p-0">
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
 {#if barPresent}
-  <div bind:this={barElement} inert={!selectMode} aria-hidden={!selectMode} data-shown={barShown} data-motion={barMotion} class="select-bar fixed bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
+  <div bind:this={barElement} inert={!selectMode} aria-hidden={!selectMode} data-shown={barShown} data-motion={barMotion} class="select-bar fixed bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
     <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
       {bulk.selectedIds.size} selected
     </span>

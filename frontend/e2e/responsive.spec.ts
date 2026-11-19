@@ -485,6 +485,65 @@ test.describe("mobile 390×844 — fixed tab bar clearance", () => {
   });
 });
 
+test("narrow mobile navigation floats above the viewport edge", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/");
+  await waitForAppReady(page);
+  const dock = await page.locator('.tab-bar-pill').boundingBox();
+  expect(dock).not.toBeNull();
+  expect(dock!.x).toBeGreaterThan(0);
+  expect(dock!.x + dock!.width).toBeLessThan(320);
+  expect(dock!.y + dock!.height).toBeLessThan(700);
+  for (const name of ['Home', 'Entries', 'Summary']) {
+    await expectTouchTarget(page.locator('.tab-bar-pill').getByRole('button', { name }));
+  }
+});
+
+test("mobile Entries keeps its final content and bulk controls clear of the dock", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/');
+  await waitForAppReady(page);
+  await switchTab(page, 'Entries');
+  await expectClearOfTabBar(page, '.entry-list .add-entry-card:last-child');
+  const fab = (await page.getByRole('button', { name: 'Add entry', exact: true }).boundingBox())!;
+  const dockBefore = (await page.locator('.tab-bar-pill').boundingBox())!;
+  expect(fab.y + fab.height).toBeLessThanOrEqual(dockBefore.y);
+  const top = page.getByRole('button', { name: 'Scroll to top' });
+  await expect(top).toBeVisible();
+  const topBox = (await top.boundingBox())!;
+  expect(topBox.x + topBox.width).toBeLessThanOrEqual(fab.x);
+  await page.getByRole('button', { name: 'Enter bulk-select mode' }).click();
+  const dock = (await page.locator('.tab-bar-pill').boundingBox())!;
+  const bar = (await page.locator('.select-bar').boundingBox())!;
+  expect(bar.y + bar.height).toBeLessThanOrEqual(dock.y);
+  const scroll = page.locator('.scroll-area');
+  await scroll.evaluate(el => el.scrollTo({ top: el.scrollHeight }));
+  const row = (await page.locator('[data-entry-row]').last().boundingBox())!;
+  expect(row.y + row.height).toBeLessThanOrEqual(bar.y);
+  const bulkTop = (await top.boundingBox())!;
+  expect(bulkTop.y + bulkTop.height).toBeLessThanOrEqual(bar.y);
+  expect(row.y + row.height).toBeLessThanOrEqual(bulkTop.y);
+});
+
+test("mobile dock keeps keyboard focus and the current destination across routes", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/');
+  await waitForAppReady(page);
+  const dock = page.locator('.tab-bar-pill');
+  const home = dock.getByRole('button', { name: 'Home' });
+  const entries = dock.getByRole('button', { name: 'Entries' });
+  const summary = dock.getByRole('button', { name: 'Summary' });
+  await expect(home).toHaveAttribute('aria-current', 'page');
+  await entries.focus();
+  await expect(entries).toBeFocused();
+  expect(await entries.evaluate(el => getComputedStyle(el).outlineStyle)).not.toBe('none');
+  await page.keyboard.press('Enter');
+  await expect(entries).toHaveAttribute('aria-current', 'page');
+  await summary.click();
+  await page.getByRole('button', { name: 'Deeper statistics' }).click();
+  await expect(summary).toHaveAttribute('aria-current', 'page');
+});
+
 test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
   test.use({ viewport: { width: 1280, height: 752 } });
 

@@ -16,12 +16,12 @@
   ];
 </script>
 
-<div class="tab-bar-outer fixed bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
-  <div class="tab-bar-pill flex items-center justify-around w-full max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 h-[60px] px-2 pb-[env(safe-area-inset-bottom,0px)] bg-card/90 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto">
+<div class="tab-bar-outer fixed bottom-[calc(16px+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
+  <div class="tab-bar-pill flex items-center justify-around w-[calc(100%-32px)] max-w-[420px] h-[60px] px-2 rounded-2xl border border-border bg-card/95 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto lg:w-full lg:max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 lg:pb-[env(safe-area-inset-bottom,0px)] lg:rounded-none lg:border-0 lg:bg-card/90 [@media(prefers-reduced-transparency:reduce)]:bg-card">
     {#each tabs as tab}
       <button
         data-app-navigation={tab.id}
-        class="tab-btn flex-1 flex flex-col items-center justify-center gap-[2px] py-[6px] bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150"
+        class="tab-btn flex-1 min-h-11 flex flex-col items-center justify-center gap-[2px] py-[6px] rounded-xl bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150 active:bg-accent/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         class:text-accent={active === tab.id}
         class:text-muted-foreground={active !== tab.id}
         onclick={() => onchange(tab.id)}
