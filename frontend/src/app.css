@@ -347,6 +347,31 @@ body::before {
   background: var(--gradient-hero);
   box-shadow: var(--shadow-hero), var(--ring-inset);
 }
+@layer components {
+  .sync-modal-content[data-sync-motion] {
+    transition: opacity 200ms var(--ease-out), scale 200ms var(--ease-out);
+  }
+  .sync-modal-overlay[data-sync-motion] {
+    transition: opacity 200ms var(--ease-out);
+  }
+  .sync-modal-content[data-sync-motion][data-starting-style],
+  .sync-modal-content[data-sync-motion][data-ending-style] {
+    opacity: 0;
+    scale: 0.97;
+  }
+  .sync-modal-overlay[data-sync-motion][data-starting-style],
+  .sync-modal-overlay[data-sync-motion][data-ending-style] {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sync-modal-content[data-sync-motion], .sync-modal-overlay[data-sync-motion] {
+      transition: opacity 80ms var(--ease-out);
+    }
+    .sync-modal-content[data-sync-motion][data-starting-style],
+    .sync-modal-content[data-sync-motion][data-ending-style] { scale: 1; }
+  }
+}
+
 /* The selection surface can reverse while its logical state changes immediately. */
 .select-bar[data-shown="false"] { opacity: 0; transform: translateY(8px); }
 .select-bar[data-motion="true"] { transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out); }
