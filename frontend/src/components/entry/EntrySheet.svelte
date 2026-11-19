@@ -1,6 +1,7 @@
 <script lang="ts">
   import { pressFeedback } from '../../lib/pressFeedback';
   import { tick } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
   import * as Sheet from '$lib/components/ui/sheet';
   import { fmtDate, dayOfWeek } from '$lib/format';
   import type { CategoryMap, Entry, Direction, EntryMutation, EntrySubmission } from '$lib/types';
@@ -9,6 +10,8 @@
   import SplitLegCarousel from './SplitLegCarousel.svelte';
   import { ownsKeyboard, primaryModifier } from '$lib/keyboard';
   import KeyboardHelp from '../ui/KeyboardHelp.svelte';
+  import { createAddEntrySwipe } from './addEntrySwipe';
+  import { fitAddEntryViewport } from './fitAddEntryViewport';
 
   interface Props {
     open: boolean;
@@ -23,6 +26,25 @@
   let { open, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
   const form = createEntryForm(() => categories);
+  const mobile = new MediaQuery('(width < 1024px)');
+  const mobileAdd = $derived(!entry && mobile.current);
+  const mobileAddLayout = 'flex flex-col overflow-hidden bottom-[var(--add-entry-viewport-bottom,0px)] max-h-[min(90dvh,calc(var(--add-entry-viewport-height,100dvh)_-_max(8px,env(safe-area-inset-top,0px))))]';
+  let sheetNode = $state<HTMLDivElement | null>(null);
+  let backdrop = $state<HTMLDivElement | null>(null);
+  let sheetBody = $state<HTMLDivElement>();
+  const swipe = createAddEntrySwipe(() => ({ sheet: sheetNode, backdrop }), closeEntry);
+
+  function closeEntry() {
+    if (mobileAdd) swipe.stop();
+    onclose();
+  }
+
+  $effect(() => {
+    if (open && mobileAdd && sheetNode && backdrop) return swipe.reset;
+  });
+  $effect(() => {
+    if (open && mobileAdd && sheetNode && sheetBody) return fitAddEntryViewport(sheetNode, sheetBody);
+  });
 
   let snap        = $state<Snap>('default');
   let activeDrag  = $state<DragState | null>(null);
@@ -55,7 +77,7 @@
     saving = true;
     admissionError = '';
     const submission = onsave(form.buildMutation(entry?.id));
-    if (submission.accepted) onclose();
+    if (submission.accepted) closeEntry();
     else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
   }
   function handleDelete() {
@@ -133,29 +155,40 @@
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && onclose()} {contentStyle} initialFocus="[data-entry-amount]" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')} class="pb-0" onkeydown={(event) => {
+<Sheet.Root {open} onOpenChange={(v) => !v && closeEntry()} {contentStyle}
+  bind:content={sheetNode} bind:overlay={backdrop} managedMotion={mobileAdd}
+  initialFocus="[data-entry-amount]" fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
+  class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'} onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {
     event.preventDefault();
     event.stopPropagation();
     if (!event.repeat) handleSave();
   }
 }}>
-  {#if admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
-  <!-- handle — drag down to dismiss, drag up to reveal Delete button -->
+  {#if !mobileAdd && admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
+  <!-- svelte-ignore a11y_no_static_element_interactions (The header supports a pointer gesture. Cancel is the keyboard equivalent.) -->
+  <div class:touch-pan-x={mobileAdd} class:select-none={mobileAdd} class:shrink-0={mobileAdd}
+    onpointerdown={mobileAdd ? swipe.start : undefined}
+    onpointermove={mobileAdd ? swipe.move : undefined}
+    onpointerup={mobileAdd ? swipe.release : undefined}
+    onpointercancel={mobileAdd ? swipe.cancel : undefined}
+    onlostpointercapture={mobileAdd ? swipe.cancel : undefined}
+  >
   <div
-    class="flex justify-center pt-[14px] pb-[10px] touch-none cursor-grab select-none active:cursor-grabbing"
+    class="flex justify-center pt-[14px] pb-[10px] cursor-grab select-none active:cursor-grabbing"
+    class:touch-none={!mobileAdd}
     role="separator"
-    aria-label="Drag to resize or dismiss"
-    onpointerdown={onHandlePointerDown}
-    onpointermove={onHandlePointerMove}
-    onpointerup={onHandlePointerUp}
-    onpointercancel={onHandlePointerUp}
+    aria-label={mobileAdd ? 'Drag to dismiss' : 'Drag to resize or dismiss'}
+    onpointerdown={mobileAdd ? undefined : onHandlePointerDown}
+    onpointermove={mobileAdd ? undefined : onHandlePointerMove}
+    onpointerup={mobileAdd ? undefined : onHandlePointerUp}
+    onpointercancel={mobileAdd ? undefined : onHandlePointerUp}
   >
     <div class="w-9 h-1 rounded-[2px] bg-border pointer-events-none"></div>
   </div>
 
   <Sheet.Header>
-    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={onclose}>Cancel</button>
+    <button class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={closeEntry}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <KeyboardHelp context="entry" />
     <button
@@ -165,7 +198,10 @@
       disabled={form.saveDisabled || saving}
     >{saving ? 'Saving…' : 'Save'}</button>
   </Sheet.Header>
+  </div>
 
+  <div bind:this={sheetBody} class={mobileAdd ? 'min-h-0 overflow-y-auto overscroll-y-contain pb-[env(safe-area-inset-bottom,0px)]' : 'contents'}>
+  {#if mobileAdd && admissionError}<p role="alert" class="mx-4 mt-4 text-sm text-destructive">{admissionError}</p>{/if}
   {#if form.saveDisabledReason && !form.split.legs.some((l) => l.error)}
     <!-- A per-leg formula error already renders inline next to its field
          (SplitLegCarousel's .leg-error) — don't repeat that message here. -->
@@ -246,6 +282,7 @@
     </div>
   {/if}
   <div class="h-8"></div>
+  </div>
 </Sheet.Root>
 
 <style>

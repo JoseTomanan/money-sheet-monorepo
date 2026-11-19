@@ -117,6 +117,7 @@
 <!-- Single row: drill-in on Outgoing, flat list on Incoming / uncollapsed -->
 <!-- svelte-ignore a11y_no_static_element_interactions: listens to keyboard events from the buttons within -->
 <div bind:this={picker} class="picker-row flex gap-2 px-4 py-1 overflow-x-auto lg:flex-wrap lg:overflow-x-visible"
+  class:overscroll-x-contain={compact}
   onkeydown={settleEntrance}
   ontransitionend={(event) => { if (event.target === picker && event.propertyName === 'opacity') settleEntrance(); }}>
   {#if direction === 'O' && activeCategory}
