@@ -28,6 +28,59 @@ async function touch(page: Page) {
 
 const offset = (sheet: Locator) => sheet.evaluate(el => new DOMMatrix(getComputedStyle(el).transform).m42);
 
+test('canceling a long Edit pull keeps its draft; releasing dismisses', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entries', exact: true }).click();
+  await page.locator('[data-entry-row]').first().click();
+  const sheet = page.locator('.sheet[data-state="open"]');
+  await sheet.evaluate(async el => { await Promise.all(el.getAnimations().map(a => a.finished)); });
+  const draft = sheet.locator('input[type="text"]').last();
+  await draft.fill('Preserved edit');
+  const finger = await touch(page);
+  let point = await center(sheet.getByRole('separator'));
+  await finger.start(point.x, point.y);
+  await finger.move(point.x, point.y + 145);
+  await finger.cancel();
+  await expect(draft).toHaveValue('Preserved edit');
+  await expect.poll(() => offset(sheet)).toBe(0);
+  point = await center(sheet.getByRole('separator'));
+  await finger.start(point.x, point.y);
+  await finger.move(point.x, point.y + 145);
+  await finger.end();
+  await expect(sheet).toHaveCount(0);
+});
+
+test('re-grabbing an Edit return follows the painted position and capture loss settles', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entries', exact: true }).click();
+  await page.locator('[data-entry-row]').first().click();
+  const sheet = page.locator('.sheet[data-state="open"]');
+  await sheet.evaluate(async el => { await Promise.all(el.getAnimations().map(a => a.finished)); });
+  const handle = sheet.getByRole('separator');
+  const finger = await touch(page);
+  const point = await center(handle);
+  await finger.start(point.x, point.y);
+  await finger.move(point.x, point.y + 50);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(50, 0);
+  await finger.cancel();
+  await page.waitForTimeout(70);
+  const painted = await offset(sheet);
+  expect(painted).toBeGreaterThan(0);
+  const moving = await center(handle);
+  await handle.evaluate(el => el.addEventListener('pointerdown', event => {
+    (el as HTMLElement).dataset.testPointer = String((event as PointerEvent).pointerId);
+  }, { once: true }));
+  await finger.start(moving.x, moving.y);
+  const caught = await offset(sheet);
+  await finger.move(moving.x, moving.y + 20);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(caught + 20, 0);
+  await handle.evaluate(el => el.releasePointerCapture(Number((el as HTMLElement).dataset.testPointer)));
+  await finger.move(moving.x, moving.y + 21);
+  await expect.poll(() => offset(sheet)).toBe(0);
+  await expect(sheet).toBeVisible();
+  await finger.end();
+});
+
 test('a paused short pull keeps the draft open', async ({ page }) => {
   const { sheet } = await openEntry(page);
   await sheet.getByPlaceholder('0.00').fill('42');
