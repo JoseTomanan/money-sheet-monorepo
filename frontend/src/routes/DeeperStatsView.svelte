@@ -98,7 +98,7 @@
       <div class="flex flex-col items-center gap-2">
         <div class="h-[72px] w-[36px] flex items-end">
           <div
-            class="w-full rounded-t-[4px] transition-[height] duration-[400ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+            class="w-full rounded-t-[4px]"
             style="height: {flowBarPct(totals.incoming)}%; background: var(--positive); opacity: 0.85;"
           ></div>
         </div>
@@ -110,7 +110,7 @@
       <div class="flex flex-col items-center gap-2">
         <div class="h-[72px] w-[36px] flex items-end">
           <div
-            class="w-full rounded-t-[4px] transition-[height] duration-[400ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+            class="w-full rounded-t-[4px]"
             style="height: {flowBarPct(totals.outgoing)}%; background: var(--foreground); opacity: 0.7;"
           ></div>
         </div>
@@ -150,7 +150,6 @@
         <div class="dist-strip dist-bar flex h-[10px] rounded-full overflow-hidden gap-[2px]">
           {#each categorySpend.filter((d) => d.outgoing > 0) as d (d.key)}
             <div
-              class="transition-[flex-grow] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"
               style="flex-grow: {d.outgoing}; flex-basis: 0; background: {d.c.color};"
               title="{d.c.label}: {peso(d.outgoing, store.config.currency)}"
             ></div>
@@ -173,7 +172,7 @@
         </div>
         <div class="mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {darkMode.current ? d.c.soft : d.c.pastel};">
           <div
-            class="h-full rounded-[2px] transition-[width] duration-[600ms] ease-[cubic-bezier(.2,.7,.2,1)]"
+            class="h-full rounded-[2px]"
             style="width: {(d.outgoing / maxSpent) * 100}%; background: {darkMode.current ? d.c.darkColor : d.c.color};"
           ></div>
         </div>
