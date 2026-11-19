@@ -21,14 +21,14 @@
     {#each tabs as tab}
       <button
         data-app-navigation={tab.id}
-        class="tab-btn flex-1 min-h-11 flex flex-col items-center justify-center gap-[2px] py-[6px] rounded-xl bg-transparent border-0 cursor-pointer font-sans transition-colors duration-150 active:bg-accent/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        class="tab-btn group/tab flex-1 min-h-11 flex flex-col items-center justify-center gap-[2px] py-[6px] rounded-xl bg-transparent border-0 cursor-pointer touch-manipulation font-sans focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         class:text-accent={active === tab.id}
         class:text-muted-foreground={active !== tab.id}
         onclick={() => onchange(tab.id)}
         aria-current={active === tab.id ? 'page' : undefined}
       >
         <span
-          class="tab-icon rounded-[var(--radius-pill)] px-[14px] py-1 bg-transparent transition-colors duration-150"
+          class="tab-icon rounded-[var(--radius-pill)] px-[14px] py-1 bg-transparent group-active/tab:inset-ring-2 group-active/tab:inset-ring-foreground/25"
           class:active-icon={active === tab.id}
           aria-hidden="true"
         >
