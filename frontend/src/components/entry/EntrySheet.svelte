@@ -37,6 +37,7 @@
 
   function closeEntry() {
     if (mobileAdd) swipe.stop();
+    clearLegacyMotion();
     onclose();
   }
 
@@ -53,11 +54,24 @@
   let snapping    = $state(false);
   let dismissing  = $state(false);
   let springTimer: ReturnType<typeof setTimeout> | null = null;
+  let springFrame = 0;
+  let pointerId: number | null = null;
+  let dragOrigin = 0;
   let saving = $state(false);
   let wasOpen = false;
 
+  function clearLegacyMotion() {
+    cancelAnimationFrame(springFrame);
+    springFrame = 0;
+    if (springTimer) clearTimeout(springTimer);
+    springTimer = null;
+    pointerId = null;
+    activeDrag = null;
+  }
+
   $effect(() => {
     if (open && !wasOpen) {
+      clearLegacyMotion();
       form.reset(entry, defaultDirection);
       snap       = 'default';
       activeDrag = null;
@@ -69,6 +83,7 @@
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
     }
+    if (!open && wasOpen) clearLegacyMotion();
     wasOpen = open;
   });
 
@@ -97,32 +112,56 @@
   // naturally from where the finger left off rather than snapping back to origin first.
   const contentStyle = $derived(
     activeDrag
-      ? `transform: translateY(${Math.max(0, dragOffset)}px); transition: none;`
+      ? `transform: translateY(${Math.max(0, dragOffset)}px); transition: none; animation: none;`
       : snapping
-        ? `transform: translateY(${dragOffset}px); transition: transform 320ms cubic-bezier(.2,.7,.2,1);`
+        ? `transform: translateY(${dragOffset}px); transition: transform 320ms cubic-bezier(.2,.7,.2,1); animation: none;`
         : dismissing
           ? `transform: translateY(${dragOffset}px); transition: none;`
           : undefined
   );
 
   function onHandlePointerDown(e: PointerEvent) {
+    if (pointerId !== null || !e.isPrimary || e.button !== 0) return;
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    if (springTimer) { clearTimeout(springTimer); springTimer = null; }
+    const painted = sheetNode ? new DOMMatrix(getComputedStyle(sheetNode).transform).m42 : 0;
+    clearLegacyMotion();
+    pointerId = e.pointerId;
+    dragOrigin = painted;
     snapping   = false;
-    dragOffset = 0;
+    dragOffset = painted;
     activeDrag = startDrag(e.clientY, snap, e.timeStamp);
   }
 
   function onHandlePointerMove(e: PointerEvent) {
-    if (!activeDrag) return;
+    if (!activeDrag || pointerId !== e.pointerId) return;
     activeDrag = moveDrag(activeDrag, e.clientY, e.timeStamp);
-    dragOffset = activeDrag.offsetY;
+    dragOffset = dragOrigin + activeDrag.offsetY;
+  }
+
+  function settleLegacy() {
+    snapping = true;
+    springFrame = requestAnimationFrame(() => {
+      springFrame = requestAnimationFrame(() => {
+        springFrame = 0;
+        dragOffset = 0;
+        springTimer = setTimeout(() => { snapping = false; springTimer = null; }, 320);
+      });
+    });
+  }
+
+  function onHandlePointerCancel(e: PointerEvent) {
+    if (pointerId !== e.pointerId || !activeDrag) return;
+    pointerId = null;
+    activeDrag = null;
+    settleLegacy();
   }
 
   function onHandlePointerUp(e: PointerEvent) {
-    if (!activeDrag) return;
+    if (!activeDrag || pointerId !== e.pointerId) return;
+    const startSnap = activeDrag.startSnap;
     const result = endDrag(activeDrag);
+    pointerId = null;
     activeDrag = null;
     if (result.action === 'dismiss') {
       // Hold the drag transform so the Dialog's slide-out-to-bottom exit animation starts from
@@ -133,7 +172,7 @@
       onclose();
     } else {
       snap = result.to;
-      if (result.to === 'default' && dragOffset > 0) {
+      if (startSnap === 'expanded' && result.to === 'default' && dragOffset > 0) {
         // Collapsing (user dragged down): skip the animated spring-back. The sheet is already below
         // rest, so a translateY→0 animation would move upward — opposing the collapse direction.
         // Let the delete-wrap max-height transition carry the visual motion instead.
@@ -143,14 +182,7 @@
         // Two-frame snap-back: Frame 1 sets snapping=true with the current dragOffset so the
         // browser has an explicit "from" transform. Frame 2 (rAF) zeros dragOffset so the browser
         // animates translateY(offset) → translateY(0) via the CSS transition.
-        snapping = true;
-        requestAnimationFrame(() => {
-          dragOffset = 0;
-          springTimer = setTimeout(() => {
-            snapping    = false;
-            springTimer = null;
-          }, 320);
-        });
+        settleLegacy();
       }
     }
   }
@@ -185,7 +217,8 @@
     onpointerdown={mobileAdd ? undefined : onHandlePointerDown}
     onpointermove={mobileAdd ? undefined : onHandlePointerMove}
     onpointerup={mobileAdd ? undefined : onHandlePointerUp}
-    onpointercancel={mobileAdd ? undefined : onHandlePointerUp}
+    onpointercancel={mobileAdd ? undefined : onHandlePointerCancel}
+    onlostpointercapture={mobileAdd ? undefined : onHandlePointerCancel}
   >
     <div class="w-9 h-1 rounded-[2px] bg-border pointer-events-none"></div>
   </div>
