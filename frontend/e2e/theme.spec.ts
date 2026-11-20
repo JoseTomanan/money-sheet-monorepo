@@ -200,9 +200,11 @@ test('dark negative amounts and bulk deletion remain readable on tinted surfaces
   expect((await paint(amount)).contrast).toBeGreaterThanOrEqual(4.5);
   expect((await paint(page.locator('.delete-sel-btn'))).contrast).toBeGreaterThanOrEqual(4.5);
   await page.locator('.delete-sel-btn').click();
-  const confirm = page.locator('.sheet[data-state="open"]').getByRole('button', { name: 'Delete entry', exact: true });
+  const sheet = page.locator('.sheet[data-state="open"]');
+  await expect(sheet).toHaveCSS('opacity', '1');
+  const confirm = sheet.getByRole('button', { name: 'Delete entry', exact: true });
   expect((await paint(confirm)).contrast).toBeGreaterThanOrEqual(4.5);
-  await page.locator('.sheet[data-state="open"]').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
 });
 
 test('dark Summary semantic text stays readable', async ({ page }) => {
