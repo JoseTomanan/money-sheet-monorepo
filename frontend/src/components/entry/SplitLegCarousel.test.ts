@@ -68,6 +68,24 @@ describe("SplitLegCarousel", () => {
       vi.unstubAllGlobals();
     }
   });
+  it("keeps the pointer exit above the sheet until its owner closes", async () => {
+    const animate = vi.fn(() => ({ finished: new Promise(() => {}) }));
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));
+    const original = Element.prototype.animate;
+    Element.prototype.animate = animate as unknown as typeof Element.prototype.animate;
+    try {
+      const view = render(SplitLegCarousel, baseProps({ split: addLeg(initSplitState()) }));
+      await fireEvent.click(view.getAllByText('Remove')[1], { detail: 1 });
+      const ghost = document.body.querySelector<HTMLElement>('[aria-hidden="true"][inert]');
+      expect(ghost).not.toBeNull();
+      expect(ghost!.parentElement).toHaveStyle({ zIndex: '201', overflow: 'hidden' });
+      view.unmount();
+      expect(ghost!.isConnected).toBe(false);
+    } finally {
+      Element.prototype.animate = original;
+      vi.unstubAllGlobals();
+    }
+  });
   it("animates a pointer removal without delaying the removal callback", async () => {
     const animate = vi.fn(() => ({ finished: Promise.resolve() }));
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })));

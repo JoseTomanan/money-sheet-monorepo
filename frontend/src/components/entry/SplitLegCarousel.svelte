@@ -1,7 +1,7 @@
 <!-- Custom horizontal snap carousel for split-entry legs; no shadcn equivalent. -->
 <script lang="ts">
   import { pressFeedback } from '../../lib/pressFeedback';
-  import { tick, untrack } from 'svelte';
+  import { tick, untrack, onDestroy } from 'svelte';
   import type { SplitState, Leg } from '../../lib/splitEntry';
   import { entryAmount } from '../../lib/amountField';
   import type { Direction, CategoryMap } from '../../lib/types';
@@ -30,6 +30,8 @@
   let rail: HTMLDivElement;
   let nextKey = untrack(() => split.legs.length);
   let keys = $state(untrack(() => split.legs.map((_, i) => i)));
+  const exits = new Set<HTMLElement>();
+  onDestroy(() => { for (const exit of exits) exit.remove(); exits.clear(); });
   function easing() {
     return getComputedStyle(document.documentElement).getPropertyValue('--ease-out').trim() || 'cubic-bezier(0.23, 1, 0.32, 1)';
   }
@@ -56,17 +58,28 @@
       const card = (event.currentTarget as HTMLElement).closest<HTMLElement>('.leg-card');
       if (card && typeof card.animate === 'function') {
         const rect = card.getBoundingClientRect();
+        const railRect = card.parentElement!.getBoundingClientRect();
+        const sheetRect = card.closest<HTMLElement>('.sheet')?.getBoundingClientRect() ?? railRect;
+        const left = Math.max(0, railRect.left, sheetRect.left);
+        const top = Math.max(0, railRect.top, sheetRect.top);
+        const right = Math.min(window.innerWidth, railRect.right, sheetRect.right);
+        const bottom = Math.min(window.innerHeight, railRect.bottom, sheetRect.bottom);
+        const layer = document.createElement('div');
+        layer.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${Math.max(0, right-left)}px;height:${Math.max(0, bottom-top)}px;overflow:hidden;pointer-events:none;z-index:201;`;
         const ghost = card.cloneNode(true) as HTMLElement;
-        ghost.inert = true;
+        ghost.setAttribute('inert', '');
         ghost.setAttribute('aria-hidden', 'true');
-        ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;z-index:100;`;
-        document.body.appendChild(ghost);
+        const opacity = getComputedStyle(card).opacity || '1';
+        ghost.style.cssText = `position:absolute;left:${rect.left-left}px;top:${rect.top-top}px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;margin:0;`;
+        layer.appendChild(ghost);
+        document.body.appendChild(layer);
+        exits.add(layer);
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const animation = ghost.animate(
-          reduced ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-8px)' }],
+          reduced ? [{ opacity }, { opacity: 0 }] : [{ opacity, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-8px)' }],
           { duration: reduced ? 80 : 100, easing: easing() },
         );
-        animation.finished.catch(() => {}).finally(() => ghost.remove());
+        animation.finished.catch(() => {}).finally(() => { layer.remove(); exits.delete(layer); });
       }
     }
     keys.splice(index, 1);
