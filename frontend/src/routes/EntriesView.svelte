@@ -181,23 +181,23 @@
 {#if store.loading || store.hasSnapshot === false}
   <!-- Skeleton -->
   <PageHeader {onsettings}>
-    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
-    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
   </PageHeader>
   <div class="flex gap-2 px-4 py-3">
     {#each [0, 1, 2] as _}
-      <div class="h-[30px] w-[72px] rounded-[var(--radius-pill)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-[30px] w-[72px] rounded-[var(--radius-pill)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
     {/each}
   </div>
   <div class="mx-4 mb-3">
-    <div class="h-[32px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    <div class="h-[32px] w-[160px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
   </div>
   <div class="card mx-4 overflow-hidden">
     {#each [0, 1, 2, 3, 4, 5] as _}
       <div class="flex items-center gap-3 py-3 px-[14px] border-b border-border last:border-0">
-        <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
-        <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
-        <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+        <div class="h-[10px] w-[40px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+        <div class="h-[14px] flex-1 rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[14px] w-[56px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
       </div>
     {/each}
   </div>

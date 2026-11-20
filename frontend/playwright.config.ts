@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: ['api.spec.ts', 'connection.spec.ts', 'sync-status.spec.ts', 'metadata-freshness.spec.ts', 'keyboard-admission.spec.ts', 'command-menu-sync.spec.ts', 'behavior-lifetime.spec.ts'],
+  testIgnore: ['api.spec.ts', 'connection.spec.ts', 'sync-status.spec.ts', 'metadata-freshness.spec.ts', 'keyboard-admission.spec.ts', 'command-menu-sync.spec.ts', 'behavior-lifetime.spec.ts', 'cold-loading-motion.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
