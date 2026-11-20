@@ -160,7 +160,7 @@
   bind:content={sheetNode} bind:overlay={backdrop} managedMotion={mobileAdd}
   initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
   fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
-  class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0 motion-reduce:data-[state=open]:fade-in-0 motion-reduce:data-[state=closed]:fade-out-0 motion-reduce:data-[state=open]:[--tw-enter-translate-y:0] motion-reduce:data-[state=closed]:[--tw-exit-translate-y:0]'}
+  class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'}
   onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {
     event.preventDefault();
