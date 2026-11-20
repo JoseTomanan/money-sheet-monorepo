@@ -1,10 +1,6 @@
 <!-- Cumulative spend pace: selected month as a solid accent line over a soft area,
      previous month as a dotted ghost on the same day-of-month axis. -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { tweened } from 'svelte/motion';
-  import { cubicOut } from 'svelte/easing';
-
   interface Props {
     current: number[];   // cumulative outgoing per day, full month length
     previous: number[];  // same, for the comparison month
@@ -37,13 +33,6 @@
       : ''
   );
   const inProgress = $derived(lastDay < current.length);
-
-  const draw = tweened(1, { duration: 900, easing: cubicOut });
-  let appear = $state(false);
-  onMount(() => {
-    draw.set(0);
-    requestAnimationFrame(() => (appear = true));
-  });
 </script>
 
 <div class="pace-chart">
@@ -54,24 +43,22 @@
     {#if prevPath}
       <path d={prevPath} fill="none" stroke="var(--muted-foreground)" stroke-width="1.5"
         stroke-dasharray="2 4" stroke-linecap="round"
-        class="transition-opacity duration-700 {appear ? 'opacity-50' : 'opacity-0'}" />
+        class="opacity-50" />
     {/if}
 
     {#if areaPath}
       <path d={areaPath} fill="var(--accent)"
-        class="transition-opacity duration-700 {appear ? 'opacity-[0.08]' : 'opacity-0'}" />
+        class="opacity-[0.08]" />
     {/if}
 
     {#if curPath}
       <path d={curPath} fill="none" stroke="var(--accent)" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"
-        pathLength="1" stroke-dasharray="1" stroke-dashoffset={$draw} />
+        stroke-linecap="round" stroke-linejoin="round" />
       {#if inProgress}
         <line x1={x(lastDay)} y1={y(current[lastDay - 1] ?? 0)} x2={x(lastDay)} y2={H - PAD.b}
           stroke="var(--accent)" stroke-width="1" stroke-dasharray="1 3"
-          class="transition-opacity duration-700 {appear ? 'opacity-60' : 'opacity-0'}" />
-        <circle cx={x(lastDay)} cy={y(current[lastDay - 1] ?? 0)} r="3.5" fill="var(--accent)"
-          class="transition-opacity duration-700 {appear ? 'opacity-100' : 'opacity-0'}" />
+          class="opacity-60" />
+        <circle cx={x(lastDay)} cy={y(current[lastDay - 1] ?? 0)} r="3.5" fill="var(--accent)" />
       {/if}
     {/if}
 
