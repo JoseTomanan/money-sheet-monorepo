@@ -67,6 +67,27 @@ describe("App settings sheet", () => {
 
   afterEach(() => window.history.replaceState(null, "", "/#/home"));
 
+  it('uses the current motion preference when scrolling to the top', async () => {
+    let reduced = true;
+    const original = window.matchMedia;
+    vi.spyOn(window, 'matchMedia').mockImplementation(query => query === '(prefers-reduced-motion: reduce)'
+      ? { ...original(query), matches: reduced } : original(query));
+    try {
+      const view = render(App);
+      const area = view.container.querySelector<HTMLElement>('.scroll-area')!;
+      area.scrollTo = vi.fn();
+      area.scrollTop = 300;
+      await fireEvent.scroll(area);
+      await fireEvent.click(view.getByRole('button', { name: 'Scroll to top' }));
+      expect(area.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'instant' });
+      reduced = false;
+      await fireEvent.click(view.getByRole('button', { name: 'Scroll to top' }));
+      expect(area.scrollTo).toHaveBeenLastCalledWith({ top: 0, behavior: 'smooth' });
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("settings sheet is hidden on initial render", () => {
     const { queryByRole } = render(App);
     expect(queryByRole("dialog")).toBeNull();

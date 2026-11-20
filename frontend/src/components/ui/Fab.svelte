@@ -8,7 +8,7 @@
 </script>
 
 <button
-  class="fab fixed flex items-center justify-center cursor-pointer rounded-full w-11 h-11 text-white z-[80] backdrop-blur-[6px] transition-transform duration-150 hover:-translate-y-px active:scale-[0.94] bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+20px)]"
+  class="fab fixed flex items-center justify-center cursor-pointer rounded-full w-11 h-11 text-white z-[80] backdrop-blur-[6px] motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:-translate-y-px motion-safe:active:scale-[0.94] motion-reduce:transition-opacity motion-reduce:duration-[80ms] motion-reduce:ease-[var(--ease-out)] motion-reduce:active:opacity-80 bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+20px)]"
   {onclick}
   aria-label="Add entry"
 >
