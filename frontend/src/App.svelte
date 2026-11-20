@@ -46,7 +46,7 @@
   }
 
   function scrollToTop() {
-    if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+    if (scrollArea) scrollArea.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
 
   function closeRouteOverlays() {
@@ -238,7 +238,7 @@
     {#if !store.loading && !store.error}
       {#if scrollTop > 200}
         <button
-          class="scroll-top-btn fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))] lg:bottom-36' : 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20'} w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-[background,transform] duration-150 hover:bg-muted hover:-translate-y-px right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
+          class="scroll-top-btn fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))] lg:bottom-36' : 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20'} w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-colors duration-150 hover:bg-muted right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
           onclick={scrollToTop}
           aria-label="Scroll to top"
         >
