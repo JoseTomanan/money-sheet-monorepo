@@ -314,6 +314,10 @@ body::before {
 @utility slide-in-from-bottom  { --tw-enter-translate-y: 100%; }
 @utility slide-out-to-bottom   { --tw-exit-translate-y:  100%; }
 
+/* Opacity-only keyframes preserve any gesture offset during a sheet exit. */
+@keyframes sheet-fade-in { from { opacity: 0; } }
+@keyframes sheet-fade-out { to { opacity: 0; } }
+
 /* ─── Shared utility classes ─────────────────────────────────────────────── */
 
 @utility press-feedback {

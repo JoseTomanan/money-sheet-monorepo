@@ -30,7 +30,7 @@
     <Dialog.Overlay
       bind:ref={overlay}
       class={cn('fixed inset-0 z-[200] bg-[var(--overlay-bg)]', !managedMotion &&
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0')}
+        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:data-[state=open]:[animation-name:sheet-fade-in] motion-reduce:data-[state=closed]:[animation-name:sheet-fade-out] motion-reduce:data-[state=open]:[animation-duration:80ms] motion-reduce:data-[state=closed]:[animation-duration:80ms] motion-reduce:data-[state=open]:[animation-timing-function:var(--ease-out)] motion-reduce:data-[state=closed]:[animation-timing-function:var(--ease-out)]')}
     />
     <Dialog.Content
       onEscapeKeydown={guardEscape}
@@ -48,7 +48,7 @@
       onkeydowncapture={onkeydown}
       class={cn(
         'sheet fixed bottom-0 inset-x-0 mx-auto z-[200] w-full max-w-[var(--app-max-width)] max-h-[90dvh] overflow-y-auto overflow-x-clip bg-background rounded-tl-[28px] rounded-tr-[28px] shadow-[var(--shadow-sheet)] pb-8',
-        !managedMotion && 'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=closed]:[animation-duration:280ms]',
+        !managedMotion && 'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=closed]:[animation-duration:280ms] motion-reduce:data-[state=open]:[animation-name:sheet-fade-in] motion-reduce:data-[state=closed]:[animation-name:sheet-fade-out] motion-reduce:data-[state=open]:[animation-duration:80ms] motion-reduce:data-[state=closed]:[animation-duration:80ms] motion-reduce:data-[state=open]:[animation-timing-function:var(--ease-out)] motion-reduce:data-[state=closed]:[animation-timing-function:var(--ease-out)]',
         cls
       )}
       style={contentStyle}
