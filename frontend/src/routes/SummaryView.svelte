@@ -73,27 +73,27 @@
 {#if store.loading || store.hasSnapshot === false}
   <!-- Skeleton -->
   <PageHeader {onsettings}>
-    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
-    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet context()}<div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
+    {#snippet title()}<div class="h-[28px] w-[160px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>{/snippet}
   </PageHeader>
   <div class="summary-cols lg:grid lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-4 lg:px-6">
     <div class="summary-left card mx-4 mt-[14px] overflow-hidden lg:mx-0">
       {#each [0, 1, 2, 3, 4, 5, 6] as i (i)}
         <div class="py-4 px-4 border-b border-border last:border-0 flex items-center justify-between">
           <div class="flex items-center gap-[10px]">
-            <div class="size-[10px] rounded-full bg-border animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
-            <div class="h-[14px] w-[90px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+            <div class="size-[10px] rounded-full bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite] shrink-0"></div>
+            <div class="h-[14px] w-[90px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
           </div>
-          <div class="h-[18px] w-[80px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+          <div class="h-[18px] w-[80px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
         </div>
       {/each}
     </div>
     <div class="summary-aside lg:min-h-full">
       <div class="px-5 pt-[14px] pb-2">
-        <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[10px] w-[100px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
       <div class="card mx-4 p-4 lg:mx-0">
-        <div class="h-[110px] rounded-[var(--radius-sm)] bg-border animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        <div class="h-[110px] rounded-[var(--radius-sm)] bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
       </div>
     </div>
   </div>
