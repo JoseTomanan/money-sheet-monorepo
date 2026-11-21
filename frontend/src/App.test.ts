@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, fireEvent } from "@testing-library/svelte";
+import { render, fireEvent, waitFor } from "@testing-library/svelte";
 import App from "./App.svelte";
 
 const mockSetConnection = vi.hoisted(() => vi.fn());
@@ -298,11 +298,10 @@ describe("App — hash routes", () => {
     await fireEvent.scroll(scrollArea);
 
     await fireEvent.click(getByRole("button", { name: "Summary" }));
-    expect(scrollArea.scrollTop).toBe(0);
+    expect((container.querySelector('.scroll-area') as HTMLElement).scrollTop).toBe(0);
 
     window.history.replaceState(null, "", "/#/home");
     window.dispatchEvent(new PopStateEvent("popstate"));
-    await Promise.resolve();
-    expect(scrollArea.scrollTop).toBe(123);
+    await waitFor(() => expect((container.querySelector('.scroll-area') as HTMLElement).scrollTop).toBe(123));
   });
 });

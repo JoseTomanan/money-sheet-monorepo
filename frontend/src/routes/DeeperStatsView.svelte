@@ -70,8 +70,13 @@
   </PageHeader>
 
   <BalanceStatus statistics />
-  {#if store.hasStats === false}
-    <p class="mx-4 mt-4 text-sm text-muted-foreground lg:mx-6">Statistics are not available yet.</p>
+  {#if store.hasStats === false && store.statsPending}
+    <div role="status" aria-label="Loading statistics" class="mx-4 mt-4 grid gap-4 lg:mx-6 lg:grid-cols-2">
+      <div class="h-40 rounded-lg bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
+      <div class="h-64 rounded-lg bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
+    </div>
+  {:else if store.hasStats === false}
+    <p class="mx-4 mt-4 text-sm text-muted-foreground lg:mx-6">Statistics unavailable. <button class="text-accent cursor-pointer" onclick={() => void store.retrySync()}>Retry</button></p>
   {:else}
   <!-- Window selector -->
   <div class="segmented flex shrink-0 gap-[2px] mx-4 mt-3 mb-1 lg:mx-6" role="radiogroup" aria-label="Rolling window">

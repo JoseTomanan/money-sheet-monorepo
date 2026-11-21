@@ -152,7 +152,7 @@
                 {/if}
                 <span aria-hidden="true"><Money value={e.netChange} size={11} weight={500} /></span>
               </div>
-              {:else}<span class="text-xs text-muted-foreground">Awaiting statistics</span>{/if}
+              {:else if store.statsPending}<span class="inline-block h-3 w-16 rounded-sm bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]" aria-label="Loading statistics"></span>{:else}<span class="text-xs text-muted-foreground">Statistics unavailable</span>{/if}
             </div>
           </div>
         {/each}
@@ -173,7 +173,8 @@
         {/snippet}
       </SectionHeader>
       <div class="card mx-4 px-4 pt-3 pb-3 lg:mx-0">
-        {#if store.hasStats === false}<p class="text-sm text-muted-foreground">Statistics are not available yet.</p>{:else}
+        {#if store.hasStats === false && store.statsPending}<div role="status" aria-label="Loading statistics" class="h-[110px] rounded-sm bg-border motion-safe:animate-[shimmer_1s_ease-in-out_infinite]"></div>
+        {:else if store.hasStats === false}<p class="text-sm text-muted-foreground">Statistics unavailable. <button class="text-accent cursor-pointer" onclick={() => void store.retrySync()}>Retry</button></p>{:else}
         <PaceChart
           {current}
           previous={usual}

@@ -1583,6 +1583,7 @@ describe("financial sheet read failures (#232)", () => {
     expect(store.hasSnapshot).toBe(true);
     expect(store.master).toEqual(freshMaster);
     expect(store.hasStats).toBe(false);
+    expect(store.statsPending).toBe(false);
     expect(store.error).toBeNull();
     expect(store.balancesStale).toBe(false);
   });
