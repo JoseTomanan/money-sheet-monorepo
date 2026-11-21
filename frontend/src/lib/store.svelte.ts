@@ -812,6 +812,7 @@ export const store = {
   get masterLoading() { return masterLoading || activeOperations > 0; },
   get hasSnapshot() { return hasSnapshot; },
   get hasStats() { return hasStats; },
+  get statsPending() { return statsPending; },
   get statsStale() { return statsStale; },
   get statisticsAwaitingSync() { return financialDirty && statsStale; },
   get lastUpdated() { return lastUpdated; },

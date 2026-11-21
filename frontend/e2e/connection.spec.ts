@@ -1,5 +1,79 @@
 import { test, expect } from './fixtures';
 
+test('independent first statistics load settles in place and keeps confirmed balances visible', async ({ page }) => {
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.addInitScript(() => localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://loading.example/exec', apiSecret: 'test' })));
+  await page.route('https://loading.example/**', async route => {
+    const action = new URL(route.request().url()).searchParams.get('action');
+    if (action === 'getStats') await pending;
+    await route.fulfill({ json: {
+      getEntries: { entries: [] }, getMaster: { master: { onHand: 100, budgets: { FOOD: 100 } } },
+      getCategories: { categories: { FOOD: [] } }, getConfig: { config: { currency: '$' } },
+      getStats: { stats: { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] } },
+    }[action!] });
+  });
+  await page.goto('/#/summary');
+  await expect(page.getByText('Funds health')).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Loading statistics' })).toBeVisible();
+  await expect(page.locator('.envelope-row').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Deeper statistics' }).click();
+  await expect(page.getByRole('status', { name: 'Loading statistics' })).toBeVisible();
+  release();
+  await expect(page.getByRole('status', { name: 'Loading statistics' })).toHaveCount(0);
+  await expect(page.getByText('No spending in this window.')).toBeVisible();
+});
+
+test('unavailable statistics offer retry without hiding confirmed balances', async ({ page }) => {
+  let failStats = true;
+  await page.addInitScript(() => localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://unavailable.example/exec', apiSecret: 'test' })));
+  await page.route('https://unavailable.example/**', async route => {
+    const action = new URL(route.request().url()).searchParams.get('action');
+    if (action === 'getStats' && failStats) {
+      await route.fulfill({ json: { ok: false, code: 'internal', message: 'Statistics unavailable', error: 'Statistics unavailable' } });
+      return;
+    }
+    await route.fulfill({ json: {
+      getEntries: { entries: [] }, getMaster: { master: { onHand: 100, budgets: { FOOD: 100 } } },
+      getCategories: { categories: { FOOD: [] } }, getConfig: { config: { currency: '$' } },
+      getStats: { stats: { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] } },
+    }[action!] });
+  });
+  await page.goto('/#/summary');
+  await expect(page.getByText('Funds health')).toBeVisible();
+  await expect(page.locator('.envelope-row').first()).toBeVisible();
+  const retry = page.getByRole('button', { name: 'Retry', exact: true });
+  await expect(retry).toBeVisible();
+  failStats = false;
+  await retry.click();
+  await expect(retry).toHaveCount(0);
+  await expect(page.locator('.envelope-row').first()).toBeVisible();
+});
+
+test('a failed cold financial read replaces placeholders with retry and recovers in place', async ({ page }) => {
+  let failMaster = true;
+  await page.addInitScript(() => localStorage.setItem('ms_connection', JSON.stringify({ gasUrl: 'https://cold-failure.example/exec', apiSecret: 'test' })));
+  await page.route('https://cold-failure.example/**', async route => {
+    const action = new URL(route.request().url()).searchParams.get('action');
+    if (action === 'getMaster' && failMaster) {
+      await route.fulfill({ json: { ok: false, code: 'internal', message: 'Balances unavailable', error: 'Balances unavailable' } });
+      return;
+    }
+    await route.fulfill({ json: {
+      getEntries: { entries: [] }, getMaster: { master: { onHand: 100, budgets: { FOOD: 100 } } },
+      getCategories: { categories: { FOOD: [] } }, getConfig: { config: { currency: '$' } },
+      getStats: { stats: { categoryMonthChange: [], spendingPace: [], windowTotals: [], windowCategorySpend: [] } },
+    }[action!] });
+  });
+  await page.goto('/#/home');
+  await expect(page.getByText('Could not load data')).toBeVisible();
+  await expect(page.locator('.home')).toHaveCount(0);
+  failMaster = false;
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.locator('.hero-amount')).toBeVisible();
+  await expect(page.getByText('Could not load data')).toHaveCount(0);
+});
+
 test('Settings isolates destinations and requires explicit legacy association across reload', async ({ page }) => {
   const A = { gasUrl: 'https://a.example/exec', apiSecret: 'a-secret' };
   const B = { gasUrl: 'https://b.example/exec', apiSecret: 'b-secret' };

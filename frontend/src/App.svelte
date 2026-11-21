@@ -8,6 +8,7 @@
   import { installPageShortcuts, openOverlays, KEYBOARD_CONTEXT, type KeyboardContext } from './lib/keyboard';
   import { appCommands, COMMAND_MENU, type CommandId } from './lib/commandMenu';
   import CommandMenu from './components/ui/CommandMenu.svelte';
+  import PageHeader from './components/ui/PageHeader.svelte';
   import { keyboardPreferences } from './lib/keyboardPreferences.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
@@ -27,6 +28,7 @@
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
   const router = createRouter();
+  const routeTitles = { home: 'Home', entries: 'Entries', summary: 'Summary', statistics: 'Deeper stats' };
   let entriesView = $state<EntriesView | null>(null);
   let commandOpen = $state(false);
   let commandSession = $state<{
@@ -39,8 +41,8 @@
   setContext<() => KeyboardContext>(KEYBOARD_CONTEXT, () => entriesSelectMode ? 'bulk' : router.current.kind);
   const routeScrollPositions = new Map<string, number>();
 
-  function handleScroll() {
-    if (!scrollArea) return;
+  function handleScroll(event: Event, owner: string) {
+    if (!scrollArea || event.currentTarget !== scrollArea || owner !== router.key) return;
     scrollTop = scrollArea.scrollTop;
     routeScrollPositions.set(router.key, scrollTop);
   }
@@ -57,12 +59,10 @@
   }
 
   function navigate(next: Route) {
+    if (scrollArea) routeScrollPositions.set(router.key, scrollArea.scrollTop);
     if (!router.navigate(next)) return;
     closeRouteOverlays();
-    if (scrollArea) {
-      scrollArea.scrollTop = 0;
-      scrollTop = 0;
-    }
+    scrollTop = 0;
     routeScrollPositions.set(router.key, 0);
   }
 
@@ -75,13 +75,17 @@
   }
 
   function syncRoute() {
-    if (scrollArea) routeScrollPositions.set(router.key, scrollArea.scrollTop);
+    const previousKey = router.key;
+    const previousOffset = scrollArea?.scrollTop;
     if (!router.sync()) return;
+    if (previousOffset !== undefined) routeScrollPositions.set(previousKey, previousOffset);
     closeRouteOverlays();
-    if (scrollArea) {
-      scrollArea.scrollTop = routeScrollPositions.get(router.key) ?? 0;
-      scrollTop = scrollArea.scrollTop;
-    }
+    const key = router.key;
+    const offset = routeScrollPositions.get(key) ?? 0;
+    scrollTop = offset;
+    void tick().then(() => {
+      if (router.key === key && scrollArea) scrollArea.scrollTop = offset;
+    });
   }
 
   // Entry sheet state
@@ -193,12 +197,19 @@
   {/if}
   <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 lg:pt-8' : ''}">
     <!-- Scrollable content area -->
-    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip {entriesSelectMode && router.current.kind === 'entries' ? 'pb-[calc(210px+env(safe-area-inset-bottom,0px))] lg:pb-[150px]' : 'pb-[calc(150px+env(safe-area-inset-bottom,0px))] lg:pb-[60px]'}" bind:this={scrollArea} onscroll={handleScroll}>
+    {#key router.key}
+    {@const scrollOwner = router.key}
+    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip {entriesSelectMode && router.current.kind === 'entries' ? 'pb-[calc(210px+env(safe-area-inset-bottom,0px))] lg:pb-[150px]' : 'pb-[calc(150px+env(safe-area-inset-bottom,0px))] lg:pb-[60px]'}" bind:this={scrollArea} onscroll={(event) => handleScroll(event, scrollOwner)}>
       {#if store.legacyWork && !mockMode.current}
         <div class="mx-4 my-4 p-4 rounded-lg border border-border bg-background">
           <p class="text-sm text-foreground">Older pending saves have no known destination. They are retained on this device and will not sync automatically.</p>
           <button class="mt-3 text-sm font-semibold text-accent cursor-pointer" onclick={() => (settingsOpen = true)}>Recover pending saves in Settings</button>
         </div>
+      {/if}
+      {#if store.error && !store.hasSnapshot}
+        <PageHeader onsettings={() => (settingsOpen = true)}>
+          {#snippet title()}{routeTitles[router.current.kind]}{/snippet}
+        </PageHeader>
       {/if}
       {#if store.error}
         <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[var(--destructive-tint-bg)] border border-[var(--destructive-tint-border)]">
@@ -212,6 +223,7 @@
           </div>
         </div>
       {/if}
+        {#if !store.error || store.hasSnapshot}
         {#key router.key}
           {#if router.current.kind === 'home'}
             <HomeScreen onnavigate={navigateTab} onsettings={() => (settingsOpen = true)} />
@@ -233,7 +245,9 @@
             <SummaryView ondeeper={() => navigate({ kind: 'statistics' })} onsettings={() => (settingsOpen = true)} />
           {/if}
         {/key}
+        {/if}
     </div>
+    {/key}
 
     {#if !store.loading && !store.error}
       {#if scrollTop > 200}
