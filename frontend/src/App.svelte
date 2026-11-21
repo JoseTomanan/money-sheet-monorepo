@@ -8,6 +8,7 @@
   import { installPageShortcuts, openOverlays, KEYBOARD_CONTEXT, type KeyboardContext } from './lib/keyboard';
   import { appCommands, COMMAND_MENU, type CommandId } from './lib/commandMenu';
   import CommandMenu from './components/ui/CommandMenu.svelte';
+  import PageHeader from './components/ui/PageHeader.svelte';
   import { keyboardPreferences } from './lib/keyboardPreferences.svelte';
   import type { Entry, EntryMutation } from './lib/types';
   import MockBanner from './components/ui/MockBanner.svelte';
@@ -27,6 +28,7 @@
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
   const router = createRouter();
+  const routeTitles = { home: 'Home', entries: 'Entries', summary: 'Summary', statistics: 'Deeper stats' };
   let entriesView = $state<EntriesView | null>(null);
   let commandOpen = $state(false);
   let commandSession = $state<{
@@ -203,6 +205,11 @@
           <p class="text-sm text-foreground">Older pending saves have no known destination. They are retained on this device and will not sync automatically.</p>
           <button class="mt-3 text-sm font-semibold text-accent cursor-pointer" onclick={() => (settingsOpen = true)}>Recover pending saves in Settings</button>
         </div>
+      {/if}
+      {#if store.error && !store.hasSnapshot}
+        <PageHeader onsettings={() => (settingsOpen = true)}>
+          {#snippet title()}{routeTitles[router.current.kind]}{/snippet}
+        </PageHeader>
       {/if}
       {#if store.error}
         <div class="error-card mx-4 my-6 p-5 rounded-[var(--radius-lg)] bg-[var(--destructive-tint-bg)] border border-[var(--destructive-tint-border)]">

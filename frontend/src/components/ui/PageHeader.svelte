@@ -7,7 +7,7 @@
   import { isMac } from '$lib/keyboard';
 
   interface Props {
-    context: Snippet;
+    context?: Snippet;
     title: Snippet;
     meta?: Snippet;
     actions?: Snippet;
@@ -22,7 +22,7 @@
 <header class="page-header px-4 pt-4 pb-2 lg:px-6 lg:pt-6 lg:pb-3">
   <div class="page-header-context min-h-11 flex items-center justify-between gap-3 lg:min-h-8">
     <div class="min-w-0 font-display text-xs font-semibold tracking-[1.2px] uppercase text-muted-foreground">
-      {@render context()}
+      {@render context?.()}
     </div>
     <div class="flex shrink-0 items-center gap-1">
     <SyncStatus />
