@@ -501,6 +501,9 @@ test("narrow mobile navigation floats above the viewport edge", async ({ page })
 
 test("mobile Entries keeps its final content and bulk controls clear of the dock", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
+  // Use a populated week even when the suite runs on Sunday, when the current
+  // mock week contains too few entries to reach the scroll-to-top threshold.
+  await page.clock.setFixedTime(new Date('2026-11-21T12:00:00+08:00'));
   await page.goto('/');
   await waitForAppReady(page);
   await switchTab(page, 'Entries');
