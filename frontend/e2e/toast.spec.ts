@@ -2,6 +2,74 @@ import { expect, test, type Page } from './fixtures';
 
 const body = 'Not updated: entries, balances, categories, settings, statistics.';
 
+test('an expired notification leaves an inert visual briefly', async ({ page }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const { toast } = await import('/money-sheet-monorepo/src/lib/toast.svelte.ts');
+    toast.show('Saved');
+  });
+  await page.clock.runFor(3000);
+  await expect(page.getByRole('region', { name: 'Notification' })).toHaveCount(0);
+  const exit = page.locator('[data-toast-exit]');
+  await expect(exit).toHaveText('Saved');
+  await expect(exit).toHaveAttribute('aria-hidden', 'true');
+  await page.clock.runFor(140);
+  await expect(exit).toHaveCount(0);
+});
+
+test('actionable reduced-motion exit yields to a replacement on its own clock', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await failRefresh(page);
+  await page.clock.runFor(8000);
+  await expect(page.getByRole('region', { name: 'Notification' })).toHaveCount(0);
+  const exit = page.locator('[data-toast-exit]');
+  await expect(exit).toHaveAttribute('inert', '');
+  expect(await exit.evaluate(el => getComputedStyle(el).animationDuration)).toBe('0.08s');
+  expect(await exit.evaluate(el => getComputedStyle(el).pointerEvents)).toBe('none');
+  await page.evaluate(async () => {
+    const { toast } = await import('/money-sheet-monorepo/src/lib/toast.svelte.ts');
+    toast.show('Replacement', { label: 'Act', run() {} });
+  });
+  await expect(exit).toHaveCount(0);
+  await page.clock.runFor(140);
+  const card = page.getByRole('region', { name: 'Notification' });
+  await expect(card.getByRole('button', { name: 'Act' })).toBeEnabled();
+  await expect(page.getByRole('status').filter({ hasText: 'Replacement' })).toHaveCount(1);
+  await page.clock.runFor(7859);
+  await expect(card).toBeVisible();
+  await page.clock.runFor(1);
+  await expect(card).toHaveCount(0);
+});
+
+test('programmatic teardown clears an exit and owned dismissal is immediate', async ({ page }) => {
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const { toast } = await import('/money-sheet-monorepo/src/lib/toast.svelte.ts');
+    const owner = Symbol();
+    toast.showOwned(owner, 'Owned');
+    toast.dismissOwned(owner);
+  });
+  await expect(page.getByRole('region', { name: 'Notification' })).toHaveCount(0);
+  await expect(page.locator('[data-toast-exit]')).toHaveCount(0);
+  await page.evaluate(async () => {
+    const { toast } = await import('/money-sheet-monorepo/src/lib/toast.svelte.ts');
+    toast.show('Expiring');
+  });
+  await page.clock.runFor(3000);
+  await expect(page.locator('[data-toast-exit]')).toHaveCount(1);
+  await page.evaluate(async () => {
+    const { toast } = await import('/money-sheet-monorepo/src/lib/toast.svelte.ts');
+    toast.dismiss();
+  });
+  await expect(page.locator('[data-toast-exit]')).toHaveCount(0);
+});
+
 async function failRefresh(page: Page) {
   await page.route('https://toast-api.example/**', route => route.fulfill({ json: { error: 'unauthorized' } }));
   await page.goto('/');

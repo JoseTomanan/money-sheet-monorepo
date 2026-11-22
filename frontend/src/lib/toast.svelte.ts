@@ -11,6 +11,8 @@ export interface ToastPresentation {
   isConnection?: boolean;
 }
 let presentation = $state<ToastPresentation | null>(null);
+let exiting = $state<{ message: string; heading?: string; actionLabel?: string; isError: boolean; isConnection: boolean } | null>(null);
+let exitTimer: ReturnType<typeof setTimeout> | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
 export type ToastPauseReason = 'hover' | 'focus' | 'hidden';
 const pauses = new Set<ToastPauseReason>();
@@ -25,7 +27,20 @@ function cancelTimer(): void {
 function schedule(): void {
   if (msg === null || pauses.size > 0) return;
   startedAt = Date.now();
-  timer = setTimeout(dismiss, remaining);
+  timer = setTimeout(expire, remaining);
+}
+
+function clearExit(): void {
+  clearTimeout(exitTimer);
+  exiting = null;
+}
+
+function expire(): void {
+  if (msg === null) return;
+  const snapshot = { message: msg, heading: presentation?.heading, actionLabel: action?.label, isError: errorNotification || isConnection || variant === 'destructive', isConnection };
+  dismiss();
+  exiting = snapshot;
+  exitTimer = setTimeout(clearExit, typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 80 : 140);
 }
 
 function pause(reason: ToastPauseReason): void {
@@ -47,6 +62,7 @@ function show(
   variantArg: 'default' | 'destructive' = 'default',
   presentationArg?: ToastPresentation,
 ): void {
+  clearExit();
   owner = null;
   cancelTimer();
   msg = msgOrErr instanceof Error ? msgOrErr.message : String(msgOrErr);
@@ -60,6 +76,7 @@ function show(
 }
 
 function dismiss(): void {
+  clearExit();
   owner = null;
   cancelTimer();
   msg = null;
@@ -72,6 +89,7 @@ function dismiss(): void {
 }
 
 export const toast = {
+  get exiting() { return exiting; },
   get msg() { return msg; },
   get action() { return action; },
   get isConnection() { return isConnection; },

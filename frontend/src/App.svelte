@@ -269,6 +269,7 @@
     <Toast
       class="toast fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(216px+env(safe-area-inset-bottom,0px))] lg:bottom-[200px]' : 'bottom-[calc(144px+env(safe-area-inset-bottom,0px))] lg:bottom-[calc(92px+env(safe-area-inset-bottom,0px))]'} inset-x-0 mx-auto max-w-[420px] w-[calc(100%-32px)]"
       message={toast.msg}
+      exiting={toast.exiting}
       presentation={toast.presentation}
       variant={toast.variant}
       isConnection={toast.isConnection}
