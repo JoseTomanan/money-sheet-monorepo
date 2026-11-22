@@ -8,6 +8,7 @@
   import { redistributionAmount } from '../../lib/amountField';
   import { store } from '../../lib/store.svelte';
   import { createRedistributionForm } from '../../lib/redistributionForm.svelte';
+  import { pressFeedback } from '../../lib/pressFeedback';
   import type { CategoryMap, AddEntryPayload, EntrySubmission } from '../../lib/types';
 
   interface Props {
@@ -57,7 +58,8 @@
     >Cancel</button>
     <Sheet.Title>Redistribute Funds</Sheet.Title>
     <button
-      class="bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      class="press-feedback bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-accent font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+      use:pressFeedback
       onclick={handleSubmit}
       disabled={saving || form.submitDisabled}
     >Redistribute</button>
