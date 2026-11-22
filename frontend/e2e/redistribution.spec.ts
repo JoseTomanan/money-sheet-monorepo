@@ -41,7 +41,16 @@ for (const width of [390, 1440]) {
     await dialog.getByRole('button', { name: 'HOUSING', exact: true }).first().click();
     await dialog.getByRole('button', { name: 'FOOD', exact: true }).last().click();
     await amount.fill('125');
-    await dialog.getByRole('button', { name: 'Redistribute', exact: true }).click();
+    const submit = dialog.getByRole('button', { name: 'Redistribute', exact: true });
+    await submit.hover();
+    await page.mouse.down();
+    await expect.poll(() => submit.evaluate(el => getComputedStyle(el).transform)).not.toBe('none');
+    await page.mouse.move(0, 0);
+    await page.mouse.up();
+    await expect.poll(() => submit.evaluate(el => getComputedStyle(el).transform)).toBe('none');
+    await expect(dialog).toBeVisible();
+    await expect(transfers).toHaveCount(previousCount);
+    await submit.click();
     await expect(dialog).not.toBeVisible();
     await expect(trigger).toBeFocused();
     await expect(transfers).toHaveCount(previousCount + 2);
