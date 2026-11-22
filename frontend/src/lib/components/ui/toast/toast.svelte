@@ -5,6 +5,7 @@
 
   interface Props {
     message: string | null;
+    exiting?: { message: string; heading?: string; actionLabel?: string; isError: boolean; isConnection: boolean } | null;
     variant?: 'default' | 'destructive';
     presentation?: ToastPresentation | null;
     isConnection?: boolean;
@@ -18,7 +19,7 @@
   }
 
   let {
-    message, variant = 'default', presentation = null, isConnection = false, isError: errorNotification = false,
+    message, exiting = null, variant = 'default', presentation = null, isConnection = false, isError: errorNotification = false,
     action = null, onSettings, onDismiss, onPause, onResume, class: cls = '',
   }: Props = $props();
 
@@ -89,4 +90,25 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
     </button>
   </section>
+{/if}
+
+{#if exiting && message === null}
+  <div data-toast-exit aria-hidden="true" inert class={cn('toast-exit relative z-[300] pointer-events-none rounded-[var(--radius-md)] border border-border bg-card p-4 text-foreground shadow-[var(--shadow-card)] font-sans', cls)}>
+    <div class="flex items-start gap-3 pr-8">
+      {#if exiting.isError}
+        <svg class="mt-0.5 shrink-0 text-destructive" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.3 3.9-8.5 14.7A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.4L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 4h.01" /></svg>
+      {/if}
+      <div class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {#if exiting.heading}<h2 class="m-0 mb-1 font-display text-[14px] leading-[1.45] font-semibold">{exiting.heading}</h2>{/if}
+        <p class="m-0 text-[13px] leading-[1.45]">{exiting.message}</p>
+      </div>
+    </div>
+    {#if exiting.actionLabel || exiting.isConnection}
+      <div class="mt-3 flex flex-wrap gap-2 {exiting.isError ? 'pl-[30px]' : ''}">
+        {#if exiting.actionLabel}<span class={cn(control, 'inline-flex items-center border border-accent bg-accent/15 text-foreground')}>{exiting.actionLabel}</span>{/if}
+        {#if exiting.isConnection}<span class={cn(control, 'inline-flex items-center border border-border bg-muted text-foreground')}>Check Settings</span>{/if}
+      </div>
+    {/if}
+    <span class="absolute right-1 top-1 flex size-11 items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M6 18 18 6" /></svg></span>
+  </div>
 {/if}

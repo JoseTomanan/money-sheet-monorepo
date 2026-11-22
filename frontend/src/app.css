@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 .picker-entrance { transition: opacity 100ms var(--ease-out); }
+.toast-exit { animation: toast-exit 140ms var(--ease-out) forwards; }
+@keyframes toast-exit { to { opacity: 0; transform: translateY(8px); } }
+@keyframes toast-exit-reduced { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .toast-exit { animation: toast-exit-reduced 80ms var(--ease-out) forwards; }
+}
 @media (prefers-reduced-motion: reduce) {
   .picker-entrance { transition-duration: 80ms; }
 }
