@@ -4,7 +4,7 @@
 <script lang="ts">
   import { untrack, tick, onMount } from 'svelte';
   import { choiceGroup } from '$lib/choiceGroup';
-  import { resolveCategoryStyle, CATEGORY_ORDER } from '../../lib/theme';
+  import { resolveCategoryStyle, CATEGORY_ORDER, type CategoryStyle } from '../../lib/theme';
   import { darkMode } from '../../lib/darkMode.svelte';
   import { getMainCategory } from '../../lib/domain';
   import type { Direction, CategoryMap } from '../../lib/types';
@@ -98,13 +98,21 @@
     }
   }
 
+  function pillStyle(style: CategoryStyle, selected: boolean) {
+    const dark = darkMode.current;
+    const color = dark ? style.darkColor : style.color;
+    const tint = dark ? style.darkSoft : style.soft;
+    const selectedInk = dark ? 'var(--app-bg)' : '#fff';
+    return `background: ${selected ? color : tint}; color: ${selected ? selectedInk : color};`;
+  }
+
   // Pill size classes (full vs compact)
   const catPillClass = $derived(
     compact
       ? 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-1 py-[5px] px-[10px] rounded-[var(--radius-pill)] border-0 font-sans text-[11px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap lg:min-h-8 lg:min-w-0'
       : 'tag-pill min-h-11 min-w-11 shrink-0 flex items-center gap-[6px] py-2 px-[14px] rounded-[var(--radius-pill)] border-0 font-sans text-[13px] font-semibold cursor-pointer transition-[background,color] duration-150 whitespace-nowrap lg:min-h-8 lg:min-w-0'
   );
-  const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0' : 'size-[6px] rounded-full shrink-0');
+  const dotClass = $derived(compact ? 'size-[5px] rounded-full shrink-0 bg-current' : 'size-[6px] rounded-full shrink-0 bg-current');
 </script>
 
 <!-- Label (single line — reads "Subcategory" when drilled in, "Category" otherwise) -->
@@ -123,7 +131,6 @@
   {#if direction === 'O' && activeCategory}
     {@const s = resolveCategoryStyle(activeCategory)}
     {@const isBareCategoryActive = tag === activeCategory}
-    {@const inactivePinnedColor = darkMode.current ? s.darkColor : s.color}
     <!-- Pinned chosen-category pill with ‹ back affordance. Also the bare-Category
          commit target — Subcategory is optional on Outgoing (#123) — so it reflects
          selection like a Subcategory pill: solid when the bare Category is the tag,
@@ -134,10 +141,10 @@
       class={catPillClass}
       aria-pressed={isBareCategoryActive}
       aria-label={activeCategory}
-      style="background: {isBareCategoryActive ? s.color : s.soft}; color: {isBareCategoryActive ? '#fff' : inactivePinnedColor};"
+      style={pillStyle(s, isBareCategoryActive)}
       onclick={(event) => handleCategoryClick(activeCategory, event)}
     >
-      <span class={dotClass} style="background: {isBareCategoryActive ? '#fff' : inactivePinnedColor}"></span>
+      <span class={dotClass}></span>
       ‹ {activeCategory}
     </button>
     </div>
@@ -147,14 +154,13 @@
     <div role="group" aria-label="Optional Subcategory" use:choiceGroup class="flex gap-2 lg:flex-wrap">
     {#each subcategories as sub}
       {@const isActive = tag === sub}
-      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
         class={catPillClass}
         aria-pressed={isActive}
-        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
+        style={pillStyle(s, isActive)}
         onclick={() => onselect(sub)}
       >
-        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
+        <span class={dotClass}></span>
         {sub}
       </button>
     {/each}
@@ -165,15 +171,14 @@
     {#each sortedCategories as cat}
       {@const s = resolveCategoryStyle(cat)}
       {@const isActive = direction === 'I' ? tag === cat : (activeCategory === cat || tag === cat)}
-      {@const inactiveColor = darkMode.current ? s.darkColor : s.color}
       <button
         data-category={cat}
         class={catPillClass}
         aria-pressed={isActive}
-        style="background: {isActive ? s.color : s.soft}; color: {isActive ? '#fff' : inactiveColor};"
+        style={pillStyle(s, isActive)}
         onclick={(event) => handleCategoryClick(cat, event)}
       >
-        <span class={dotClass} style="background: {isActive ? '#fff' : inactiveColor}"></span>
+        <span class={dotClass}></span>
         {cat}
       </button>
     {/each}
