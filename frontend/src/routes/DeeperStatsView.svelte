@@ -155,7 +155,7 @@
         <div class="dist-strip dist-bar flex h-[10px] rounded-full overflow-hidden gap-[2px]">
           {#each categorySpend.filter((d) => d.outgoing > 0) as d (d.key)}
             <div
-              style="flex-grow: {d.outgoing}; flex-basis: 0; background: {d.c.color};"
+              style="flex-grow: {d.outgoing}; flex-basis: 0; background: {darkMode.current ? d.c.darkColor : d.c.color};"
               title="{d.c.label}: {peso(d.outgoing, store.config.currency)}"
             ></div>
           {/each}
@@ -175,7 +175,7 @@
           </span>
           <div class="shrink-0 text-right min-w-[84px]"><Money value={d.outgoing} size={14} weight={600} negColor={false} /></div>
         </div>
-        <div class="mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {darkMode.current ? d.c.soft : d.c.pastel};">
+          <div class="mt-2 ml-5 h-1 rounded-[2px] overflow-hidden" style="background: {darkMode.current ? d.c.darkSoft : d.c.pastel};">
           <div
             class="h-full rounded-[2px]"
             style="width: {(d.outgoing / maxSpent) * 100}%; background: {darkMode.current ? d.c.darkColor : d.c.color};"

@@ -134,14 +134,14 @@
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] lg:shrink"
-            style="background: {darkMode.current ? (c.darkSoft ?? c.soft) : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} 50%, transparent); box-shadow: var(--shadow-card);">
+            style="background: {darkMode.current ? c.darkSoft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} {darkMode.current ? 28 : 50}%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>
             </div>
             <div
               class="cat-amount font-mono tabular-nums mt-1 text-[13px] font-medium text-right whitespace-nowrap"
-                      style="color: {c.color};"
+              style="color: {darkMode.current ? c.darkColor : c.color};"
             >
               {peso(budget, store.config.currency)}
             </div>

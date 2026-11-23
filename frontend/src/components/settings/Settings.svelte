@@ -112,7 +112,7 @@
   </div>
 
   <button
-    class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent-fill text-white font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
+    class="save-btn w-full mt-5 py-3 rounded-[var(--radius-md)] border-0 bg-accent-fill text-accent-foreground font-sans text-[15px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-opacity duration-150"
     onclick={handleSave}
     disabled={saveDisabled}
   >{saving ? 'Checking…' : 'Save'}</button>
@@ -154,7 +154,7 @@
         {#each themeOptions as opt}
           <button
             type="button"
-            class="flex-1 py-[9px] rounded-[var(--radius-sm)] font-sans text-[13px] font-semibold border-0 cursor-pointer transition-colors duration-150 {darkMode.preference === opt.value ? 'bg-accent-fill text-white' : 'bg-muted text-muted-foreground'}"
+            class="flex-1 py-[9px] rounded-[var(--radius-sm)] font-sans text-[13px] font-semibold border-0 cursor-pointer transition-colors duration-150 {darkMode.preference === opt.value ? 'bg-accent-fill text-accent-foreground' : 'bg-muted text-muted-foreground'}"
             onclick={() => darkMode.setPreference(opt.value)}
           >{opt.label}</button>
         {/each}
