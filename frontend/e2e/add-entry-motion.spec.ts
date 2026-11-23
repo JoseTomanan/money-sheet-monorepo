@@ -47,12 +47,19 @@ test('reduced motion fades the Add Entry sheet without moving it, and Escape clo
   await recordMotion(page);
   const add = page.getByRole('button', { name: 'Add entry', exact: true });
   const sheet = page.locator('[data-entry-sheet-motion]');
+  const backdrop = page.locator('[data-entry-overlay-motion]');
   const log = page.locator('html');
 
   await add.click();
   await expect(log).toHaveAttribute('data-entry-transitions', /sheet:open:opacity/);
+  await expect(log).toHaveAttribute('data-entry-transitions', /backdrop:open:opacity/);
+  for (const surface of [sheet, backdrop]) {
+    await expect(surface).toHaveCSS('transition-property', 'opacity');
+    await expect(surface).toHaveCSS('transition-duration', '0.08s');
+  }
   await sheet.getByRole('button', { name: 'Cancel' }).click();
   await expect(log).toHaveAttribute('data-entry-transitions', /sheet:closed:opacity/);
+  await expect(log).toHaveAttribute('data-entry-transitions', /backdrop:closed:opacity/);
   await expect(sheet).toHaveCount(0);
   await expect(log).not.toHaveAttribute('data-entry-transitions', /transform/);
 

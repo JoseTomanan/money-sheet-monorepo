@@ -28,6 +28,41 @@ async function touch(page: Page) {
 
 const offset = (sheet: Locator) => sheet.evaluate(el => new DOMMatrix(getComputedStyle(el).transform).m42);
 
+async function pauseEntrySlide(page: Page, state: 'open' | 'closed', progress: number) {
+  await page.evaluate(({ state, progress }) => {
+    document.addEventListener('transitionrun', function pauseSlide(event) {
+      const target = event.target as HTMLElement;
+      if (!target.matches(`[data-entry-sheet-motion][data-state="${state}"]`) || event.propertyName !== 'transform') return;
+      const slide = target.getAnimations().find(animation =>
+        animation instanceof CSSTransition && animation.transitionProperty === 'transform');
+      if (!slide) return;
+      document.removeEventListener('transitionrun', pauseSlide);
+      slide.pause();
+      slide.currentTime = progress * Number(slide.effect!.getTiming().duration);
+    });
+  }, { state, progress });
+}
+
+test('a touch catches the Add Entry entrance at its painted position', async ({ page }) => {
+  await page.goto('/');
+  const opener = page.getByRole('button', { name: 'Add entry', exact: true });
+  const sheet = page.getByRole('dialog', { name: 'New Outgoing' });
+  await pauseEntrySlide(page, 'open', 0.32);
+  await opener.tap();
+  await expect.poll(() => sheet.evaluate(el => el.getAnimations().some(animation => animation.playState === 'paused'))).toBe(true);
+  const painted = await offset(sheet);
+  expect(painted).toBeGreaterThan(0);
+  const { x, y } = await center(sheet.getByRole('separator'));
+  const finger = await touch(page);
+  await finger.start(x, y);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(painted, 0);
+  await finger.move(x, y + 24);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(painted + 24, 0);
+  await finger.cancel();
+  await expect.poll(() => offset(sheet)).toBe(0);
+  await expect(sheet.getByRole('button', { name: 'Cancel' })).toBeFocused();
+});
+
 test('canceling a long Edit pull keeps its draft; releasing dismisses', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Entries', exact: true }).click();
@@ -246,7 +281,7 @@ test('the Tag picker owns horizontal swipes at its edge and the rail still chang
 });
 
 test('a smaller visual viewport keeps the focused field and header above the keyboard', async ({ page }) => {
-  const { sheet } = await openEntry(page);
+  const { sheet, opener } = await openEntry(page);
   const description = sheet.getByPlaceholder('e.g. lunch at canteen');
   await description.fill('Keep typing');
   const visibleHeight = 360;
@@ -265,6 +300,15 @@ test('a smaller visual viewport keeps the focused field and header above the key
   expect(field.y + field.height).toBeLessThanOrEqual(visibleHeight);
   await expect(sheet.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport();
   await expect(sheet.getByRole('button', { name: 'Save', exact: true })).toBeInViewport();
+
+  // Keep the viewport shortened through the exit, as when the keyboard is still visible.
+  const closing = page.locator('[data-entry-sheet-motion][data-state="closed"]');
+  await pauseEntrySlide(page, 'closed', 0.99);
+  await sheet.getByRole('button', { name: 'Cancel', exact: true }).tap();
+  await expect.poll(async () => (await closing.boundingBox())?.y).toBeCloseTo(visibleHeight, 0);
+  await closing.evaluate(el => el.getAnimations().forEach(animation => animation.play()));
+  await expect(closing).toHaveCount(0);
+  await expect(opener).toBeFocused();
 });
 
 test('reduced motion keeps direct tracking and lets a reversed pull settle open', async ({ page }) => {
