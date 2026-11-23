@@ -6,14 +6,21 @@
     active: TabId;
     onchange: (tab: TabId) => void;
     onadd: (event: MouseEvent) => void;
-    addAvailable: boolean;
     onadddown: (event: PointerEvent) => void;
     onaddmove: (event: PointerEvent) => void;
     onaddend: (event: PointerEvent) => void;
     onaddcancel: (event: PointerEvent) => void;
+    oncancel: (event: MouseEvent) => void;
+    oncancelpointerdown: (event: PointerEvent) => void;
+    selecting: boolean;
+    addAvailable: boolean;
+    height?: number;
   }
 
-  let { active, onchange, onadd, addAvailable, onadddown, onaddmove, onaddend, onaddcancel }: Props = $props();
+  let {
+    active, onchange, onadd, onadddown, onaddmove, onaddend, onaddcancel,
+    oncancel, oncancelpointerdown, selecting, addAvailable, height = $bindable(64),
+  }: Props = $props();
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'home',    label: 'Home' },
@@ -22,12 +29,12 @@
   ];
 </script>
 
-<div class="tab-bar-outer fixed bottom-[calc(16px+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
-  <div class="tab-bar-pill flex items-center justify-around w-[calc(100%-32px)] max-w-[420px] h-[60px] px-2 rounded-2xl border border-border bg-dock/95 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto lg:w-full lg:max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 lg:pb-[env(safe-area-inset-bottom,0px)] lg:rounded-none lg:border-0 lg:bg-dock/90 [@media(prefers-reduced-transparency:reduce)]:bg-dock [@media(prefers-reduced-transparency:reduce)]:backdrop-filter-none">
+<div class="tab-bar-outer fixed bottom-[calc(16px+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center pl-[calc(16px+env(safe-area-inset-left,0px))] pr-[calc(16px+env(safe-area-inset-right,0px))] lg:px-0">
+  <div bind:offsetHeight={height} class="tab-bar-pill flex items-center justify-around w-full max-w-[420px] min-h-[64px] px-2 rounded-2xl border border-border bg-dock/95 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto lg:w-full lg:max-w-[var(--app-max-width)] lg:h-[52px] lg:min-h-0 lg:px-6 lg:pb-[env(safe-area-inset-bottom,0px)] lg:rounded-none lg:border-0 lg:bg-dock/90 [@media(prefers-reduced-transparency:reduce)]:bg-dock [@media(prefers-reduced-transparency:reduce)]:backdrop-filter-none">
     {#each tabs as tab}
       <button
         data-app-navigation={tab.id}
-        class="tab-btn group/tab flex-1 min-h-11 flex flex-col items-center justify-center gap-[2px] py-[6px] rounded-xl bg-transparent border-0 cursor-pointer touch-manipulation font-sans focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+        class="tab-btn group/tab flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-[2px] py-[6px] rounded-xl bg-transparent border-0 cursor-pointer touch-manipulation font-sans focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
         class:text-accent={active === tab.id}
         class:text-muted-foreground={active !== tab.id}
         onclick={() => onchange(tab.id)}
@@ -56,11 +63,24 @@
             </svg>
           {/if}
         </span>
-        <span class="tab-label font-display text-[10px] font-semibold tracking-[0.2px] mt-[2px]">{tab.label}</span>
+        <span class="tab-label font-display text-[clamp(12px,0.75rem,18px)] lg:text-[10px] tracking-[0.2px] mt-[2px] leading-tight text-center [overflow-wrap:anywhere]" class:font-bold={active === tab.id} class:font-medium={active !== tab.id}>{tab.label}</span>
       </button>
     {/each}
-    {#if addAvailable}
-      <button aria-label="Add entry" onclick={onadd} onpointerdown={onadddown} onpointermove={onaddmove} onpointerup={onaddend} onpointercancel={onaddcancel} onlostpointercapture={onaddcancel} class="lg:hidden flex-1 min-w-11 min-h-11 rounded-xl text-accent font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-accent touch-pan-x">+ Add <span aria-hidden="true">⌃</span></button>
+    {#if selecting}
+      <button data-dock-cancel onpointerdown={oncancelpointerdown} onclick={oncancel} class="lg:hidden min-h-[44px] min-w-[44px] flex-1 rounded-xl text-[clamp(14px,0.875rem,18px)] font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-accent">Cancel</button>
+    {:else}
+      <button
+        data-dock-add
+        aria-label="Add entry"
+        disabled={!addAvailable}
+        onclick={onadd}
+        onpointerdown={onadddown}
+        onpointermove={onaddmove}
+        onpointerup={onaddend}
+        onpointercancel={onaddcancel}
+        onlostpointercapture={onaddcancel}
+        class="lg:hidden min-h-[44px] min-w-[44px] flex-1 rounded-xl bg-accent-fill text-accent-foreground text-[clamp(14px,0.875rem,18px)] font-semibold touch-pan-x touch-pinch-zoom disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:opacity-80"
+      >+ Add <span aria-hidden="true">⌃</span></button>
     {/if}
   </div>
 </div>

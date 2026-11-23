@@ -27,7 +27,11 @@
   let scrollArea = $state<HTMLElement | null>(null);
   let scrollTop = $state(0);
   let entriesSelectMode = $state(false);
+  let dockHeight = $state(64);
+  let selectionBarHeight = $state(56);
   const router = createRouter();
+  let dockFootprint = $derived(dockHeight + 24);
+  let mobileControls = $derived(dockFootprint + (entriesSelectMode && router.current.kind === 'entries' ? selectionBarHeight + 8 : 0));
   const routeTitles = { home: 'Home', entries: 'Entries', summary: 'Summary', statistics: 'Deeper stats' };
   let entriesView = $state<EntriesView | null>(null);
   let commandOpen = $state(false);
@@ -92,6 +96,7 @@
   let sheetOpen = $state(false);
   let sheetEntry = $state<Entry | null>(null);
   let focusEntryAmount = $state(true);
+  let dockSheetOpener = $state<HTMLElement | null>(null);
   let animateEntryOpen = $state(false);
   let previewPull = $state(0);
   let initialPull = $state(0);
@@ -101,7 +106,7 @@
   let consumeAddClick = false;
 
   function addDown(event: PointerEvent) {
-    if (!event.isPrimary || event.button !== 0 || sheetOpen) return;
+    if (!event.isPrimary || event.button !== 0 || sheetOpen || store.loading || store.error || entriesSelectMode) return;
     consumeAddClick = false;
     cancelAnimationFrame(previewFrame);
     sheetEntry = null;
@@ -137,6 +142,7 @@
       initialVelocity = speed;
       previewPull = 0;
       gesture.target.focus({ preventScroll: true });
+      dockSheetOpener = gesture.target;
       focusEntryAmount = false;
       animateEntryOpen = false;
       sheetEntry = null;
@@ -178,6 +184,7 @@
     if (event && consumeAddClick) { consumeAddClick = false; return; }
     cancelAnimationFrame(previewFrame);
     previewPull = 0;
+    dockSheetOpener = event?.currentTarget instanceof HTMLElement && event.currentTarget.hasAttribute('data-dock-add') ? event.currentTarget : null;
     const pointerType = event && 'pointerType' in event ? event.pointerType : '';
     // WebKit can report a touch tap as a mouse click. Keyboard clicks have detail 0.
     const touch = pointerType === 'touch' ||
@@ -191,6 +198,7 @@
   }
 
   function openEdit(entry: Entry) {
+    dockSheetOpener = null;
     focusEntryAmount = true;
     sheetEntry = entry;
     sheetOpen = true;
@@ -282,11 +290,11 @@
   {#if mockMode.current}
     <MockBanner onExit={exitMockMode} />
   {/if}
-  <div class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent {mockMode.current ? 'pt-11 lg:pt-8' : ''}">
+  <div style:--dock-footprint="{dockFootprint}px" style:--mobile-controls="{mobileControls}px" class="app-shell relative min-h-dvh max-w-[var(--app-max-width)] mx-auto bg-transparent pt-[var(--shell-top)] {mockMode.current ? '[--shell-top:calc(44px+env(safe-area-inset-top,0px))] lg:[--shell-top:calc(32px+env(safe-area-inset-top,0px))]' : '[--shell-top:env(safe-area-inset-top,0px)]'}">
     <!-- Scrollable content area -->
     {#key router.key}
     {@const scrollOwner = router.key}
-    <div class="scroll-area h-dvh overflow-y-auto overflow-x-clip {entriesSelectMode && router.current.kind === 'entries' ? 'pb-[calc(210px+env(safe-area-inset-bottom,0px))] lg:pb-[150px]' : 'pb-[calc(150px+env(safe-area-inset-bottom,0px))] lg:pb-[60px]'}" bind:this={scrollArea} onscroll={(event) => handleScroll(event, scrollOwner)}>
+    <div class="scroll-area h-[calc(100dvh-var(--shell-top))] overflow-y-auto overflow-x-clip pb-[calc(var(--mobile-controls)+env(safe-area-inset-bottom,0px)+60px)] {entriesSelectMode && router.current.kind === 'entries' ? 'lg:pb-[150px]' : 'lg:pb-[60px]'}" bind:this={scrollArea} onscroll={(event) => handleScroll(event, scrollOwner)}>
       {#if store.legacyWork && !mockMode.current}
         <div class="mx-4 my-4 p-4 rounded-lg border border-border bg-background">
           <p class="text-sm text-foreground">Older pending saves have no known destination. They are retained on this device and will not sync automatically.</p>
@@ -324,6 +332,7 @@
               scrollEl={scrollArea}
               {scrollTop}
               bind:selectMode={entriesSelectMode}
+              bind:selectionBarHeight
               onsettings={() => (settingsOpen = true)}
             />
           {:else if router.current.kind === 'statistics'}
@@ -339,7 +348,7 @@
     {#if !store.loading && !store.error}
       {#if scrollTop > 200}
         <button
-          class="scroll-top-btn fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(160px+env(safe-area-inset-bottom,0px))] lg:bottom-36' : 'bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20'} w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-colors duration-150 hover:bg-muted right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
+          class="scroll-top-btn fixed bottom-[calc(var(--mobile-controls)+env(safe-area-inset-bottom,0px))] {entriesSelectMode && router.current.kind === 'entries' ? 'lg:bottom-36' : 'lg:bottom-20'} w-11 h-11 rounded-full border border-border bg-background text-foreground flex items-center justify-center cursor-pointer z-40 shadow-card transition-colors duration-150 hover:bg-muted right-[calc(max(env(safe-area-inset-right,0px),(100vw-var(--app-max-width))/2)+20px)] lg:right-[calc(max(0px,(100vw-var(--app-max-width))/2)+72px)]"
           onclick={scrollToTop}
           aria-label="Scroll to top"
         >
@@ -349,12 +358,12 @@
         </button>
       {/if}
       {#if !(router.current.kind === 'entries' && entriesSelectMode)}
-        <Fab onclick={openAdd} />
+        <div class="hidden lg:block"><Fab onclick={openAdd} /></div>
       {/if}
     {/if}
 
     <Toast
-      class="toast fixed {entriesSelectMode && router.current.kind === 'entries' ? 'bottom-[calc(216px+env(safe-area-inset-bottom,0px))] lg:bottom-[200px]' : 'bottom-[calc(144px+env(safe-area-inset-bottom,0px))] lg:bottom-[calc(92px+env(safe-area-inset-bottom,0px))]'} inset-x-0 mx-auto max-w-[420px] w-[calc(100%-32px)]"
+      class="toast fixed bottom-[calc(var(--mobile-controls)+env(safe-area-inset-bottom,0px)+56px)] {entriesSelectMode && router.current.kind === 'entries' ? 'lg:bottom-[200px]' : 'lg:bottom-[calc(92px+env(safe-area-inset-bottom,0px))]'} left-[calc(16px+env(safe-area-inset-left,0px))] right-[calc(16px+env(safe-area-inset-right,0px))] mx-auto max-w-[420px]"
       message={toast.msg}
       exiting={toast.exiting}
       presentation={toast.presentation}
@@ -368,7 +377,12 @@
       onResume={toast.resume}
     />
 
-    <TabBar active={routeTab(router.current)} onchange={navigateTab} onadd={openAdd} onadddown={addDown} onaddmove={addMove} onaddend={addEnd} onaddcancel={addCancel} addAvailable={!store.loading && !store.error && !entriesSelectMode} />
+    <TabBar active={routeTab(router.current)} onchange={navigateTab} onadd={openAdd} bind:height={dockHeight}
+      selecting={router.current.kind === 'entries' && entriesSelectMode}
+      addAvailable={!store.loading && !store.error}
+      onadddown={addDown} onaddmove={addMove} onaddend={addEnd} onaddcancel={addCancel}
+      oncancel={(event) => entriesView?.cancelSelection(event)}
+      oncancelpointerdown={(event) => entriesView?.dockCancelPointerDown(event)} />
 
     <CommandMenu open={commandOpen} {commands} opener={commandSession?.opener ?? null} onclose={() => (commandOpen = false)} onselect={runCommand} />
 
@@ -380,6 +394,7 @@
       categories={store.categories}
       entry={sheetEntry}
       focusAmountOnOpen={focusEntryAmount}
+      returnFocus={dockSheetOpener}
       animateOnOpen={animateEntryOpen}
       onclose={() => (sheetOpen = false)}
       onsave={handleSave}

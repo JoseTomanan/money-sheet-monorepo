@@ -16,6 +16,7 @@
   interface Props {
     open: boolean;
     focusAmountOnOpen?: boolean;
+    returnFocus?: HTMLElement | null;
     animateOnOpen?: boolean;
     categories: CategoryMap;
     entry?: Entry | null;
@@ -28,7 +29,11 @@
     initialVelocity?: number;
   }
 
-  let { open, focusAmountOnOpen = true, animateOnOpen = false, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O', previewPull = 0, initialPull = 0, initialVelocity = 0 }: Props = $props();
+  let {
+    open, focusAmountOnOpen = true, returnFocus = null, animateOnOpen = false,
+    categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O',
+    previewPull = 0, initialPull = 0, initialVelocity = 0,
+  }: Props = $props();
 
   const form = createEntryForm(() => categories);
   const mobile = new MediaQuery('(width < 1024px)');
@@ -226,11 +231,12 @@
 </script>
 
 <Sheet.Root {open} {previewPull} onOpenChange={(v) => !v && closeEntry(animateOnClose)} {contentStyle}
+  {returnFocus}
   onInteractOutside={(event) => { if (!event.defaultPrevented) animateOnClose = true; }}
   bind:content={sheetNode} bind:overlay={backdrop} managedMotion={!entry}
   entryMotion={open ? animateOnOpen : animateOnClose}
   initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
-  fallbackFocus={() => Array.from(document.querySelectorAll<HTMLElement>('[aria-label="Add entry"]')).find(node => node.getClientRects().length > 0) ?? document.querySelector<HTMLElement>('[data-entry-row]')}
+  fallbackFocus={() => [...document.querySelectorAll<HTMLElement>('[aria-label="Add entry"]')].find(element => element.getClientRects().length > 0 && !element.matches(':disabled')) ?? document.querySelector<HTMLElement>('[data-entry-row]')}
   class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'}
   onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {

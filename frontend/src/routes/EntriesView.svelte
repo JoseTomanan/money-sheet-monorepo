@@ -23,10 +23,11 @@
     scrollEl: HTMLElement | null;
     scrollTop: number;
     selectMode?: boolean;
+    selectionBarHeight?: number;
     onsettings?: () => void;
   }
 
-  let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false), onsettings = () => {} }: Props = $props();
+  let { onopenedit, onadd, selectedWeek, onweekchange, scrollEl, scrollTop, selectMode = $bindable(false), selectionBarHeight = $bindable(56), onsettings = () => {} }: Props = $props();
 
   let redistOpen = $state(false);
   export function canRedistribute() { return !store.loading && store.hasSnapshot !== false; }
@@ -63,6 +64,8 @@
   function pointerDown(event: PointerEvent) {
     pointerTarget = event.isTrusted ? event.currentTarget : null;
   }
+  export function dockCancelPointerDown(event: PointerEvent) { pointerDown(event); }
+  export function cancelSelection(event: MouseEvent) { void changeSelectionMode(false, event); }
   function pointerClick(event?: MouseEvent) {
     const result = !!event && event.isTrusted && event.detail > 0 && pointerTarget === event.currentTarget;
     pointerTarget = null;
@@ -92,7 +95,7 @@
     const animate = pointerClick(event) && window.innerWidth < 1024;
     const moveFocus = value
       ? event?.detail === 0 && document.activeElement === selectAction
-      : document.activeElement === cancelAction || !!document.activeElement?.closest('.select-bar');
+      : document.activeElement === cancelAction || !!document.activeElement?.closest('.select-bar, [data-dock-cancel]');
     clearTimeout(timer);
     const current = ++generation;
     knownMode = value;
@@ -120,7 +123,7 @@
     }
     if (moveFocus) {
       await tick();
-      if (selectMode === value) (value ? cancelAction : selectAction ?? entryList?.querySelector<HTMLElement>('[data-entry-row]'))?.focus({ preventScroll: true });
+      if (selectMode === value) (value ? (window.innerWidth < 1024 ? document.querySelector<HTMLElement>('[data-dock-cancel]') : cancelAction) : selectAction ?? entryList?.querySelector<HTMLElement>('[data-entry-row]'))?.focus({ preventScroll: true });
     }
   }
   function handleKeyboard(event: KeyboardEvent) {
@@ -157,7 +160,7 @@
 <div class="entries-view p-0">
 <!-- Bulk-select action bar: sits above the TabBar when in select mode -->
 {#if barPresent}
-  <div bind:this={barElement} inert={!selectMode} aria-hidden={!selectMode} data-shown={barShown} data-motion={barMotion} class="select-bar fixed bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-[72px] inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border-t border-border shadow-[var(--shadow-tabbar)] max-w-[var(--app-max-width)] mx-auto">
+  <div bind:this={barElement} bind:offsetHeight={selectionBarHeight} inert={!selectMode} aria-hidden={!selectMode} data-shown={barShown} data-motion={barMotion} class="select-bar fixed bottom-[calc(var(--dock-footprint)+env(safe-area-inset-bottom,0px))] lg:bottom-[72px] left-[calc(16px+env(safe-area-inset-left,0px))] right-[calc(16px+env(safe-area-inset-right,0px))] lg:inset-x-0 z-10 flex items-center justify-between gap-3 px-4 py-[10px] bg-card border border-border rounded-xl shadow-[var(--shadow-tabbar)] max-w-[420px] lg:w-full lg:max-w-[var(--app-max-width)] lg:rounded-none mx-auto">
     <span class="font-mono tabular-nums text-[14px] text-muted-foreground font-medium">
       {bulk.selectedIds.size} selected
     </span>
@@ -229,7 +232,7 @@
         <button
           bind:this={cancelAction}
           onpointerdown={pointerDown}
-          class="min-h-11 min-w-11 font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
+          class="hidden lg:block min-h-11 min-w-11 font-sans text-[13px] font-medium text-muted-foreground bg-transparent border-0 cursor-pointer p-0 self-center lg:min-h-8 lg:min-w-0"
           onclick={(event) => changeSelectionMode(false, event)}
         >Cancel</button>
       {:else}
@@ -312,7 +315,7 @@
   </div>
 
   <!-- Entry list -->
-  <div bind:this={entryList} class="entry-list mt-2 mx-4 flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0" class:pb-[140px]={selectMode} class:pb-[72px]={!selectMode}>
+  <div bind:this={entryList} class="entry-list mt-2 mx-4 flex flex-col gap-0 lg:mx-0 lg:mt-0 lg:min-w-0 {selectMode ? 'lg:pb-[140px]' : 'lg:pb-[72px]'}">
     {#if filter.filtered.length === 0}
       {#if !selectMode}
         <button

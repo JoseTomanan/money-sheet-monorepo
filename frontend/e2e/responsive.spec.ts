@@ -508,10 +508,8 @@ test("mobile Entries keeps its final content and bulk controls clear of the dock
   await waitForAppReady(page);
   await switchTab(page, 'Entries');
   await expectClearOfTabBar(page, '.entry-list .add-entry-card:last-child');
-  const fab = (await page.getByRole('button', { name: 'Add entry', exact: true }).boundingBox())!;
   const dockBefore = (await page.locator('.tab-bar-pill').boundingBox())!;
-  expect(fab.y).toBeGreaterThanOrEqual(dockBefore.y);
-  expect(fab.y + fab.height).toBeLessThanOrEqual(dockBefore.y + dockBefore.height);
+  await expect(page.locator('.tab-bar-pill').getByRole('button', { name: 'Add entry', exact: true })).toBeVisible();
   const top = page.getByRole('button', { name: 'Scroll to top' });
   await expect(top).toBeVisible();
   const topBox = (await top.boundingBox())!;

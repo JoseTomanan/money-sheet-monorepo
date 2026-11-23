@@ -8,7 +8,7 @@
 </script>
 
 <button
-  class="fab fixed hidden lg:flex items-center justify-center cursor-pointer rounded-full w-11 h-11 text-accent-foreground z-[80] bg-[var(--fab-fill)] shadow-[var(--shadow-fab)] backdrop-blur-[6px] [@media(prefers-reduced-transparency:reduce)]:bg-accent-fill [@media(prefers-reduced-transparency:reduce)]:backdrop-filter-none motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:-translate-y-px motion-safe:active:scale-[0.94] motion-reduce:transition-opacity motion-reduce:duration-[80ms] motion-reduce:ease-[var(--ease-out)] motion-reduce:active:opacity-80 bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+20px)]"
+  class="fab fixed flex items-center justify-center cursor-pointer rounded-full w-11 h-11 text-accent-foreground z-[80] bg-[var(--fab-fill)] shadow-[var(--shadow-fab)] backdrop-blur-[6px] [@media(prefers-reduced-transparency:reduce)]:bg-accent-fill [@media(prefers-reduced-transparency:reduce)]:backdrop-filter-none motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:-translate-y-px motion-safe:active:scale-[0.94] motion-reduce:transition-opacity motion-reduce:duration-[80ms] motion-reduce:ease-[var(--ease-out)] motion-reduce:active:opacity-80 bottom-[calc(88px+env(safe-area-inset-bottom,0px))] lg:bottom-20 right-[calc(max(0px,(100vw-var(--app-max-width))/2)+20px)]"
   {onclick}
   aria-label="Add entry"
 >
