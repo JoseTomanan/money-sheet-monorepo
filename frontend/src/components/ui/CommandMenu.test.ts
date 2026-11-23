@@ -29,6 +29,6 @@ it('updates disabled reasons while open and admits an enabled selection once', a
   expect(onclose).toHaveBeenCalledTimes(1);
   expect(onselect).not.toHaveBeenCalled();
   await view.rerender({ ...props, open: false });
-  await waitFor(() => expect(onselect).toHaveBeenCalledExactlyOnceWith('add'));
+  await waitFor(() => expect(onselect).toHaveBeenCalledExactlyOnceWith('add', undefined));
   await waitFor(() => expect(document.body.style.overflow).not.toBe('hidden'));
 });
