@@ -28,11 +28,11 @@ async function touch(page: Page) {
 
 const offset = (sheet: Locator) => sheet.evaluate(el => new DOMMatrix(getComputedStyle(el).transform).m42);
 
-async function pauseEntrySlide(page: Page, state: 'open' | 'closed', progress: number) {
-  await page.evaluate(({ state, progress }) => {
+async function pauseSheetSlide(page: Page, selector: string, progress: number) {
+  await page.evaluate(({ selector, progress }) => {
     document.addEventListener('transitionrun', function pauseSlide(event) {
       const target = event.target as HTMLElement;
-      if (!target.matches(`[data-entry-sheet-motion][data-state="${state}"]`) || event.propertyName !== 'transform') return;
+      if (!target.matches(selector) || event.propertyName !== 'transform') return;
       const slide = target.getAnimations().find(animation =>
         animation instanceof CSSTransition && animation.transitionProperty === 'transform');
       if (!slide) return;
@@ -40,14 +40,14 @@ async function pauseEntrySlide(page: Page, state: 'open' | 'closed', progress: n
       slide.pause();
       slide.currentTime = progress * Number(slide.effect!.getTiming().duration);
     });
-  }, { state, progress });
+  }, { selector, progress });
 }
 
 test('a touch catches the Add Entry entrance at its painted position', async ({ page }) => {
   await page.goto('/');
   const opener = page.getByRole('button', { name: 'Add entry', exact: true });
   const sheet = page.getByRole('dialog', { name: 'New Outgoing' });
-  await pauseEntrySlide(page, 'open', 0.32);
+  await pauseSheetSlide(page, '[data-entry-sheet-motion][data-state="open"]', 0.32);
   await opener.tap();
   await expect.poll(() => sheet.evaluate(el => el.getAnimations().some(animation => animation.playState === 'paused'))).toBe(true);
   const painted = await offset(sheet);
@@ -97,18 +97,31 @@ test('re-grabbing an Edit return follows the painted position and capture loss s
   await finger.start(point.x, point.y);
   await finger.move(point.x, point.y + 50);
   await expect.poll(() => offset(sheet)).toBeCloseTo(50, 0);
+
+  // Hold both the return transition and its cleanup timer while positioning the next touch.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
+  await pauseSheetSlide(page, '.sheet[data-state="open"]', 0.2);
   await finger.cancel();
-  await page.waitForTimeout(70);
+  // Read the starting transform between the two frames so Chromium starts the transition.
+  await page.clock.runFor(16);
+  expect(await offset(sheet)).toBeCloseTo(50, 0);
+  await page.clock.runFor(16);
+  await expect.poll(() => sheet.evaluate(el => el.getAnimations().some(animation => animation.playState === 'paused'))).toBe(true);
   const painted = await offset(sheet);
   expect(painted).toBeGreaterThan(0);
-  const moving = await center(handle);
+  expect(painted).toBeLessThan(50);
   await handle.evaluate(el => el.addEventListener('pointerdown', event => {
     (el as HTMLElement).dataset.testPointer = String((event as PointerEvent).pointerId);
   }, { once: true }));
+  const moving = await center(handle);
   await finger.start(moving.x, moving.y);
-  const caught = await offset(sheet);
+  await expect(handle).toHaveAttribute('data-test-pointer', /^\d+$/);
+  expect(await handle.evaluate(el => el.hasPointerCapture(Number((el as HTMLElement).dataset.testPointer)))).toBe(true);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(painted, 0);
   await finger.move(moving.x, moving.y + 20);
-  await expect.poll(() => offset(sheet)).toBeCloseTo(caught + 20, 0);
+  await expect.poll(() => offset(sheet)).toBeCloseTo(painted + 20, 0);
+  await page.clock.resume();
   await handle.evaluate(el => el.releasePointerCapture(Number((el as HTMLElement).dataset.testPointer)));
   await finger.move(moving.x, moving.y + 21);
   await expect.poll(() => offset(sheet)).toBe(0);
@@ -303,7 +316,7 @@ test('a smaller visual viewport keeps the focused field and header above the key
 
   // Keep the viewport shortened through the exit, as when the keyboard is still visible.
   const closing = page.locator('[data-entry-sheet-motion][data-state="closed"]');
-  await pauseEntrySlide(page, 'closed', 0.99);
+  await pauseSheetSlide(page, '[data-entry-sheet-motion][data-state="closed"]', 0.99);
   await sheet.getByRole('button', { name: 'Cancel', exact: true }).tap();
   await expect.poll(async () => (await closing.boundingBox())?.y).toBeCloseTo(visibleHeight, 0);
   await closing.evaluate(el => el.getAnimations().forEach(animation => animation.play()));
