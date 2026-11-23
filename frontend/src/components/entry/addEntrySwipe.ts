@@ -21,8 +21,14 @@ export function createAddEntrySwipe(
   function paint(y: number) {
     const { sheet, backdrop } = nodes();
     position = y;
-    if (sheet) sheet.style.transform = y === 0 ? '' : `translateY(${y}px)`;
-    if (backdrop) backdrop.style.opacity = y <= 0 ? '' : String(Math.max(0, 1 - y / height));
+    if (sheet) {
+      sheet.style.transition = y === 0 ? '' : 'none';
+      sheet.style.transform = y === 0 ? '' : `translateY(${y}px)`;
+    }
+    if (backdrop) {
+      backdrop.style.transition = y === 0 ? '' : 'none';
+      backdrop.style.opacity = y === 0 ? '' : String(Math.min(1, Math.max(0, 1 - y / height)));
+    }
   }
 
   function stop() {
@@ -67,6 +73,8 @@ export function createAddEntrySwipe(
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     cancelAnimationFrame(frame);
     height = sheet.getBoundingClientRect().height || 1;
+    // A pull can take over the CSS entrance at its painted position.
+    paint(new DOMMatrix(getComputedStyle(sheet).transform).m42);
     drag = {
       id: event.pointerId, x: event.clientX, y: event.clientY, origin: position,
       vertical: false, samples: [{ y: event.clientY, time: event.timeStamp }],

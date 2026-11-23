@@ -8,12 +8,13 @@
     commands: AppCommand[];
     opener: HTMLElement | null;
     onclose: () => void;
-    onselect: (id: CommandId) => boolean;
+    onselect: (id: CommandId, activation?: MouseEvent) => boolean;
   } = $props();
 
   let search = $state('');
   let input = $state<HTMLInputElement | null>(null);
   let selected: CommandId | null = null;
+  let selectedBy: MouseEvent | undefined;
   let activating = false;
   const groups = ['Actions', 'Navigation', 'Sync'] as const;
   const matches = $derived(commands.filter(command => matchesCommand(command, search)));
@@ -24,10 +25,11 @@
     target?.focus();
   }
 
-  function select(id: CommandId) {
+  function select(id: CommandId, activation?: MouseEvent) {
     if (!open || activating || commands.find(command => command.id === id)?.reason !== '') return;
     activating = true;
     selected = id;
+    selectedBy = activation;
     onclose();
   }
 
@@ -53,13 +55,15 @@
       onCloseAutoFocus={(event) => {
         event.preventDefault();
         const command = selected;
+        const activation = selectedBy;
         selected = null;
+        selectedBy = undefined;
         // Hand off only after the palette's focus scope has released ownership.
         // A sheet then receives its own initial focus without restoration races.
         // Establish a surviving opener before opening a destination sheet so that
         // its own eventual dismissal also restores focus to a real control.
         restoreFocus();
-        if (command) onselect(command);
+        if (command) onselect(command, activation);
       }}
       class="fixed left-1/2 top-[min(12dvh,5rem)] z-[611] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-popover text-popover-foreground shadow-[var(--shadow-card)] font-sans"
     >
@@ -82,6 +86,7 @@
                   <Command.GroupItems>
                     {#each items as command (command.id)}
                       <Command.Item value={command.id} disabled={!!command.reason} onSelect={() => select(command.id)}
+                        onclickcapture={(event) => { if (command.id === 'add' && event.detail > 0) select(command.id, event); }}
                         aria-label={command.label}
                         aria-describedby={command.reason ? `command-reason-${command.id}` : undefined}
                         class="min-h-11 rounded-[var(--radius-sm)] px-3 py-2 text-sm cursor-pointer outline-none data-[selected]:bg-muted data-[selected]:ring-1 data-[selected]:ring-inset data-[selected]:ring-accent data-[disabled]:cursor-not-allowed">

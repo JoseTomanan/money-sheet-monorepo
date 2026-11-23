@@ -16,6 +16,7 @@
   interface Props {
     open: boolean;
     focusAmountOnOpen?: boolean;
+    animateOnOpen?: boolean;
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
@@ -24,7 +25,7 @@
     defaultDirection?: Direction;
   }
 
-  let { open, focusAmountOnOpen = true, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
+  let { open, focusAmountOnOpen = true, animateOnOpen = false, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
   const form = createEntryForm(() => categories);
   const mobile = new MediaQuery('(width < 1024px)');
@@ -33,9 +34,11 @@
   let sheetNode = $state<HTMLDivElement | null>(null);
   let backdrop = $state<HTMLDivElement | null>(null);
   let sheetBody = $state<HTMLDivElement>();
-  const swipe = createAddEntrySwipe(() => ({ sheet: sheetNode, backdrop }), closeEntry);
+  let animateOnClose = $state(false);
+  const swipe = createAddEntrySwipe(() => ({ sheet: sheetNode, backdrop }), () => closeEntry());
 
-  function closeEntry() {
+  function closeEntry(withMotion = false) {
+    animateOnClose = withMotion;
     if (mobileAdd) swipe.stop();
     clearLegacyMotion();
     onclose();
@@ -45,7 +48,7 @@
     if (open && mobileAdd && sheetNode && backdrop) return swipe.reset;
   });
   $effect(() => {
-    if (open && mobileAdd && sheetNode && sheetBody) return fitAddEntryViewport(sheetNode, sheetBody);
+    if (mobileAdd && sheetNode && sheetBody) return fitAddEntryViewport(sheetNode, sheetBody);
   });
 
   let snap        = $state<Snap>('default');
@@ -79,6 +82,7 @@
       snapping   = false;
       dismissing = false;
       saving = false;
+      animateOnClose = false;
       admissionError = "";
       if (springTimer) { clearTimeout(springTimer); springTimer = null; }
       void tick();
@@ -88,12 +92,12 @@
   });
 
   let admissionError = $state('');
-  function handleSave() {
+  function handleSave(event?: MouseEvent) {
     if (saving || form.saveDisabled) return;
     saving = true;
     admissionError = '';
     const submission = onsave(form.buildMutation(entry?.id));
-    if (submission.accepted) closeEntry();
+    if (submission.accepted) closeEntry((event?.detail ?? 0) > 0);
     else { saving = false; admissionError = submission.error ?? 'Could not save on this device. Try again.'; }
   }
   function handleDelete() {
@@ -164,6 +168,10 @@
     pointerId = null;
     activeDrag = null;
     if (result.action === 'dismiss') {
+      if (!entry) {
+        closeEntry(true);
+        return;
+      }
       // Hold the drag transform so the Dialog's slide-out-to-bottom exit animation starts from
       // the finger release point. CSS animations use the underlying inline style as the implicit
       // "from" value when the 0% keyframe doesn't specify the property, so the sheet continues
@@ -188,8 +196,10 @@
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && closeEntry()} {contentStyle}
-  bind:content={sheetNode} bind:overlay={backdrop} managedMotion={mobileAdd}
+<Sheet.Root {open} onOpenChange={(v) => !v && closeEntry(animateOnClose)} {contentStyle}
+  onInteractOutside={(event) => { if (!event.defaultPrevented) animateOnClose = true; }}
+  bind:content={sheetNode} bind:overlay={backdrop} managedMotion={!entry}
+  entryMotion={open ? animateOnOpen : animateOnClose}
   initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
   fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
   class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'}
@@ -224,7 +234,7 @@
   </div>
 
   <Sheet.Header>
-    <button data-entry-cancel class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={closeEntry}>Cancel</button>
+    <button data-entry-cancel class="header-btn cancel min-h-11 min-w-11 flex items-center justify-center bg-transparent border-0 cursor-pointer font-sans text-[15px] p-0 text-muted-foreground lg:min-h-8 lg:min-w-0" onclick={(event) => closeEntry(event.detail > 0)}>Cancel</button>
     <Sheet.Title>{form.title}</Sheet.Title>
     <KeyboardHelp context="entry" />
     <button
