@@ -2,7 +2,7 @@
   let { onExit }: { onExit: () => void } = $props();
 </script>
 
-<div class="fixed top-0 left-0 right-0 z-[600] h-11 flex items-center justify-center border-b border-border bg-muted lg:h-8">
+<div class="fixed top-0 left-0 right-0 z-[600] h-[calc(44px+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] px-[max(env(safe-area-inset-left,0px),env(safe-area-inset-right,0px))] flex items-center justify-center border-b border-border bg-muted lg:h-[calc(32px+env(safe-area-inset-top,0px))]">
   <span class="font-sans text-[11px] tracking-[0.03em] text-muted-foreground select-none">Mock mode</span>
   <span class="mx-2 text-[10px] text-border select-none">·</span>
   <button

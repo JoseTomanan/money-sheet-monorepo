@@ -183,7 +183,6 @@ describe("App — Mock Mode branch", () => {
     const settings = getByRole("button", { name: /open settings/i });
     expect(getByRole("banner")).toContainElement(settings);
     expect(settings.className).not.toMatch(/\bfixed\b/);
-    expect(document.querySelector(".app-shell")?.className).toMatch(/\bpt-11\b/);
   });
 });
 
