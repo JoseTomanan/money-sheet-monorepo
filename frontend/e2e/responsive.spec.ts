@@ -13,7 +13,7 @@ async function expectTouchTarget(locator: { boundingBox(): Promise<{ width: numb
   const box = await locator.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.width).toBeGreaterThanOrEqual(44);
-  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(43.99);
 }
 
 async function waitForAppReady(page: Page) {

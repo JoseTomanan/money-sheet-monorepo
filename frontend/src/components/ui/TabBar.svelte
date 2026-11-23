@@ -6,6 +6,10 @@
     active: TabId;
     onchange: (tab: TabId) => void;
     onadd: (event: MouseEvent) => void;
+    onadddown: (event: PointerEvent) => void;
+    onaddmove: (event: PointerEvent) => void;
+    onaddend: (event: PointerEvent) => void;
+    onaddcancel: (event: PointerEvent) => void;
     oncancel: (event: MouseEvent) => void;
     oncancelpointerdown: (event: PointerEvent) => void;
     selecting: boolean;
@@ -13,7 +17,10 @@
     height?: number;
   }
 
-  let { active, onchange, onadd, oncancel, oncancelpointerdown, selecting, addAvailable, height = $bindable(64) }: Props = $props();
+  let {
+    active, onchange, onadd, onadddown, onaddmove, onaddend, onaddcancel,
+    oncancel, oncancelpointerdown, selecting, addAvailable, height = $bindable(64),
+  }: Props = $props();
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'home',    label: 'Home' },
@@ -62,7 +69,18 @@
     {#if selecting}
       <button data-dock-cancel onpointerdown={oncancelpointerdown} onclick={oncancel} class="lg:hidden min-h-[44px] min-w-[44px] flex-1 rounded-xl text-[clamp(14px,0.875rem,18px)] font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-accent">Cancel</button>
     {:else}
-      <button data-dock-add onclick={onadd} disabled={!addAvailable} aria-label="Add entry" class="lg:hidden min-h-[44px] min-w-[44px] flex-1 rounded-xl bg-accent-fill text-accent-foreground text-[clamp(14px,0.875rem,18px)] font-semibold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:opacity-80">+ Add</button>
+      <button
+        data-dock-add
+        aria-label="Add entry"
+        disabled={!addAvailable}
+        onclick={onadd}
+        onpointerdown={onadddown}
+        onpointermove={onaddmove}
+        onpointerup={onaddend}
+        onpointercancel={onaddcancel}
+        onlostpointercapture={onaddcancel}
+        class="lg:hidden min-h-[44px] min-w-[44px] flex-1 rounded-xl bg-accent-fill text-accent-foreground text-[clamp(14px,0.875rem,18px)] font-semibold touch-pan-x touch-pinch-zoom disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:opacity-80"
+      >+ Add <span aria-hidden="true">⌃</span></button>
     {/if}
   </div>
 </div>

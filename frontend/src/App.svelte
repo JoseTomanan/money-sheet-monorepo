@@ -98,14 +98,100 @@
   let focusEntryAmount = $state(true);
   let dockSheetOpener = $state<HTMLElement | null>(null);
   let animateEntryOpen = $state(false);
+  let previewPull = $state(0);
+  let initialPull = $state(0);
+  let initialVelocity = $state(0);
+  let previewFrame = 0;
+  let pull: { id: number; x: number; y: number; origin: number; claimed: boolean; samples: { y: number; time: number }[]; target: HTMLElement } | null = null;
+  let consumeAddClick = false;
+
+  function addDown(event: PointerEvent) {
+    if (!event.isPrimary || event.button !== 0 || sheetOpen || store.loading || store.error || entriesSelectMode) return;
+    consumeAddClick = false;
+    cancelAnimationFrame(previewFrame);
+    sheetEntry = null;
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    pull = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: previewPull, claimed: false, samples: [{ y: event.clientY, time: event.timeStamp }], target };
+  }
+  function addMove(event: PointerEvent) {
+    if (!pull || pull.id !== event.pointerId) return;
+    const dx = event.clientX - pull.x, dy = event.clientY - pull.y;
+    if (!pull.claimed && Math.max(Math.abs(dx), Math.abs(dy)) >= 8) {
+      if (Math.abs(dx) >= Math.abs(dy) || (pull.origin === 0 && dy >= 0)) { pull = null; settlePreview(); return; }
+      pull.claimed = true;
+    }
+    if (!pull.claimed) return;
+    previewPull = Math.max(0, pull.origin - dy);
+    pull.samples.push({ y: event.clientY, time: event.timeStamp });
+    while (pull.samples.length > 2 && event.timeStamp - pull.samples[1].time > 100) pull.samples.shift();
+  }
+  function addEnd(event: PointerEvent) {
+    if (!pull || pull.id !== event.pointerId) return;
+    const gesture = pull;
+    pull = null;
+    if (!gesture.claimed) { settlePreview(); return; }
+    consumeAddClick = true;
+    setTimeout(() => { consumeAddClick = false; }, 400);
+    const last = gesture.samples.at(-1)!;
+    const first = gesture.samples.find(sample => event.timeStamp - sample.time <= 100) ?? last;
+    const speed = (first.y - last.y) / Math.max(1, event.timeStamp - first.time);
+    const commit = previewPull >= 72 || (previewPull >= 32 && speed >= 0.55);
+    if (commit) {
+      initialPull = previewPull;
+      initialVelocity = speed;
+      previewPull = 0;
+      gesture.target.focus({ preventScroll: true });
+      dockSheetOpener = gesture.target;
+      focusEntryAmount = false;
+      animateEntryOpen = false;
+      sheetEntry = null;
+      sheetOpen = true;
+    } else settlePreview();
+  }
+  function settlePreview() {
+    cancelAnimationFrame(previewFrame);
+    const from = previewPull, start = performance.now();
+    const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 65 : 190;
+    function step(now: number) {
+      const progress = Math.min(1, (now - start) / duration);
+      previewPull = from * (1 - progress) ** 3;
+      if (progress < 1) previewFrame = requestAnimationFrame(step);
+    }
+    previewFrame = requestAnimationFrame(step);
+  }
+  function addCancel(event?: PointerEvent) {
+    if (event && pull?.id !== event.pointerId) return;
+    if (pull?.claimed) { consumeAddClick = true; setTimeout(() => { consumeAddClick = false; }, 400); }
+    const gesture = pull;
+    pull = null;
+    if (event && gesture?.claimed) settlePreview();
+    else { cancelAnimationFrame(previewFrame); previewPull = 0; }
+    if (gesture?.target.hasPointerCapture(gesture.id)) gesture.target.releasePointerCapture(gesture.id);
+  }
+  $effect(() => {
+    router.key; store.loading; store.error; entriesSelectMode;
+    addCancel();
+  });
+  onMount(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const cancelForBreakpoint = () => addCancel();
+    media.addEventListener('change', cancelForBreakpoint);
+    return () => { media.removeEventListener('change', cancelForBreakpoint); addCancel(); };
+  });
 
   function openAdd(event?: MouseEvent) {
+    if (event && consumeAddClick) { consumeAddClick = false; return; }
+    cancelAnimationFrame(previewFrame);
+    previewPull = 0;
     dockSheetOpener = event?.currentTarget instanceof HTMLElement && event.currentTarget.hasAttribute('data-dock-add') ? event.currentTarget : null;
     const pointerType = event && 'pointerType' in event ? event.pointerType : '';
     // WebKit can report a touch tap as a mouse click. Keyboard clicks have detail 0.
     const touch = pointerType === 'touch' ||
       (!!event?.detail && window.matchMedia('(pointer: coarse)').matches);
     focusEntryAmount = !touch;
+    initialPull = 0;
+    initialVelocity = 0;
     animateEntryOpen = (event?.detail ?? 0) > 0;
     sheetEntry = null;
     sheetOpen = true;
@@ -294,6 +380,7 @@
     <TabBar active={routeTab(router.current)} onchange={navigateTab} onadd={openAdd} bind:height={dockHeight}
       selecting={router.current.kind === 'entries' && entriesSelectMode}
       addAvailable={!store.loading && !store.error}
+      onadddown={addDown} onaddmove={addMove} onaddend={addEnd} onaddcancel={addCancel}
       oncancel={(event) => entriesView?.cancelSelection(event)}
       oncancelpointerdown={(event) => entriesView?.dockCancelPointerDown(event)} />
 
@@ -301,6 +388,9 @@
 
     <EntrySheet
       open={sheetOpen}
+      {previewPull}
+      {initialPull}
+      {initialVelocity}
       categories={store.categories}
       entry={sheetEntry}
       focusAmountOnOpen={focusEntryAmount}
