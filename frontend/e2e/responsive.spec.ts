@@ -508,13 +508,12 @@ test("mobile Entries keeps its final content and bulk controls clear of the dock
   await waitForAppReady(page);
   await switchTab(page, 'Entries');
   await expectClearOfTabBar(page, '.entry-list .add-entry-card:last-child');
-  const fab = (await page.getByRole('button', { name: 'Add entry', exact: true }).boundingBox())!;
   const dockBefore = (await page.locator('.tab-bar-pill').boundingBox())!;
-  expect(fab.y + fab.height).toBeLessThanOrEqual(dockBefore.y);
+  await expect(page.locator('.tab-bar-pill').getByRole('button', { name: 'Add entry', exact: true })).toBeVisible();
   const top = page.getByRole('button', { name: 'Scroll to top' });
   await expect(top).toBeVisible();
   const topBox = (await top.boundingBox())!;
-  expect(topBox.x + topBox.width).toBeLessThanOrEqual(fab.x);
+  expect(topBox.y + topBox.height).toBeLessThanOrEqual(dockBefore.y);
   await page.getByRole('button', { name: 'Enter bulk-select mode' }).click();
   const dock = (await page.locator('.tab-bar-pill').boundingBox())!;
   const bar = (await page.locator('.select-bar').boundingBox())!;

@@ -16,6 +16,7 @@
   interface Props {
     open: boolean;
     focusAmountOnOpen?: boolean;
+    returnFocus?: HTMLElement | null;
     categories: CategoryMap;
     entry?: Entry | null;
     onclose: () => void;
@@ -24,7 +25,7 @@
     defaultDirection?: Direction;
   }
 
-  let { open, focusAmountOnOpen = true, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
+  let { open, focusAmountOnOpen = true, returnFocus = null, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
 
   const form = createEntryForm(() => categories);
   const mobile = new MediaQuery('(width < 1024px)');
@@ -189,9 +190,10 @@
 </script>
 
 <Sheet.Root {open} onOpenChange={(v) => !v && closeEntry()} {contentStyle}
+  {returnFocus}
   bind:content={sheetNode} bind:overlay={backdrop} managedMotion={mobileAdd}
   initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
-  fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
+  fallbackFocus={() => [...document.querySelectorAll<HTMLElement>('[aria-label="Add entry"]')].find(element => element.getClientRects().length > 0 && !element.matches(':disabled')) ?? document.querySelector<HTMLElement>('[data-entry-row]')}
   class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'}
   onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {

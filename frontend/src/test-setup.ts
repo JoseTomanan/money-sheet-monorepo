@@ -4,6 +4,13 @@ import { afterEach, vi } from "vitest";
 
 process.env.STL_SKIP_AUTO_CLEANUP = "true";
 
+// JSDOM has no layout or ResizeObserver; browser coverage verifies measured sizes.
+globalThis.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 afterEach(async () => {
   await act();
   vi.useFakeTimers();
