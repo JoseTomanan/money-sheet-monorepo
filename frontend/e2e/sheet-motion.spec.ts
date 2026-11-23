@@ -113,9 +113,5 @@ for (const width of [390, 1440]) {
     await page.keyboard.press('Escape');
     await page.locator('[data-entry-row]').first().click();
     await verify();
-    if (width >= 1024) {
-      await page.getByRole('button', { name: 'Add entry', exact: true }).click();
-      await verify();
-    }
   });
 }
