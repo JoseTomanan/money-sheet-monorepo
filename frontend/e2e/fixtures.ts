@@ -5,11 +5,11 @@ export * from '@playwright/test';
 // Page-level fake-destination handlers take precedence over this context boundary.
 // An unhandled external request is blocked AND fails the test, never sent to GAS.
 export const test = base.extend<{ networkBoundary: void }>({
-  networkBoundary: [async ({ context }, use) => {
+  networkBoundary: [async ({ context, baseURL }, use) => {
     const unexpected: string[] = [];
     await context.route(/^https?:\/\//, async route => {
       const url = new URL(route.request().url());
-      if (url.origin === 'http://localhost:1111') await route.continue();
+      if (baseURL && url.origin === new URL(baseURL).origin) await route.continue();
       else {
         unexpected.push(url.origin);
         await route.abort('blockedbyclient');

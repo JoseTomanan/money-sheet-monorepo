@@ -23,9 +23,12 @@
     onsave: (m: EntryMutation) => EntrySubmission;
     ondelete?: (id: number) => EntrySubmission;
     defaultDirection?: Direction;
+    previewPull?: number;
+    initialPull?: number;
+    initialVelocity?: number;
   }
 
-  let { open, focusAmountOnOpen = true, animateOnOpen = false, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O' }: Props = $props();
+  let { open, focusAmountOnOpen = true, animateOnOpen = false, categories, entry = null, onclose, onsave, ondelete, defaultDirection = 'O', previewPull = 0, initialPull = 0, initialVelocity = 0 }: Props = $props();
 
   const form = createEntryForm(() => categories);
   const mobile = new MediaQuery('(width < 1024px)');
@@ -48,6 +51,26 @@
     if (open && mobileAdd && sheetNode && backdrop) return swipe.reset;
   });
   $effect(() => {
+    if (!open || !mobileAdd || !sheetNode || !backdrop || initialPull <= 0) return;
+    const sheet = sheetNode, overlay = backdrop;
+    const height = sheet.offsetHeight || 1;
+    const offset = Math.max(0, height - initialPull);
+    sheet.style.transition = 'none';
+    overlay.style.transition = 'none';
+    sheet.style.transform = `translateY(${offset}px)`;
+    overlay.style.opacity = String(Math.min(1, initialPull / height));
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 65 : Math.max(120, Math.min(250, offset / Math.max(0.4, initialVelocity)));
+        sheet.style.transition = `transform ${duration}ms cubic-bezier(.2,.7,.2,1)`;
+        overlay.style.transition = `opacity ${duration}ms cubic-bezier(.2,.7,.2,1)`;
+        sheet.style.transform = 'translateY(0px)';
+        overlay.style.opacity = '1';
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  });
+  $effect(() => {
     if (mobileAdd && sheetNode && sheetBody) return fitAddEntryViewport(sheetNode, sheetBody);
   });
 
@@ -62,6 +85,12 @@
   let dragOrigin = 0;
   let saving = $state(false);
   let wasOpen = false;
+  let wasPreview = false;
+
+  $effect(() => {
+    if (previewPull > 0 && !wasPreview && !open) form.reset(null, defaultDirection);
+    wasPreview = previewPull > 0;
+  });
 
   function clearLegacyMotion() {
     cancelAnimationFrame(springFrame);
@@ -196,12 +225,12 @@
   }
 </script>
 
-<Sheet.Root {open} onOpenChange={(v) => !v && closeEntry(animateOnClose)} {contentStyle}
+<Sheet.Root {open} {previewPull} onOpenChange={(v) => !v && closeEntry(animateOnClose)} {contentStyle}
   onInteractOutside={(event) => { if (!event.defaultPrevented) animateOnClose = true; }}
   bind:content={sheetNode} bind:overlay={backdrop} managedMotion={!entry}
   entryMotion={open ? animateOnOpen : animateOnClose}
   initialFocus={focusAmountOnOpen ? '[data-entry-amount]' : '[data-entry-cancel]'}
-  fallbackFocus={() => document.querySelector<HTMLElement>('[aria-label="Add entry"]') ?? document.querySelector<HTMLElement>('[data-entry-row]')}
+  fallbackFocus={() => Array.from(document.querySelectorAll<HTMLElement>('[aria-label="Add entry"]')).find(node => node.getClientRects().length > 0) ?? document.querySelector<HTMLElement>('[data-entry-row]')}
   class={mobileAdd ? `pb-0 ${mobileAddLayout}` : 'pb-0'}
   onkeydown={(event) => {
   if (event.key === 'Enter' && primaryModifier(event) && !event.shiftKey && !event.isComposing && ownsKeyboard(event.currentTarget as HTMLElement)) {

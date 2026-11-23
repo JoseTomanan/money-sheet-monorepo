@@ -5,9 +5,15 @@
   interface Props {
     active: TabId;
     onchange: (tab: TabId) => void;
+    onadd: (event: MouseEvent) => void;
+    addAvailable: boolean;
+    onadddown: (event: PointerEvent) => void;
+    onaddmove: (event: PointerEvent) => void;
+    onaddend: (event: PointerEvent) => void;
+    onaddcancel: (event: PointerEvent) => void;
   }
 
-  let { active, onchange }: Props = $props();
+  let { active, onchange, onadd, addAvailable, onadddown, onaddmove, onaddend, onaddcancel }: Props = $props();
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'home',    label: 'Home' },
@@ -53,6 +59,9 @@
         <span class="tab-label font-display text-[10px] font-semibold tracking-[0.2px] mt-[2px]">{tab.label}</span>
       </button>
     {/each}
+    {#if addAvailable}
+      <button aria-label="Add entry" onclick={onadd} onpointerdown={onadddown} onpointermove={onaddmove} onpointerup={onaddend} onpointercancel={onaddcancel} onlostpointercapture={onaddcancel} class="lg:hidden flex-1 min-w-11 min-h-11 rounded-xl text-accent font-semibold cursor-pointer focus-visible:outline-2 focus-visible:outline-accent touch-pan-x">+ Add <span aria-hidden="true">⌃</span></button>
+    {/if}
   </div>
 </div>
 
