@@ -296,7 +296,7 @@
               style={filter.filterCat === key ? `color: ${darkMode.current ? c.darkColor : c.color};` : ''}
               onclick={() => filter.setCategory(filter.filterCat === key ? '' : key)}
             >
-              <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {c.dot};"></span>
+              <span class="chip-dot size-[6px] rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               {c.label}
               <span class="chip-count font-mono text-[11px] tabular-nums opacity-[0.65]">{filter.catCounts[key]}</span>
             </button>
@@ -373,7 +373,7 @@
                       aria-hidden="true"
                     >
                       {#if checked}
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="text-accent-foreground" width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                           <polyline points="2 6 5 9 10 3"/>
                         </svg>
                       {/if}
@@ -448,5 +448,12 @@
     background: color-mix(in srgb, var(--background) 82%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .filter-bar-glass {
+      background: var(--background);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 </style>

@@ -16,6 +16,8 @@
   --color-foreground:        var(--foreground);
   --color-card:              var(--card);
   --color-card-foreground:   var(--card-foreground);
+  --color-sheet:             var(--sheet-surface);
+  --color-dock:              var(--dock-surface);
   --color-muted:             var(--muted);
   --color-muted-foreground:  var(--muted-foreground);
   --color-border:            var(--border);
@@ -70,11 +72,15 @@
 }
 
 :root {
+  color-scheme: light;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --background:        #f4f4f5;
   --foreground:        #18181b;
   --card:              #ffffff;
   --card-foreground:   #18181b;
+  --sheet-surface:     var(--background);
+  --sheet-handle:      var(--border);
+  --dock-surface:      var(--card);
   --muted:             #f0f0f1;
   --muted-foreground:  #737373;
   --border:            #e5e5e5;
@@ -122,10 +128,12 @@
 
   --shadow-card:   0 1px 2px rgba(20, 18, 14, 0.04), 0 4px 12px rgba(20, 18, 14, 0.06);
   --shadow-sheet:  0 -4px 10px rgba(20, 18, 14, 0.08), 0 -12px 40px rgba(20, 18, 14, 0.18);
-  --shadow-fab:    0 4px 10px rgba(0, 0, 0, 0.18), 0 10px 28px rgba(13, 148, 136, 0.30);
+  --shadow-fab:    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), 0 1px 2px rgba(13, 148, 136, 0.08), 0 4px 12px rgba(13, 148, 136, 0.16);
+  --fab-fill:      color-mix(in srgb, var(--accent-fill) 82%, transparent);
   --shadow-tabbar: 0 -2px 12px rgba(0, 0, 0, 0.06);
 
   --app-bg: #f4f5f6;
+  --grain-opacity: 0.03;
 
   /* hero card depth: subtle gradient + bright inset ring */
   --gradient-hero: linear-gradient(160deg, #ffffff 0%, #f5f6f7 100%);
@@ -146,32 +154,32 @@
 
   /* Canonical dark sources. Both preference paths activate these values.
      Muted text channels retain contrast; surfaces use independent alpha. */
-  --dark-background: #1c1c1c;
-  --dark-foreground: #f1f1f1;
-  --dark-card: #232323;
-  --dark-card-foreground: #f1f1f1;
-  --dark-muted: #2b2b2b;
-  --dark-muted-foreground: #a3a3a3;
-  --dark-border: #393939;
-  --dark-accent: #d4d4d8;
-  --dark-accent-fill: #52525b;
-  --dark-accent-foreground: #18181b;
-  --dark-destructive-rgb: 220 139 125;
+  --dark-app-bg: #111315;
+  --dark-background: #16181b;
+  --dark-card: #1c1f22;
+  --dark-sheet-surface: #292c30;
+  --dark-sheet-handle: #7d858d;
+  --dark-muted: #34383d;
+  --dark-border: #3a3e44;
+  --dark-foreground: #f0f2f3;
+  --dark-muted-foreground: #b4bac0;
+  --dark-accent: #a3c9c1;
+  --dark-accent-foreground: #172824;
+  --dark-destructive-rgb: 233 158 147;
   --dark-destructive-fill: color-mix(in srgb, rgb(var(--destructive-rgb)) 65%, #000);
-  --dark-positive-rgb: 115 174 131;
+  --dark-positive-rgb: 125 186 143;
   --dark-local-rgb: 153 158 205;
   --dark-sync-ready: #4ade80;
   --dark-sync-busy: #60a5fa;
   --dark-sync-waiting: #f87171;
-  --dark-overlay-bg: rgba(0, 0, 0, 0.75);
-  --dark-shadow-card: 0 1px 0 var(--border), 0 2px 8px rgba(0, 0, 0, 0.30);
-  --dark-shadow-sheet: 0 -1px 0 var(--border), 0 -8px 32px rgba(0, 0, 0, 0.40);
-  --dark-shadow-fab: 0 4px 12px rgba(0, 0, 0, 0.40), 0 10px 28px rgba(212, 212, 216, 0.14);
-  --dark-shadow-tabbar: 0 -1px 0 var(--border);
-  --dark-shadow-hero: 0 1px 0 var(--border), 0 4px 16px rgba(0, 0, 0, 0.30);
-  --dark-gradient-hero: linear-gradient(160deg, #2a2a2a 0%, #232323 100%);
+  --dark-overlay-bg: rgba(0, 0, 0, 0.62);
+  --dark-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --dark-shadow-sheet: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 -8px 32px rgba(0, 0, 0, 0.34);
+  --dark-shadow-fab: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --dark-shadow-tabbar: 0 -1px 0 var(--border), 0 6px 16px rgba(0, 0, 0, 0.22);
+  --dark-shadow-hero: 0 4px 16px rgba(0, 0, 0, 0.24);
+  --dark-gradient-hero: linear-gradient(160deg, color-mix(in srgb, var(--dark-accent) 9%, var(--dark-card)), var(--dark-card));
   --dark-ring-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --dark-app-bg: #161616;
   --dark-semantic-foreground-alpha: 0.9;
   --dark-destructive-border-alpha: 0.18;
   --dark-destructive-border-strong-alpha: 0.26;
@@ -183,15 +191,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light):not(.theme-dark) {
+    color-scheme: dark;
     --background: var(--dark-background);
     --foreground: var(--dark-foreground);
     --card: var(--dark-card);
-    --card-foreground: var(--dark-card-foreground);
+    --card-foreground: var(--dark-foreground);
+    --sheet-surface: var(--dark-sheet-surface);
+    --sheet-handle: var(--dark-sheet-handle);
+    --dock-surface: var(--dark-sheet-surface);
+    --popover: var(--dark-sheet-surface);
     --muted: var(--dark-muted);
     --muted-foreground: var(--dark-muted-foreground);
     --border: var(--dark-border);
     --accent: var(--dark-accent);
-    --accent-fill: var(--dark-accent-fill);
+    --accent-fill: var(--dark-accent);
+    --fab-fill: var(--accent-fill);
     --accent-foreground: var(--dark-accent-foreground);
     --destructive-rgb: var(--dark-destructive-rgb);
     --destructive-fill: var(--dark-destructive-fill);
@@ -209,6 +223,7 @@
     --gradient-hero: var(--dark-gradient-hero);
     --ring-inset: var(--dark-ring-inset);
     --app-bg: var(--dark-app-bg);
+    --grain-opacity: 0;
     --semantic-foreground-alpha: var(--dark-semantic-foreground-alpha);
     --destructive-border-alpha: var(--dark-destructive-border-alpha);
     --destructive-border-strong-alpha: var(--dark-destructive-border-strong-alpha);
@@ -218,15 +233,21 @@
 }
 
 :root.theme-dark {
+  color-scheme: dark;
   --background: var(--dark-background);
   --foreground: var(--dark-foreground);
   --card: var(--dark-card);
-  --card-foreground: var(--dark-card-foreground);
+  --card-foreground: var(--dark-foreground);
+  --sheet-surface: var(--dark-sheet-surface);
+  --sheet-handle: var(--dark-sheet-handle);
+  --dock-surface: var(--dark-sheet-surface);
+  --popover: var(--dark-sheet-surface);
   --muted: var(--dark-muted);
   --muted-foreground: var(--dark-muted-foreground);
   --border: var(--dark-border);
   --accent: var(--dark-accent);
-  --accent-fill: var(--dark-accent-fill);
+  --accent-fill: var(--dark-accent);
+  --fab-fill: var(--accent-fill);
   --accent-foreground: var(--dark-accent-foreground);
   --destructive-rgb: var(--dark-destructive-rgb);
   --destructive-fill: var(--dark-destructive-fill);
@@ -244,6 +265,7 @@
   --gradient-hero: var(--dark-gradient-hero);
   --ring-inset: var(--dark-ring-inset);
   --app-bg: var(--dark-app-bg);
+  --grain-opacity: 0;
   --semantic-foreground-alpha: var(--dark-semantic-foreground-alpha);
   --destructive-border-alpha: var(--dark-destructive-border-alpha);
   --destructive-border-strong-alpha: var(--dark-destructive-border-strong-alpha);
@@ -270,14 +292,14 @@ html, body {
   min-height: 100dvh;
 }
 
-/* Grain overlay — SVG feTurbulence noise at 3% opacity for tactile depth */
+/* Grain adds depth to light surfaces. Dark surfaces use their fill to show elevation. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.03;
+  opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 200px 200px;
 }
