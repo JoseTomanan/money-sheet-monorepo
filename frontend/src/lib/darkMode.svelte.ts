@@ -7,6 +7,9 @@ function applyThemePreference(pref: ThemePreference) {
   html.classList.toggle('theme-dark', pref === 'dark');
   html.classList.toggle('theme-light', pref === 'light');
 
+  const scheme = document.querySelector<HTMLMetaElement>('#theme-color-scheme');
+  if (scheme) scheme.content = pref === 'system' ? 'light dark' : pref;
+
   const override = document.querySelector<HTMLMetaElement>('#theme-color-override');
   const themeColor = document.querySelector<HTMLMetaElement>(`#theme-color-${pref}`);
   if (override) {

@@ -20,6 +20,36 @@ async function editEntry(page: Page) {
   });
 }
 
+for (const [preference, systemAppearance, appearance, chrome] of [
+  ['light', 'dark', 'light', '#f4f5f6'],
+  ['dark', 'light', 'dark', '#111315'],
+  ['system', 'dark', 'dark', '#111315'],
+] as const) {
+  test(`mobile startup and Add Entry date follow ${preference} preference`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: systemAppearance, reducedMotion: 'reduce' });
+    await page.addInitScript(pref => localStorage.setItem('theme-preference', pref), preference);
+    await page.route('**/src/main.ts', route => route.fulfill({ contentType: 'text/javascript', body: '' }));
+    await page.goto('/');
+
+    const override = page.locator('#theme-color-override');
+    if (preference === 'system') {
+      await expect(override).toHaveAttribute('media', 'not all');
+      await expect(page.locator(`#theme-color-${appearance}`)).toHaveAttribute('content', chrome);
+    } else {
+      await expect(page.locator('html')).toHaveClass(`theme-${appearance}`);
+      await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', appearance);
+      await expect(override).toHaveAttribute('media', 'all');
+      await expect(override).toHaveAttribute('content', chrome);
+    }
+
+    await page.unroute('**/src/main.ts');
+    await page.reload();
+    await page.getByRole('button', { name: 'Add entry', exact: true }).click();
+    await expect(page.locator('.sheet[data-state="open"] input[type="date"]')).toHaveCSS('color-scheme', appearance);
+  });
+}
+
 // Read rendered paint, compositing alpha and ancestor opacity over actual surfaces.
 async function paint(locator: Locator, role: 'text' | 'background' | 'border' = 'text') {
   return locator.evaluate((element, role) => {
@@ -148,6 +178,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   const light = await read();
   await page.emulateMedia({ colorScheme: 'dark' });
   const root = page.locator('html');
+  const scheme = page.locator('#theme-color-scheme');
   const override = page.locator('#theme-color-override');
   await expect(root).toHaveCSS('color-scheme', 'dark');
   await expect(override).toHaveAttribute('media', 'not all');
@@ -163,6 +194,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await expect(root).toHaveCSS('color-scheme', 'light');
+  await expect(scheme).toHaveAttribute('content', 'light');
   await expect(override).toHaveAttribute('content', '#f4f5f6');
   await expect(override).toHaveAttribute('media', 'all');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
@@ -173,6 +205,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(root).toHaveCSS('color-scheme', 'dark');
+  await expect(scheme).toHaveAttribute('content', 'dark');
   await expect(override).toHaveAttribute('content', '#111315');
   await expect(override).toHaveAttribute('media', 'all');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
@@ -184,6 +217,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   await page.locator('button.header-btn.cancel').click();
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByRole('button', { name: 'System', exact: true }).click();
+  await expect(scheme).toHaveAttribute('content', 'light dark');
   await expect(override).toHaveAttribute('media', 'not all');
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.getByRole('button', { name: 'Done', exact: true }).click();
@@ -214,6 +248,32 @@ test('dark Home amounts and Category picker states are readable at mobile width'
     await expect(pill).toHaveCSS('color', canvas);
     expect((await paint(pill)).contrast).toBeGreaterThanOrEqual(4.5);
   }
+});
+
+test('Reduce Transparency makes the mobile dock and Entries filters opaque', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Media emulation uses Chromium DevTools');
+  await page.setViewportSize({ width: 390, height: 700 });
+  await boot(page, 'dark');
+  const session = await page.context().newCDPSession(page);
+  await session.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-transparency', value: 'no-preference' }],
+  });
+  const dock = page.locator('.tab-bar-pill');
+  await dock.getByRole('button', { name: 'Entries' }).click();
+  const filters = page.locator('.filter-bar-glass');
+  const scroll = page.locator('.scroll-area');
+  await scroll.evaluate(el => el.scrollTo({ top: el.scrollHeight }));
+  await expect.poll(() => scroll.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await expect(dock).toHaveCSS('backdrop-filter', /blur/);
+  await expect(filters).toHaveCSS('backdrop-filter', /blur/);
+
+  await session.send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
+  });
+  await expect(dock).toHaveCSS('backdrop-filter', 'none');
+  await expect(dock).toHaveCSS('background-color', 'rgb(41, 44, 48)');
+  await expect(filters).toHaveCSS('backdrop-filter', 'none');
+  await expect(filters).toHaveCSS('background-color', 'rgb(22, 24, 27)');
 });
 
 test('dark negative amounts and bulk deletion remain readable on tinted surfaces', async ({ page }) => {
