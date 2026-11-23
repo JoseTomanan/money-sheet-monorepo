@@ -97,6 +97,7 @@
   let sheetEntry = $state<Entry | null>(null);
   let focusEntryAmount = $state(true);
   let dockSheetOpener = $state<HTMLElement | null>(null);
+  let animateEntryOpen = $state(false);
 
   function openAdd(event?: MouseEvent) {
     dockSheetOpener = event?.currentTarget instanceof HTMLElement && event.currentTarget.hasAttribute('data-dock-add') ? event.currentTarget : null;
@@ -105,6 +106,7 @@
     const touch = pointerType === 'touch' ||
       (!!event?.detail && window.matchMedia('(pointer: coarse)').matches);
     focusEntryAmount = !touch;
+    animateEntryOpen = (event?.detail ?? 0) > 0;
     sheetEntry = null;
     sheetOpen = true;
   }
@@ -149,14 +151,14 @@
     commandOpen = true;
   }
 
-  function runCommand(id: CommandId): boolean {
+  function runCommand(id: CommandId, activation?: MouseEvent): boolean {
     const session = commandSession;
     // Recheck the live context and availability after dismissal, including credential
     // rotation. No captured callback may dispatch to an obsolete Connection.
     if (!session || session.connection !== connection.current || session.mock !== mockMode.current || session.route !== router.key ||
       !(connection.current || mockMode.current) || sheetOpen || settingsOpen || openOverlays().length ||
       commands.find(command => command.id === id)?.reason !== '') return false;
-    if (id === 'add') openAdd();
+    if (id === 'add') openAdd(activation);
     else if (id === 'redistribute') entriesView?.openRedistribution();
     else if (id === 'settings') settingsOpen = true;
     else {
@@ -303,6 +305,7 @@
       entry={sheetEntry}
       focusAmountOnOpen={focusEntryAmount}
       returnFocus={dockSheetOpener}
+      animateOnOpen={animateEntryOpen}
       onclose={() => (sheetOpen = false)}
       onsave={handleSave}
       ondelete={store.submitDeleteEntry}
