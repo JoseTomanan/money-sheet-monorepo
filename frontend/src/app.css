@@ -358,6 +358,31 @@ body::before {
   box-shadow: var(--shadow-hero), var(--ring-inset);
 }
 @layer components {
+  [data-entry-sheet-motion="true"] {
+    transition: transform 250ms var(--ease-out);
+  }
+  [data-entry-overlay-motion="true"] {
+    transition: opacity 250ms var(--ease-out);
+  }
+  [data-entry-sheet-motion="true"][data-starting-style],
+  [data-entry-sheet-motion][data-state="closed"] {
+    transform: translateY(100%);
+  }
+  [data-entry-overlay-motion="true"][data-starting-style],
+  [data-entry-overlay-motion][data-state="closed"] {
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-entry-sheet-motion="true"], [data-entry-overlay-motion="true"] {
+      transition: opacity 80ms var(--ease-out);
+    }
+    [data-entry-sheet-motion="true"][data-starting-style],
+    [data-entry-sheet-motion][data-state="closed"] {
+      transform: none;
+      opacity: 0;
+    }
+  }
+
   .sync-modal-content[data-sync-motion] {
     transition: opacity 200ms var(--ease-out), scale 200ms var(--ease-out);
   }
