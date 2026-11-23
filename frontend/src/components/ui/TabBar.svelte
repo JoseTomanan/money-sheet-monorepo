@@ -23,7 +23,7 @@
 </script>
 
 <div class="tab-bar-outer fixed bottom-[calc(16px+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-[90] pointer-events-none flex justify-center">
-  <div class="tab-bar-pill flex items-center justify-around w-[calc(100%-32px)] max-w-[420px] h-[60px] px-2 rounded-2xl border border-border bg-card/95 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto lg:w-full lg:max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 lg:pb-[env(safe-area-inset-bottom,0px)] lg:rounded-none lg:border-0 lg:bg-card/90 [@media(prefers-reduced-transparency:reduce)]:bg-card">
+  <div class="tab-bar-pill flex items-center justify-around w-[calc(100%-32px)] max-w-[420px] h-[60px] px-2 rounded-2xl border border-border bg-dock/95 backdrop-blur-[20px] backdrop-saturate-[180%] shadow-[var(--shadow-tabbar)] pointer-events-auto lg:w-full lg:max-w-[var(--app-max-width)] lg:h-[52px] lg:px-6 lg:pb-[env(safe-area-inset-bottom,0px)] lg:rounded-none lg:border-0 lg:bg-dock/90 [@media(prefers-reduced-transparency:reduce)]:bg-dock [@media(prefers-reduced-transparency:reduce)]:backdrop-filter-none">
     {#each tabs as tab}
       <button
         data-app-navigation={tab.id}

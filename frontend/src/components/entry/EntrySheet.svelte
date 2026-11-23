@@ -259,7 +259,7 @@
     onpointercancel={mobileAdd ? undefined : onHandlePointerCancel}
     onlostpointercapture={mobileAdd ? undefined : onHandlePointerCancel}
   >
-    <div class="w-9 h-1 rounded-[2px] bg-border pointer-events-none"></div>
+    <div class="w-9 h-1 rounded-[2px] bg-[var(--sheet-handle)] pointer-events-none"></div>
   </div>
 
   <Sheet.Header>

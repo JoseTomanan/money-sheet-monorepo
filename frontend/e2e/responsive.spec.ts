@@ -623,7 +623,7 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     expect(amount!.width).toBeLessThan(source!.width + target!.width);
   });
 
-  test("dark theme uses the approved graphite surface hierarchy", async ({ page }) => {
+  test("dark theme distinguishes the canvas, cards, and elevated chrome", async ({ page }) => {
     await page.goto("/");
     await waitForAppReady(page);
     await page.getByRole("button", { name: "Open settings" }).click();
@@ -634,7 +634,9 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
       return {
         canvas: styles.getPropertyValue("--app-bg").trim().toLowerCase(),
         surface: styles.getPropertyValue("--background").trim().toLowerCase(),
-        elevated: styles.getPropertyValue("--card").trim().toLowerCase(),
+        card: styles.getPropertyValue("--card").trim().toLowerCase(),
+        sheet: styles.getPropertyValue("--sheet-surface").trim().toLowerCase(),
+        dock: styles.getPropertyValue("--dock-surface").trim().toLowerCase(),
         border: styles.getPropertyValue("--border").trim().toLowerCase(),
         text: styles.getPropertyValue("--foreground").trim().toLowerCase(),
         mutedText: styles.getPropertyValue("--muted-foreground").trim().toLowerCase(),
@@ -642,12 +644,14 @@ test.describe("desktop 1280×752 — fixed tab bar clearance", () => {
     });
 
     expect(tokens).toEqual({
-      canvas: "#161616",
-      surface: "#1c1c1c",
-      elevated: "#232323",
-      border: "#393939",
-      text: "#f1f1f1",
-      mutedText: "#a3a3a3",
+      canvas: "#111315",
+      surface: "#16181b",
+      card: "#1c1f22",
+      sheet: "#292c30",
+      dock: "#292c30",
+      border: "#3a3e44",
+      text: "#f0f2f3",
+      mutedText: "#b4bac0",
     });
   });
 
