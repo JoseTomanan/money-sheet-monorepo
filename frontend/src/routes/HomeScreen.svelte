@@ -103,13 +103,13 @@
       </SectionHeader>
 
       <button class="today-teaser block w-full bg-transparent border-0 p-0 cursor-pointer text-left" onclick={() => onnavigate('entries')} aria-label="Go to entries">
-        <div class="today-section card bg-background mx-4 overflow-hidden space-y-0.5 lg:mx-0">
+        <div class="today-section card bg-background mx-4 overflow-hidden lg:mx-0" style:background={darkMode.current ? 'var(--card)' : undefined}>
         {#if todayEntries.length === 0}
           <div class="empty p-5 text-center text-muted-foreground text-sm font-sans">No entries yet.</div>
         {:else}
           {#each todayEntries as entry, i (entry.id)}
             <div
-              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card"
+              class="today-row flex items-center gap-[10px] py-3 pr-3 pl-3 bg-card" style:margin-top={!darkMode.current && i > 0 ? '2px' : undefined} style:border-top={darkMode.current && i > 0 ? '1px solid var(--border)' : undefined}
             >
               <EntryRow {entry} splitPos={todaySplitPos[i]} local={store.localIds?.has(entry.id) ?? false} />
             </div>
@@ -134,7 +134,7 @@
           {@const c = CATEGORIES[key]}
           {@const budget = store.master.budgets[key] ?? 0}
           <div class="cat-chip shrink-0 py-[10px] px-[14px] rounded-[var(--radius-md)] min-w-[112px] lg:shrink"
-            style="background: {darkMode.current ? c.darkSoft : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? c.darkDot : c.dot} {darkMode.current ? 28 : 50}%, transparent); box-shadow: var(--shadow-card);">
+            style="background: {darkMode.current ? "var(--card)" : c.pastel}; border: 1px solid color-mix(in srgb, {darkMode.current ? "var(--border)" : c.dot} {darkMode.current ? 100 : 50}%, transparent); box-shadow: var(--shadow-card);">
             <div class="cat-chip-header flex items-center gap-[6px]">
               <span class="cat-dot size-2 rounded-full shrink-0" style="background: {darkMode.current ? c.darkDot : c.dot};"></span>
               <span class="cat-name font-display text-[11px] font-semibold tracking-[0.3px] text-muted-foreground">{c.label}</span>

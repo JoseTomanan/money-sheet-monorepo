@@ -22,8 +22,8 @@ async function editEntry(page: Page) {
 
 for (const [preference, systemAppearance, appearance, chrome] of [
   ['light', 'dark', 'light', '#f4f5f6'],
-  ['dark', 'light', 'dark', '#111315'],
-  ['system', 'dark', 'dark', '#111315'],
+  ['dark', 'light', 'dark', '#080808'],
+  ['system', 'dark', 'dark', '#080808'],
 ] as const) {
   test(`mobile startup and Add Entry date follow ${preference} preference`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -206,7 +206,7 @@ test('Settings and OS changes keep semantic and Category colors in agreement', a
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(root).toHaveCSS('color-scheme', 'dark');
   await expect(scheme).toHaveAttribute('content', 'dark');
-  await expect(override).toHaveAttribute('content', '#111315');
+  await expect(override).toHaveAttribute('content', '#080808');
   await expect(override).toHaveAttribute('media', 'all');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await page.locator('.sheet[data-state="open"]').waitFor({ state: 'detached' });
@@ -250,6 +250,21 @@ test('dark Home amounts and Category picker states are readable at mobile width'
   }
 });
 
+test('dark Home uses neutral grouped surfaces', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page, 'dark');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(8, 8, 8)');
+  await expect(page.locator('.hero-card')).toHaveCSS('background-image', /28, 28, 30/);
+  for (const chip of await page.locator('.cat-chip').all()) {
+    await expect(chip).toHaveCSS('background-color', 'rgb(28, 28, 30)');
+  }
+});
+
+test('dark Latest entries share a charcoal group', async ({ page }) => {
+  await boot(page, 'dark');
+  await expect(page.locator('.today-section')).toHaveCSS('background-color', 'rgb(28, 28, 30)');
+});
+
 test('Reduce Transparency makes the mobile dock and Entries filters opaque', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Media emulation uses Chromium DevTools');
   await page.setViewportSize({ width: 390, height: 700 });
@@ -271,9 +286,9 @@ test('Reduce Transparency makes the mobile dock and Entries filters opaque', asy
     features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }],
   });
   await expect(dock).toHaveCSS('backdrop-filter', 'none');
-  await expect(dock).toHaveCSS('background-color', 'rgb(41, 44, 48)');
+  await expect(dock).toHaveCSS('background-color', 'rgb(36, 36, 38)');
   await expect(filters).toHaveCSS('backdrop-filter', 'none');
-  await expect(filters).toHaveCSS('background-color', 'rgb(22, 24, 27)');
+  await expect(filters).toHaveCSS('background-color', 'rgb(8, 8, 8)');
 });
 
 test('dark negative amounts and bulk deletion remain readable on tinted surfaces', async ({ page }) => {
@@ -320,7 +335,7 @@ for (const preference of ['dark', 'system'] as const) {
   test(`FINANCE stays muted yellow and readable with ${preference} preference`, async ({ page }) => {
     await boot(page, preference, 'dark');
     const chip = page.locator('.cat-chip', { hasText: 'Finance' });
-    await expect(chip).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.06)');
+    await expect(chip).toHaveCSS('background-color', 'rgb(28, 28, 30)');
     await expect(chip.locator('.cat-dot')).toHaveCSS('background-color', 'rgba(201, 184, 94, 0.65)');
     await page.getByRole('button', { name: 'Add entry', exact: true }).click();
     await page.getByRole('button', { name: 'Incoming', exact: true }).click();

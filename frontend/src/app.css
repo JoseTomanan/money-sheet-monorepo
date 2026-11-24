@@ -154,15 +154,15 @@
 
   /* Canonical dark sources. Both preference paths activate these values.
      Muted text channels retain contrast; surfaces use independent alpha. */
-  --dark-app-bg: #111315;
-  --dark-background: #16181b;
-  --dark-card: #1c1f22;
-  --dark-sheet-surface: #292c30;
+  --dark-app-bg: #080808;
+  --dark-background: #080808;
+  --dark-card: #1c1c1e;
+  --dark-sheet-surface: #2c2c2e;
   --dark-sheet-handle: #7d858d;
   --dark-muted: #34383d;
-  --dark-border: #3a3e44;
-  --dark-foreground: #f0f2f3;
-  --dark-muted-foreground: #b4bac0;
+  --dark-border: #38383a;
+  --dark-foreground: #f5f5f7;
+  --dark-muted-foreground: #aeaeb2;
   --dark-accent: #a3c9c1;
   --dark-accent-foreground: #172824;
   --dark-destructive-rgb: 233 158 147;
@@ -178,7 +178,7 @@
   --dark-shadow-fab: 0 4px 12px rgba(0, 0, 0, 0.35);
   --dark-shadow-tabbar: 0 -1px 0 var(--border), 0 6px 16px rgba(0, 0, 0, 0.22);
   --dark-shadow-hero: 0 4px 16px rgba(0, 0, 0, 0.24);
-  --dark-gradient-hero: linear-gradient(160deg, color-mix(in srgb, var(--dark-accent) 9%, var(--dark-card)), var(--dark-card));
+  --dark-gradient-hero: linear-gradient(var(--dark-card), var(--dark-card));
   --dark-ring-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --dark-semantic-foreground-alpha: 0.9;
   --dark-destructive-border-alpha: 0.18;
@@ -198,7 +198,7 @@
     --card-foreground: var(--dark-foreground);
     --sheet-surface: var(--dark-sheet-surface);
     --sheet-handle: var(--dark-sheet-handle);
-    --dock-surface: var(--dark-sheet-surface);
+    --dock-surface: #242426;
     --popover: var(--dark-sheet-surface);
     --muted: var(--dark-muted);
     --muted-foreground: var(--dark-muted-foreground);
@@ -240,7 +240,7 @@
   --card-foreground: var(--dark-foreground);
   --sheet-surface: var(--dark-sheet-surface);
   --sheet-handle: var(--dark-sheet-handle);
-  --dock-surface: var(--dark-sheet-surface);
+  --dock-surface: #242426;
   --popover: var(--dark-sheet-surface);
   --muted: var(--dark-muted);
   --muted-foreground: var(--dark-muted-foreground);
