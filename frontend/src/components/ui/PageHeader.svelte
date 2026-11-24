@@ -50,7 +50,7 @@
 
   <div class="page-header-main mt-1 flex items-end justify-between gap-3">
     <div class="min-w-0 flex items-baseline gap-[10px]">
-      <div class="page-title min-w-0 font-display text-[28px] font-bold text-foreground tracking-[-0.5px] lg:text-[30px]">
+      <div class="page-title min-w-0 font-display text-[28px] font-semibold text-foreground tracking-[-0.5px] lg:text-[30px]">
         {@render title()}
       </div>
       {#if meta}
