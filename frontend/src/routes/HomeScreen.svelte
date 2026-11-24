@@ -88,7 +88,7 @@
       <div class="hero-card card-hero rounded-[var(--radius-lg)] mx-4 mt-[14px] pt-5 pb-5 px-[22px] relative overflow-hidden lg:mx-0">
         <div class="card-label font-display text-[11px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">ON HAND</div>
         <div
-          class="hero-amount font-mono tabular-nums text-[44px] font-medium text-foreground tracking-[-1.2px] mt-1 text-right"
+          class="hero-amount font-mono tabular-nums text-[44px] font-normal text-foreground tracking-[-1.2px] mt-1 text-right"
         >
           {peso(store.master.onHand, store.config.currency)}
         </div>
