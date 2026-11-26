@@ -75,6 +75,8 @@ The frontend renders derived metrics sourced from MASTER/STATS (`getStats`) — 
 
 Svelte 5 + Vite + Tailwind v4. No SvelteKit. Single-page app; view switching via component switcher if multi-view is needed.
 
+Read [DESIGN.md](DESIGN.md) before building or changing frontend UI. It covers design tokens, shared components, and Tailwind conventions.
+
 **Commands** (run from `frontend/`):
 ```bash
 npm install
@@ -93,7 +95,6 @@ selection; do not introduce SvelteKit or browser-path routing.
 - I/O selection determines Tag picker domain: Incoming → Categories only; Outgoing → Subcategories only (grouped by Category)
 - All data fetching is client-side via `fetch()` to the GAS web app URL
 - GAS URL and API secret stored as Vite env vars (`VITE_GAS_URL`, `VITE_API_SECRET`)
-- **CSS rule**: Use Tailwind for everything — see `docs/adr/0006` for the full rules. Short version: component `<style>` blocks should be empty or near-empty; `app.css` is the home for all `@keyframes`, `@utility` blocks (shared Tailwind combos extracted via `@apply`), `:root` tokens, and global resets. Use `group-*`/`peer-*` variants for parent→child hover/state instead of reactive JS variables. Inline `style=` is only permitted for runtime-computed values (colors from data, animation transforms, chart dimensions).
 
 ## Deployment
 
