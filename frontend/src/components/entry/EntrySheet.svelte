@@ -325,12 +325,13 @@
   <div class="entry-sheet-details min-w-0">
   <div class="entry-details-surface card mx-4 mt-[10px] overflow-hidden lg:mx-0 lg:mt-0">
 
+  <!-- Keep touch inputs at least 16px to avoid Safari zooming on focus. -->
   <!-- description -->
   <div class="py-3 px-[18px]">
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Description</div>
     <input
       type="text"
-      class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] text-foreground placeholder:text-muted-foreground"
+      class="field-input w-full bg-transparent border-0 outline-none font-sans text-[15px] any-pointer-coarse:text-[16px] text-foreground placeholder:text-muted-foreground"
       bind:value={form.description}
       placeholder={form.direction === 'I' ? 'e.g. weekly allowance' : 'e.g. lunch at canteen'}
     />
@@ -341,7 +342,7 @@
     <div class="text-[10px] font-display font-semibold tracking-[1px] uppercase text-muted-foreground mb-1">Date</div>
     <div class="flex items-center justify-between">
       <span class="font-mono text-[15px] text-foreground tabular-nums">{fmtDate(form.date)} · {dayOfWeek(form.date)}</span>
-      <input type="date" class="text-[13px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={form.date} />
+      <input type="date" class="text-[13px] any-pointer-coarse:text-[16px] text-accent font-sans border-0 bg-transparent cursor-pointer outline-none text-right min-w-0" bind:value={form.date} />
     </div>
   </div>
   </div>

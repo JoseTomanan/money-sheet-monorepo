@@ -8,6 +8,15 @@ async function ready(page: Page, route = '/#/entries/') {
 test.describe('touch Add Entry', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 
+  test('uses 16px text for Description and Date to avoid Safari focus zoom', async ({ page }) => {
+    await ready(page);
+    await page.getByRole('button', { name: 'Add entry', exact: true }).tap();
+    const sheet = page.locator('.sheet[data-state="open"]');
+
+    await expect(sheet.locator('.field-input')).toHaveCSS('font-size', '16px');
+    await expect(sheet.locator('input[type="date"]')).toHaveCSS('font-size', '16px');
+  });
+
   test('leaves Amount unfocused until tapped and preserves the keyboard shortcut', async ({ page }) => {
     await ready(page);
     const add = page.getByRole('button', { name: 'Add entry', exact: true });
